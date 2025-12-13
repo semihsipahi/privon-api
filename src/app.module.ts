@@ -1,0 +1,87 @@
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { join } from 'path';
+import { UserModule } from './modules/user/user.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UploadModule } from './modules/upload/upload.module';
+import { MailModule } from './modules/mail/mail.module';
+import { RestaurantTypeModule } from './modules/restaurant-type/restaurant-type.module';
+import { RestaurantModule } from './modules/restaurant/restaurant.module';
+import { RestaurantApplicationModule } from './modules/restaurant-application/restaurant-application.module';
+
+import { DiscountSlotModule } from './modules/discount-slot/discount-slot.module';
+import { ReviewModule } from './modules/review/review.module';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { ResourceOwnerGuard } from './common/guards/resource-owner.guard';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+      }),
+      inject: [ConfigService],
+    }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 60 saniye
+        limit: 100, // 60 saniyede maksimum 100 istek
+      },
+    ]),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
+    UserModule,
+    AuthModule,
+    UploadModule,
+    MailModule,
+    RestaurantTypeModule,
+    RestaurantModule,
+    RestaurantApplicationModule,
+    DiscountSlotModule,
+    ReviewModule,
+  ],
+  controllers: [AppController],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ResourceOwnerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+  ],
+})
+export class AppModule { }
