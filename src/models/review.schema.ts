@@ -1,50 +1,40 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 
-export type ReviewDocument = Review & Document;
-
 @Schema({ timestamps: true })
-export class Review {
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  user: MongooseSchema.Types.ObjectId;
+export class Review extends Document {
+    @Prop({
+        type: MongooseSchema.Types.ObjectId,
+        ref: 'Reservation',
+        required: true,
+        unique: true,
+    })
+    reservation: MongooseSchema.Types.ObjectId;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: 'Restaurant',
-    required: true,
-  })
-  restaurant: MongooseSchema.Types.ObjectId;
+    @Prop({
+        type: MongooseSchema.Types.ObjectId,
+        ref: 'Restaurant',
+        required: true,
+    })
+    restaurant: MongooseSchema.Types.ObjectId;
 
-  @Prop({ max: 5 })
-  rating: number;
+    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+    customer: MongooseSchema.Types.ObjectId;
 
-  @Prop({ trim: true })
-  comment: string;
+    @Prop({ required: true, min: 1, max: 5 })
+    rating: number; // 1-5
 
-  @Prop({ type: String, trim: true, default: null })
-  restaurantReply: string;
+    @Prop()
+    comment?: string;
 
-  @Prop({ type: Date, default: null })
-  repliedAt: Date;
+    @Prop()
+    reply?: string;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: 'SlotReservation',
-    required: true,
-  })
-  slotReservation: MongooseSchema.Types.ObjectId;
-
-  @Prop({ default: true })
-  isActive: boolean;
+    @Prop({ default: false }) // Admin onayı gerekli
+    isActive: boolean;
 }
 
 export const ReviewSchema = SchemaFactory.createForClass(Review);
 
-// Index to ensure one review per reservation
-ReviewSchema.index({ slotReservation: 1 }, { unique: true });
-
-// Index for efficient restaurant queries
 ReviewSchema.index({ restaurant: 1, isActive: 1 });
-
-// Index for user queries
-ReviewSchema.index({ user: 1, isActive: 1 });
+ReviewSchema.index({ customer: 1 });

@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty } from 'class-validator';
 
-export class ReplyReviewDto {
-    @ApiProperty({ description: 'Restoran sahibinin yanıtı' })
+export class CreateCategoryDto {
+    @ApiProperty({ description: 'Kategori adı', example: 'İtalyan' })
     @IsString()
     @IsNotEmpty()
-    reply: string;
+    name: string;
 }

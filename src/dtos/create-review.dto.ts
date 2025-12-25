@@ -1,26 +1,29 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsNotEmpty,
-  IsNumber,
-  IsString,
-  Max,
-  IsMongoId,
+    IsString,
+    IsNumber,
+    IsMongoId,
+    IsOptional,
+    Min,
+    Max,
 } from 'class-validator';
 
 export class CreateReviewDto {
-  @IsNotEmpty()
-  @IsMongoId()
-  restaurant: string;
+    @ApiProperty({
+        description: 'Rezervasyon ID',
+        example: '507f1f77bcf86cd799439011',
+    })
+    @IsMongoId()
+    reservation: string;
 
-  @IsNotEmpty()
-  @IsMongoId()
-  slotReservation: string;
+    @ApiProperty({ description: 'Puan (1-5)', example: 5, minimum: 1, maximum: 5 })
+    @IsNumber()
+    @Min(1)
+    @Max(5)
+    rating: number;
 
-  @IsNotEmpty()
-  @IsNumber()
-  @Max(5)
-  rating: number;
-
-  @IsNotEmpty()
-  @IsString()
-  comment: string;
+    @ApiPropertyOptional({ description: 'Yorum notu' })
+    @IsOptional()
+    @IsString()
+    comment?: string;
 }

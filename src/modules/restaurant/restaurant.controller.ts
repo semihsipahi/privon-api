@@ -31,7 +31,6 @@ import { RestaurantListQueryDto } from 'src/dtos/restaurant-list-query.dto';
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) { }
 
-
   @Get()
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin, Role.RestaurantOwner, Role.User)

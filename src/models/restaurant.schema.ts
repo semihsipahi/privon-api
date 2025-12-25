@@ -45,13 +45,19 @@ export class Restaurant extends Document {
 
   @Prop({
     type: MongooseSchema.Types.ObjectId,
-    ref: 'RestaurantType',
+    ref: 'RestaurantCategory',
     required: false,
   })
   category?: MongooseSchema.Types.ObjectId;
 
   @Prop({ default: false })
   isActive: boolean;
+
+  @Prop({ default: 0 })
+  rating: number;
+
+  @Prop({ default: 0 })
+  reviewCount: number;
 
   @Prop({ type: Location })
   location: Location;

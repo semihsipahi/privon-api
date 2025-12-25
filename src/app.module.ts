@@ -11,12 +11,15 @@ import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { MailModule } from './modules/mail/mail.module';
-import { RestaurantTypeModule } from './modules/restaurant-type/restaurant-type.module';
 import { RestaurantModule } from './modules/restaurant/restaurant.module';
 import { RestaurantApplicationModule } from './modules/restaurant-application/restaurant-application.module';
-
-import { DiscountSlotModule } from './modules/discount-slot/discount-slot.module';
+import { BannerModule } from './modules/banner/banner.module';
+import { SlotModule } from './modules/slot/slot.module';
+import { ReservationModule } from './modules/reservation/reservation.module';
 import { ReviewModule } from './modules/review/review.module';
+import { CategoryModule } from './modules/category/category.module';
+
+
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -48,11 +51,13 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     AuthModule,
     UploadModule,
     MailModule,
-    RestaurantTypeModule,
     RestaurantModule,
     RestaurantApplicationModule,
-    DiscountSlotModule,
+    BannerModule,
+    SlotModule,
+    ReservationModule,
     ReviewModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [

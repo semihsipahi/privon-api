@@ -1,234 +1,138 @@
 import {
-  Injectable,
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
+    Injectable,
+    NotFoundException,
+    BadRequestException,
+    ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Review } from '../../models/review.schema';
-import {
-  SlotReservation,
-} from '../../models/slot-reservation.schema';
-import { CreateReviewDto, UpdateReviewDto, ReplyReviewDto } from '../../dtos';
+import { Restaurant } from '../../models/restaurant.schema';
+import { Reservation } from '../../models/reservation.schema';
 import { ResourceService } from 'src/services/resource.service';
-import { Restaurant } from 'src/models/restaurant.schema';
-import { ReservationStatus } from 'src/common/enums/discount.enum';
+import { CreateReviewDto } from 'src/dtos/create-review.dto';
+import { ReplyReviewDto } from 'src/dtos/reply-review.dto';
+import { AuthUser } from 'src/common/interfaces/auth-user.interface';
+import { Role } from 'src/common/enums/role.enum';
+import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
 
 @Injectable()
-export class ReviewService extends ResourceService<
-  Review,
-  CreateReviewDto,
-  UpdateReviewDto
-> {
-  constructor(
-    @InjectModel(Review.name)
-    private reviewModel: Model<Review>,
-    @InjectModel(SlotReservation.name)
-    private slotReservationModel: Model<SlotReservation>,
-    @InjectModel(Restaurant.name)
-    private restaurantModel: Model<Restaurant>,
-  ) {
-    super(reviewModel);
-  }
-
-  async createReview(
-    userId: string,
-    createReviewDto: CreateReviewDto,
-  ): Promise<Review> {
-    const { slotReservation, restaurant, rating, comment } = createReviewDto;
-
-    // Rezervasyonun var olup olmadığını ve kullanıcıya ait olup olmadığını kontrol et
-    const reservation = await this.slotReservationModel
-      .findById(slotReservation)
-      .populate('schedule');
-
-    if (!reservation) {
-      throw new NotFoundException('Rezervasyon bulunamadı');
+export class ReviewService extends ResourceService<Review, CreateReviewDto, any> {
+    constructor(
+        @InjectModel(Review.name)
+        private reviewModel: Model<Review>,
+        @InjectModel(Restaurant.name)
+        private restaurantModel: Model<Restaurant>,
+        @InjectModel(Reservation.name)
+        private reservationModel: Model<Reservation>,
+    ) {
+        super(reviewModel);
     }
 
-    if (reservation.user.toString() !== userId) {
-      throw new ForbiddenException('Bu rezervasyon size ait değil');
+    async createReview(createDto: CreateReviewDto, user: AuthUser): Promise<Review> {
+        const reservation = await this.reservationModel.findById(createDto.reservation);
+        if (!reservation) {
+            throw new NotFoundException('Rezervasyon bulunamadı');
+        }
+
+        if (reservation.customer.toString() !== user.userId) {
+            throw new ForbiddenException('Sadece kendi rezervasyonunuzu değerlendirebilirsiniz');
+        }
+
+        if (reservation.status !== ReservationStatus.COMPLETED) {
+            throw new BadRequestException('Sadece tamamlanmış rezervasyonlar değerlendirilebilir');
+        }
+
+        const existingReview = await this.reviewModel.findOne({
+            reservation: createDto.reservation,
+        });
+        if (existingReview) {
+            throw new BadRequestException('Bu rezervasyon için zaten değerlendirme yapılmış');
+        }
+
+        // isActive: false by default in schema
+        return await this.create({
+            ...createDto,
+            restaurant: reservation.restaurant,
+            customer: new Types.ObjectId(user.userId),
+        } as any);
     }
 
-    // Rezervasyonun bu restoran için olup olmadığını kontrol et
-    if (reservation.restaurant.toString() !== restaurant) {
-      throw new BadRequestException(
-        'Bu rezervasyon bu restoran için yapılmamış',
-      );
+    async approveReview(id: string) {
+        const review = await this.reviewModel.findById(id);
+        if (!review) {
+            throw new NotFoundException('Değerlendirme bulunamadı');
+        }
+
+        review.isActive = true;
+        await review.save();
+
+        await this.calculateRestaurantRating(review.restaurant as unknown as Types.ObjectId);
+
+        return review;
     }
 
-    // Rezervasyonun kullanılıp kullanılmadığını kontrol et (validated olmalı)
-    if (reservation.status !== ReservationStatus.VALIDATED) {
-      throw new BadRequestException('Bu rezervasyon henüz kullanılmamış');
+    async getPendingReviews() {
+        return await this.reviewModel
+            .find({ isActive: false })
+            .populate('restaurant', 'name')
+            .populate('customer', 'name')
+            .sort({ createdAt: -1 })
+            .lean();
     }
 
-    // Bu rezervasyon için daha önce yorum yapılıp yapılmadığını kontrol et
-    const existingReview = await this.reviewModel.findOne({ slotReservation });
-    if (existingReview) {
-      throw new BadRequestException(
-        'Bu rezervasyon için zaten yorum yapılmış',
-      );
+    async replyToReview(id: string, replyDto: ReplyReviewDto, user: AuthUser) {
+        const review = await this.reviewModel.findById(id);
+        if (!review) {
+            throw new NotFoundException('Değerlendirme bulunamadı');
+        }
+
+        if (!review.isActive) {
+            throw new BadRequestException('Sadece onaylanmış değerlendirmelere yanıt verilebilir');
+        }
+
+        // Ownership check for restaurant owner
+        if (user.role !== Role.SuperAdmin) {
+            if (!user.restaurantId || user.restaurantId !== review.restaurant.toString()) {
+                throw new ForbiddenException('Sadece kendi restoranınıza ait değerlendirmelere yanıt verebilirsiniz');
+            }
+        }
+
+        review.reply = replyDto.reply;
+        return await review.save();
     }
 
-    const review = new this.reviewModel({
-      user: userId,
-      restaurant,
-      slotReservation,
-      rating,
-      comment,
-    });
-
-    return review.save();
-  }
-
-  async findByRestaurant(
-    restaurantId: string,
-    _start = 0,
-    _end = 10,
-  ): Promise<{ data: any[]; total: number }> {
-    const start = Number(_start) || 0;
-    const end = Number(_end) || start + 10;
-    const limit = end - start;
-
-    const [reviews, total] = await Promise.all([
-      this.reviewModel
-        .find({ restaurant: restaurantId, isActive: true })
-        .populate('user', 'name email')
-        .sort({ createdAt: -1 })
-        .skip(start)
-        .limit(limit)
-        .lean(),
-      this.reviewModel.countDocuments({
-        restaurant: restaurantId,
-        isActive: true,
-      }),
-    ]);
-
-    return {
-      data: reviews,
-      total,
-    };
-  }
-
-  async findByUser(
-    userId: string,
-    _start = 0,
-    _end = 10,
-  ): Promise<{ data: any[]; total: number }> {
-    const start = Number(_start) || 0;
-    const end = Number(_end) || start + 10;
-    const limit = end - start;
-
-    const [reviews, total] = await Promise.all([
-      this.reviewModel
-        .find({ user: userId, isActive: true })
-        .populate('restaurant', 'name')
-        .sort({ createdAt: -1 })
-        .skip(start)
-        .limit(limit)
-        .lean(),
-      this.reviewModel.countDocuments({ user: userId, isActive: true }),
-    ]);
-
-    return {
-      data: reviews,
-      total,
-    };
-  }
-
-  async updateReview(
-    reviewId: string,
-    userId: string,
-    updateReviewDto: UpdateReviewDto,
-  ): Promise<Review> {
-    const review = await this.reviewModel.findById(reviewId);
-
-    if (!review) {
-      throw new NotFoundException('Yorum bulunamadı');
+    async getRestaurantReviews(restaurantId: string) {
+        return await this.reviewModel
+            .find({ restaurant: new Types.ObjectId(restaurantId), isActive: true })
+            .populate('customer', 'maskedName')
+            .sort({ createdAt: -1 })
+            .lean();
     }
 
-    if (review.user.toString() !== userId) {
-      throw new ForbiddenException('Bu yorumu güncelleme yetkiniz yok');
+    private async calculateRestaurantRating(restaurantId: Types.ObjectId) {
+        const result = await this.reviewModel.aggregate([
+            {
+                $match: {
+                    restaurant: restaurantId,
+                    isActive: true,
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    avgRating: { $avg: '$rating' },
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+
+        const rating = result.length > 0 ? Math.round(result[0].avgRating * 10) / 10 : 0;
+        const count = result.length > 0 ? result[0].count : 0;
+
+        await this.restaurantModel.findByIdAndUpdate(restaurantId, {
+            rating: rating,
+            reviewCount: count,
+        });
     }
-
-    if (review.restaurantReply) {
-      throw new BadRequestException(
-        'Restoran cevap verdikten sonra yorum düzenlenemez',
-      );
-    }
-
-    Object.assign(review, updateReviewDto);
-    return review.save();
-  }
-
-  async replyToReview(
-    reviewId: string,
-    userId: string,
-    replyReviewDto: ReplyReviewDto,
-  ): Promise<Review> {
-    const review = await this.reviewModel.findById(reviewId);
-
-    if (!review) {
-      throw new NotFoundException('Yorum bulunamadı');
-    }
-
-    // Kullanıcının restoranını bul
-    const restaurant = await this.restaurantModel.findOne({ owner: userId });
-
-    if (!restaurant) {
-      throw new ForbiddenException('Kullanıcıya ait restoran bulunamadı');
-    }
-
-    // Yorumun bu restorana ait olup olmadığını kontrol et
-    if (review.restaurant.toString() !== restaurant._id.toString()) {
-      throw new ForbiddenException(
-        'Sadece kendi restoranınıza ait yorumlara cevap verebilirsiniz',
-      );
-    }
-
-    review.restaurantReply = replyReviewDto.restaurantReply;
-    review.repliedAt = new Date();
-    return review.save();
-  }
-
-  async deleteReview(reviewId: string, userId: string): Promise<void> {
-    const review = await this.reviewModel.findById(reviewId);
-
-    if (!review) {
-      throw new NotFoundException('Yorum bulunamadı');
-    }
-
-    // Kullanıcı kendi yorumunu silebilir
-    if (review.user.toString() !== userId) {
-      throw new ForbiddenException('Bu yorumu silme yetkiniz yok');
-    }
-
-    review.isActive = false;
-    await review.save();
-  }
-
-  async getAverageRating(
-    restaurantId: string,
-  ): Promise<{ averageRating: number; totalReviews: number }> {
-    const result = await this.reviewModel.aggregate([
-      { $match: { restaurant: restaurantId, isActive: true } },
-      {
-        $group: {
-          _id: null,
-          averageRating: { $avg: '$rating' },
-          totalReviews: { $sum: 1 },
-        },
-      },
-    ]);
-
-    if (result.length === 0) {
-      return { averageRating: 0, totalReviews: 0 };
-    }
-
-    return {
-      averageRating: Math.round(result[0].averageRating * 10) / 10,
-      totalReviews: result[0].totalReviews,
-    };
-  }
 }

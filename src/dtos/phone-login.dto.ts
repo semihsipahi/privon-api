@@ -19,3 +19,4 @@ export class PhoneLoginDto {
   @IsNotEmpty({ message: 'Şifre alanı boş bırakılamaz.' })
   password: string;
 }
+

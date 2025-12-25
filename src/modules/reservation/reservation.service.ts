@@ -1,0 +1,166 @@
+import {
+    Injectable,
+    NotFoundException,
+    BadRequestException,
+    ForbiddenException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Reservation } from '../../models/reservation.schema';
+import { Slot } from '../../models/slot.schema';
+import { ResourceService } from 'src/services/resource.service';
+import { CreateReservationDto } from 'src/dtos/create-reservation.dto';
+import { UpdateReservationStatusDto } from 'src/dtos/update-reservation-status.dto';
+import { AuthUser } from 'src/common/interfaces/auth-user.interface';
+import { Role } from 'src/common/enums/role.enum';
+import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
+
+@Injectable()
+export class ReservationService extends ResourceService<
+    Reservation,
+    CreateReservationDto,
+    any
+> {
+    constructor(
+        @InjectModel(Reservation.name)
+        private reservationModel: Model<Reservation>,
+        @InjectModel(Slot.name)
+        private slotModel: Model<Slot>,
+    ) {
+        super(reservationModel);
+    }
+
+    async createReservation(
+        createDto: CreateReservationDto,
+        user: AuthUser,
+    ): Promise<Reservation> {
+        const slot = await this.slotModel.findById(createDto.slot);
+        if (!slot) {
+            throw new NotFoundException('Slot bulunamadı');
+        }
+
+        // Kota kontrolü
+        const activeReservationsCount = await this.reservationModel.countDocuments({
+            slot: createDto.slot,
+            date: createDto.date,
+            status: {
+                $in: [
+                    ReservationStatus.PENDING,
+                    ReservationStatus.CONFIRMED,
+                    ReservationStatus.SEATED,
+                ],
+            },
+        });
+
+        if (activeReservationsCount >= slot.tableQuota) {
+            throw new BadRequestException('Bu slot için kapasite doldu');
+        }
+
+        // Kişi sayısı kontrolü
+        if (
+            createDto.personCount < slot.minPersons ||
+            createDto.personCount > slot.maxPersons
+        ) {
+            throw new BadRequestException(
+                `Kişi sayısı ${slot.minPersons} ile ${slot.maxPersons} arasında olmalıdır`,
+            );
+        }
+
+        return await this.create({
+            ...createDto,
+            restaurant: slot.restaurant,
+            customer: new Types.ObjectId(user.userId),
+        } as any);
+    }
+
+    async getMyReservations(user: AuthUser) {
+        return await this.reservationModel
+            .find({ customer: new Types.ObjectId(user.userId) })
+            .populate('restaurant', 'name location image')
+            .populate('slot', 'time discount')
+            .sort({ date: -1, createdAt: -1 })
+            .lean();
+    }
+
+    async getRestaurantReservations(restaurantId: string) {
+        return await this.reservationModel
+            .find({ restaurant: new Types.ObjectId(restaurantId) })
+            .populate('customer', 'name phone')
+            .populate('slot', 'time')
+            .sort({ date: -1, createdAt: -1 })
+            .lean();
+    }
+
+    async updateStatus(
+        id: string,
+        updateDto: UpdateReservationStatusDto,
+        user: AuthUser,
+    ) {
+        const reservation = await this.reservationModel.findById(id);
+        if (!reservation) {
+            throw new NotFoundException('Rezervasyon bulunamadı');
+        }
+
+        // Ownership check
+        if (user.role !== Role.SuperAdmin) {
+            if (
+                !user.restaurantId ||
+                user.restaurantId !== reservation.restaurant.toString()
+            ) {
+                throw new ForbiddenException('Bu işlem için yetkiniz yok');
+            }
+        }
+
+        // Completed logic
+        if (updateDto.status === ReservationStatus.COMPLETED) {
+            if (updateDto.totalAmount === undefined) {
+                throw new BadRequestException('Toplam tutar girilmelidir');
+            }
+
+            const slot = await this.slotModel.findById(reservation.slot);
+            if (!slot) throw new NotFoundException('Slot bulunamadı');
+
+            const totalAmount = updateDto.totalAmount;
+            const nonDiscounted = updateDto.nonDiscountedAmount || 0;
+
+            if (nonDiscounted > totalAmount) {
+                throw new BadRequestException(
+                    'İndirime dahil olmayan tutar toplam tutardan büyük olamaz',
+                );
+            }
+
+            const discountableAmount = totalAmount - nonDiscounted;
+            const discountValue = discountableAmount * (slot.discount / 100);
+
+            reservation.totalAmount = totalAmount;
+            reservation.nonDiscountedAmount = nonDiscounted;
+            reservation.finalAmount = totalAmount - discountValue;
+            reservation.savedAmount = discountValue;
+        }
+
+        reservation.status = updateDto.status;
+        return await reservation.save();
+    }
+
+    async cancelReservation(id: string, user: AuthUser) {
+        const reservation = await this.reservationModel.findById(id);
+        if (!reservation) {
+            throw new NotFoundException('Rezervasyon bulunamadı');
+        }
+
+        if (reservation.customer.toString() !== user.userId) {
+            throw new ForbiddenException(
+                'Sadece kendi rezervasyonunuzu iptal edebilirsiniz',
+            );
+        }
+
+        if (reservation.status !== ReservationStatus.PENDING) {
+            throw new BadRequestException(
+                'Sadece beklemedeki rezervasyonlar iptal edilebilir',
+            );
+        }
+
+        reservation.status = ReservationStatus.CANCELLED;
+        return await reservation.save();
+    }
+}

@@ -52,8 +52,20 @@ export class RestaurantListQueryDto {
   userLon?: number;
 
   @ApiPropertyOptional({
-    description: 'Sıralama türü (distance: uzaklığa göre, rating: puana göre)',
+    description: 'Maksimum mesafe (metre cinsinden, harita görünümü için)',
+    example: 5000,
+    minimum: 100,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(100)
+  maxDistance?: number;
+
+  @ApiPropertyOptional({
+    description: 'Sıralama türü (varsayılan: distance)',
     enum: ['distance', 'rating'],
+    default: 'distance',
   })
   @IsOptional()
   @IsEnum(['distance', 'rating'])
