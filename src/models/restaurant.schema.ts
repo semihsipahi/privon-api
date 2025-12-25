@@ -46,9 +46,12 @@ export class Restaurant extends Document {
   @Prop({
     type: MongooseSchema.Types.ObjectId,
     ref: 'RestaurantType',
-    required: true,
+    required: false,
   })
-  category: MongooseSchema.Types.ObjectId;
+  category?: MongooseSchema.Types.ObjectId;
+
+  @Prop({ default: false })
+  isActive: boolean;
 
   @Prop({ type: Location })
   location: Location;
@@ -67,12 +70,8 @@ export class Restaurant extends Document {
 
   @Prop({ type: [WorkingHours], default: [] })
   workingHours: WorkingHours[];
-
-  @Prop({ type: [String], default: [] })
-  feedVideos: string[];
 }
 
 export const RestaurantSchema = SchemaFactory.createForClass(Restaurant);
 
-// Create 2dsphere geospatial index for location-based queries
 RestaurantSchema.index({ 'location.coordinates': '2dsphere' });

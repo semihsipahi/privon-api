@@ -1,7 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Query } from '@nestjs/common';
-import { RestaurantApplicationService } from './restaurant-application.service';
-import { CreateApplicationDto } from '../../dtos';
-import { ApplicationStatus } from '../../models/restaurant-application.schema';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { RestaurantApplicationService, ApprovalResult } from './restaurant-application.service';
+import { CreateApplicationDto, UpdateApplicationStatusDto } from '../../dtos';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
@@ -29,13 +28,23 @@ export class RestaurantApplicationController {
     @Roles(Role.SuperAdmin)
     @Get(':id')
     findOne(@Param('id') id: string) {
-        return this.restaurantApplicationService.findOne({ _id: id });
+        return this.restaurantApplicationService.findByID(id);
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.SuperAdmin)
     @Patch(':id/status')
-    updateStatus(@Param('id') id: string, @Body('status') status: ApplicationStatus) {
-        return this.restaurantApplicationService.updateStatus(id, status);
+    updateStatus(
+        @Param('id') id: string,
+        @Body() updateStatusDto: UpdateApplicationStatusDto,
+    ): Promise<ApprovalResult> {
+        return this.restaurantApplicationService.updateStatus(id, updateStatusDto.status);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SuperAdmin)
+    @Delete(':id')
+    delete(@Param('id') id: string) {
+        return this.restaurantApplicationService.delete(id);
     }
 }

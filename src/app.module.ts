@@ -19,7 +19,6 @@ import { DiscountSlotModule } from './modules/discount-slot/discount-slot.module
 import { ReviewModule } from './modules/review/review.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { ResourceOwnerGuard } from './common/guards/resource-owner.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -65,10 +64,6 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: ResourceOwnerGuard,
     },
     {
       provide: APP_GUARD,

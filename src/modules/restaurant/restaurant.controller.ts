@@ -7,10 +7,13 @@ import {
   Param,
   Delete,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { RestaurantService } from './restaurant.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
+import { RequiresOwnership } from 'src/common/decorators/requires-ownership.decorator';
+import { ResourceOwnerGuard } from 'src/common/guards/resource-owner.guard';
 import { Role } from 'src/common/enums/role.enum';
 import {
   ApiBearerAuth,
@@ -26,14 +29,9 @@ import { RestaurantListQueryDto } from 'src/dtos/restaurant-list-query.dto';
 @ApiTags('Restaurant')
 @Controller('restaurant')
 export class RestaurantController {
-  constructor(private readonly restaurantService: RestaurantService) {}
+  constructor(private readonly restaurantService: RestaurantService) { }
 
-  /**
-   * Refine getList endpoint
-   * GET /restaurant?_start=0&_end=10&_sort=createdAt&_order=desc&name_like=restaurant
-   * Response: { data: Restaurant[], total: number }
-   * Tüm kullanıcılar görüntüleyebilir
-   */
+
   @Get()
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin, Role.RestaurantOwner, Role.User)
@@ -91,16 +89,13 @@ export class RestaurantController {
   @Get(':id')
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin, Role.RestaurantOwner)
+  @UseGuards(ResourceOwnerGuard)
+  @RequiresOwnership({ modelName: 'Restaurant', ownerField: 'owner' })
   @ApiOperation({ summary: 'Tek bir restoran getir' })
   async getOne(@Param('id') id: string) {
     return await this.restaurantService.findByID(id);
   }
 
-  /**
-   * Refine create endpoint
-   * POST /restaurant
-   * Sadece restoran sahibi ve süper admin oluşturabilir
-   */
   @Post()
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin, Role.RestaurantOwner)
@@ -111,14 +106,11 @@ export class RestaurantController {
     return await this.restaurantService.create(createRestaurantDto);
   }
 
-  /**
-   * Refine update endpoint
-   * PUT /restaurant/:id
-   * Sadece restoran sahibi ve süper admin güncelleyebilir
-   */
   @Put(':id')
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin, Role.RestaurantOwner)
+  @UseGuards(ResourceOwnerGuard)
+  @RequiresOwnership({ modelName: 'Restaurant', ownerField: 'owner' })
   @ApiOperation({
     summary: 'Restoran güncelle (Restoran Sahibi ve Süper Admin)',
   })
@@ -129,14 +121,11 @@ export class RestaurantController {
     return await this.restaurantService.update(id, updateRestaurantDto);
   }
 
-  /**
-   * Refine delete endpoint
-   * DELETE /restaurant/:id
-   * Sadece restoran sahibi ve süper admin silebilir
-   */
   @Delete(':id')
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin, Role.RestaurantOwner)
+  @UseGuards(ResourceOwnerGuard)
+  @RequiresOwnership({ modelName: 'Restaurant', ownerField: 'owner' })
   @ApiOperation({ summary: 'Restoran sil (Restoran Sahibi ve Süper Admin)' })
   async delete(@Param('id') id: string) {
     return await this.restaurantService.delete(id);

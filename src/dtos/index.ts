@@ -23,3 +23,4 @@ export * from './validate-slot.dto';
 export * from './claim-slot.dto';
 export * from './create-restaurant-application.dto';
 export * from './update-restaurant-application.dto';
+export * from './update-application-status.dto';
