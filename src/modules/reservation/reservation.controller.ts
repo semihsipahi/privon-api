@@ -18,6 +18,7 @@ import {
     ApiOperation,
     ApiTags,
     ApiQuery,
+    ApiBody,
 } from '@nestjs/swagger';
 import { CreateReservationDto } from 'src/dtos/create-reservation.dto';
 import { UpdateReservationStatusDto } from 'src/dtos/update-reservation-status.dto';
@@ -64,6 +65,26 @@ export class ReservationController {
     @Put(':id/status')
     @Roles(Role.SuperAdmin, Role.RestaurantOwner)
     @ApiOperation({ summary: 'Rezervasyon durumu güncelle' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                status: {
+                    type: 'string',
+                    enum: ['pending', 'confirmed', 'seated', 'no_show', 'cancelled', 'completed'],
+                    example: 'completed',
+                },
+                totalAmount: {
+                    type: 'number',
+                    example: 1000,
+                },
+                nonDiscountedAmount: {
+                    type: 'number',
+                    example: 200,
+                },
+            },
+        },
+    })
     async updateStatus(
         @Param('id') id: string,
         @Body() updateDto: UpdateReservationStatusDto,

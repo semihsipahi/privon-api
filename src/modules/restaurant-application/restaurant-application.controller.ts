@@ -49,7 +49,18 @@ export class RestaurantApplicationController {
     @ApiOperation({ summary: 'Update application status' })
     @ApiResponse({ status: 200, description: 'The application status has been successfully updated.' })
     @ApiParam({ name: 'id', description: 'Application ID' })
-    @ApiBody({ type: UpdateApplicationStatusDto })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                status: {
+                    type: 'string',
+                    enum: ['PENDING', 'APPROVED', 'REJECTED'],
+                    example: 'APPROVED',
+                },
+            },
+        },
+    })
     updateStatus(
         @Param('id') id: string,
         @Body() updateStatusDto: UpdateApplicationStatusDto,
