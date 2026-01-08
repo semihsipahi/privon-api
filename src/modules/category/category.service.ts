@@ -31,10 +31,10 @@ export class CategoryService extends ResourceService<
         // 1. Delete the category
         await this.categoryModel.findByIdAndDelete(id);
 
-        // 2. Unlink from restaurants
+        // 2. Remove category from restaurants' categories array
         await this.restaurantModel.updateMany(
-            { category: id },
-            { $unset: { category: '' } },
+            { categories: id },
+            { $pull: { categories: id } },
         );
 
         return { message: 'Kategori silindi ve ilgili restoranlar güncellendi.' };

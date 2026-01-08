@@ -37,7 +37,7 @@ export class RestaurantService extends ResourceService<
   ): Promise<PublicRestaurantDetailsResponse> {
     const restaurant = await this.restaurantModel
       .findById(id)
-      .populate('category', 'name')
+      .populate('categories', 'name')
       .populate('owner', 'name email')
       .lean();
 
@@ -62,7 +62,7 @@ export class RestaurantService extends ResourceService<
   }
 
   async getPublicRestaurantsList(filters: {
-    category?: string;
+    categories?: string;
     discount?: number;
     userLat?: number;
     userLon?: number;
@@ -72,7 +72,7 @@ export class RestaurantService extends ResourceService<
     _end?: number;
   }): Promise<PublicRestaurantsListResponse> {
     const {
-      category,
+      categories,
       discount,
       userLat,
       userLon,
@@ -114,8 +114,9 @@ export class RestaurantService extends ResourceService<
     }
 
     const matchStage: any = {};
-    if (category) {
-      matchStage.category = new Types.ObjectId(category);
+    if (categories) {
+      const categoryIds = categories.split(',').map(id => new Types.ObjectId(id.trim()));
+      matchStage.categories = { $in: categoryIds };
     }
     if (Object.keys(matchStage).length > 0) {
       pipeline.push({ $match: matchStage });
@@ -140,16 +141,10 @@ export class RestaurantService extends ResourceService<
 
     pipeline.push({
       $lookup: {
-        from: 'restauranttypes',
-        localField: 'category',
+        from: 'restaurantcategories',
+        localField: 'categories',
         foreignField: '_id',
-        as: 'category',
-      },
-    });
-    pipeline.push({
-      $unwind: {
-        path: '$category',
-        preserveNullAndEmptyArrays: true,
+        as: 'categories',
       },
     });
 
@@ -157,7 +152,13 @@ export class RestaurantService extends ResourceService<
       $project: {
         _id: 1,
         name: 1,
-        category: { _id: '$category._id', name: '$category.name' },
+        categories: {
+          $map: {
+            input: '$categories',
+            as: 'cat',
+            in: { _id: '$$cat._id', name: '$$cat.name' }
+          }
+        },
         image: { $arrayElemAt: ['$images', 0] },
         location: 1,
         distance: hasUserLocation

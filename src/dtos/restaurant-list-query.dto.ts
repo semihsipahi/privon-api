@@ -11,11 +11,12 @@ import { Type } from 'class-transformer';
 
 export class RestaurantListQueryDto {
   @ApiPropertyOptional({
-    description: 'Kategori ID ile filtrele',
+    description: 'Kategori ID listesi ile filtrele (virgülle ayrılmış)',
+    example: '507f1f77bcf86cd799439011,507f1f77bcf86cd799439012',
   })
   @IsOptional()
   @IsString()
-  category?: string;
+  categories?: string;
 
   @ApiPropertyOptional({
     description: 'İndirim oranına göre filtrele (örn: 50 = %50 indirimli slotlar)',

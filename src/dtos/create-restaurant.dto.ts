@@ -66,10 +66,11 @@ export class CreateRestaurantDto {
   @IsOptional()
   images?: string[];
 
-  @ApiPropertyOptional({ description: 'Restoran kategorisi ID' })
-  @IsMongoId()
+  @ApiPropertyOptional({ description: 'Restoran kategorileri ID listesi' })
+  @IsMongoId({ each: true })
+  @IsArray()
   @IsOptional()
-  category?: string;
+  categories?: string[];
 
   @ApiPropertyOptional({ description: 'Restoran konumu', type: LocationDto })
   @ValidateNested()

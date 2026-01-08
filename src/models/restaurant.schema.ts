@@ -44,11 +44,10 @@ export class Restaurant extends Document {
   images: string[];
 
   @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: 'RestaurantCategory',
-    required: false,
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'RestaurantCategory' }],
+    default: [],
   })
-  category?: MongooseSchema.Types.ObjectId;
+  categories: MongooseSchema.Types.ObjectId[];
 
   @Prop({ default: false })
   isActive: boolean;
