@@ -3,25 +3,25 @@ import {
   Delete,
   Param,
   Post,
-  UploadedFile,
-  UseInterceptors,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiConsumes,
   ApiResponse,
   ApiTags,
+  ApiBody,
 } from '@nestjs/swagger';
-import { ApiBody } from '@nestjs/swagger';
 import { Role } from 'src/common/enums/role.enum';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { UploadService } from './upload.service';
+import { FastifyRequest } from 'fastify';
 
 @ApiTags('Dosya Yükleme')
 @Controller('upload')
 export class UploadController {
-  constructor(private readonly uploadService: UploadService) {}
+  constructor(private readonly uploadService: UploadService) { }
 
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
@@ -50,9 +50,22 @@ export class UploadController {
   @ApiResponse({ status: 400, description: 'Dosya yükleme hatası.' })
   @Roles(Role.SuperAdmin, Role.User)
   @Post('single')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadSingle(@UploadedFile() file: Express.Multer.File) {
-    return await this.uploadService.uploadFile(file);
+  async uploadSingle(@Req() req: FastifyRequest) {
+    const data = await req.file();
+
+    if (!data) {
+      throw new BadRequestException('Dosya bulunamadı');
+    }
+
+    const buffer = await data.toBuffer();
+
+    const file = {
+      buffer,
+      originalname: data.filename,
+      mimetype: data.mimetype,
+    };
+
+    return await this.uploadService.uploadFile(file as any);
   }
 
   @ApiBearerAuth()
