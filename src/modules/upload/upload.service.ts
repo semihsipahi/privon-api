@@ -50,6 +50,10 @@ export class UploadService implements OnModuleInit {
         secretAccessKey: config.get('MINIO_SECRET_KEY'),
       },
       forcePathStyle: true,
+      requestHandler: {
+        requestTimeout: 5000, // 5 second timeout
+        connectionTimeout: 5000,
+      } as any,
     });
   }
 
