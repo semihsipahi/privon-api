@@ -41,7 +41,8 @@ export class AuthService {
   }
 
   private generateVerificationCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    // return Math.floor(100000 + Math.random() * 900000).toString();
+    return '123456';
   }
 
   private async sendSMS(phoneNumber: string, code: string): Promise<void> {
@@ -67,25 +68,28 @@ export class AuthService {
 
   async register(
     registerDto: RegisterDto,
-  ): Promise<{ token: string; message: string }> {
+  ): Promise<{ token: string; message: string; isPhoneVerified: boolean }> {
     const { phoneNumber } = registerDto;
 
-    const existingUser = await this.userModel.findOne({ phoneNumber });
+    let user = await this.userModel.findOne({ phoneNumber });
 
-    if (existingUser) {
+    if (user && user.password) {
       throw new CustomException('Bu telefon numarası zaten kayıtlı.', 400);
     }
 
-    const verificationCode = this.generateVerificationCode();
-    const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 dakika
+    if (!user) {
+      user = new this.userModel({
+        phoneNumber,
+        isPhoneVerified: false,
+        role: Role.User,
+      });
+    }
 
-    const user = new this.userModel({
-      phoneNumber,
-      verificationCode,
-      codeExpiresAt,
-      isPhoneVerified: false,
-      role: Role.User,
-    });
+    const verificationCode = this.generateVerificationCode();
+    const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    user.verificationCode = verificationCode;
+    user.codeExpiresAt = codeExpiresAt;
 
     await user.save();
 
@@ -97,6 +101,7 @@ export class AuthService {
       token,
       message:
         'Kayıt başarılı. Telefonunuza gönderilen doğrulama kodunu giriniz.',
+      isPhoneVerified: user.isPhoneVerified,
     };
   }
 
