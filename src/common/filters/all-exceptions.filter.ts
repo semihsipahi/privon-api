@@ -5,14 +5,14 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { FastifyReply, FastifyRequest } from 'fastify';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest();
+    const response = ctx.getResponse<FastifyReply>();
+    const request = ctx.getRequest<FastifyRequest>();
 
     const status =
       exception instanceof HttpException
@@ -24,17 +24,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal server error';
 
-    // Check if response has the status method (HTTP context)
-    if (response && typeof response.status === 'function') {
-      response.status(status).json({
-        statusCode: status,
-        timestamp: new Date().toISOString(),
-        path: request?.url,
-        message: typeof message === 'string' ? message : message,
-      });
-    } else {
-      // For non-HTTP contexts (WebSocket, etc.), just log the error
-      console.error('Exception in non-HTTP context:', exception);
-    }
+    response.code(status).send({
+      statusCode: status,
+      timestamp: new Date().toISOString(),
+      path: request?.url,
+      message: typeof message === 'string' ? message : message,
+    });
   }
 }
