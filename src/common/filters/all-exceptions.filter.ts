@@ -24,11 +24,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal server error';
 
-    response.status(status).json({
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      message: typeof message === 'string' ? message : message,
-    });
+    // Check if response has the status method (HTTP context)
+    if (response && typeof response.status === 'function') {
+      response.status(status).json({
+        statusCode: status,
+        timestamp: new Date().toISOString(),
+        path: request?.url,
+        message: typeof message === 'string' ? message : message,
+      });
+    } else {
+      // For non-HTTP contexts (WebSocket, etc.), just log the error
+      console.error('Exception in non-HTTP context:', exception);
+    }
   }
 }
