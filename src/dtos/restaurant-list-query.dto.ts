@@ -18,12 +18,13 @@ export class RestaurantListQueryDto {
   category?: string;
 
   @ApiPropertyOptional({
-    description: 'İndirim türü ile filtrele (PERCENTAGE/FIXED)',
-    enum: ['PERCENTAGE', 'FIXED'],
+    description: 'İndirim oranına göre filtrele (örn: 50 = %50 indirimli slotlar)',
+    example: 50,
   })
   @IsOptional()
-  @IsString()
-  discountType?: string;
+  @Type(() => Number)
+  @IsNumber()
+  discount?: number;
 
   @ApiPropertyOptional({
     description: 'Kullanıcının enlem koordinatı (-90 ile 90 arası)',

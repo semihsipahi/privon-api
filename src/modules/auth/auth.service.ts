@@ -85,22 +85,25 @@ export class AuthService {
       });
     }
 
-    const verificationCode = this.generateVerificationCode();
-    const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    if (!user.isPhoneVerified) {
+      const verificationCode = this.generateVerificationCode();
+      const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 dakika
 
-    user.verificationCode = verificationCode;
-    user.codeExpiresAt = codeExpiresAt;
+      user.verificationCode = verificationCode;
+      user.codeExpiresAt = codeExpiresAt;
 
-    await user.save();
+      await user.save();
 
-    await this.sendSMS(phoneNumber, verificationCode);
+      await this.sendSMS(phoneNumber, verificationCode);
+    }
 
     const token = await this.generateToken(user);
 
     return {
       token,
-      message:
-        'Kayıt başarılı. Telefonunuza gönderilen doğrulama kodunu giriniz.',
+      message: user.isPhoneVerified
+        ? 'Kayıt başarılı. Lütfen şifrenizi belirleyin.'
+        : 'Kayıt başarılı. Telefonunuza gönderilen doğrulama kodunu giriniz.',
       isPhoneVerified: user.isPhoneVerified,
     };
   }

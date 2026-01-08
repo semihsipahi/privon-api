@@ -5,6 +5,15 @@ import { Document } from 'mongoose';
 export class RestaurantCategory extends Document {
     @Prop({ required: true, unique: true })
     name: string;
+
+    @Prop()
+    image: string;
+
+    @Prop()
+    color: string;
+
+    @Prop()
+    visibleOnHomePage: boolean;
 }
 
 export const RestaurantCategorySchema =

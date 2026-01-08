@@ -14,6 +14,7 @@ import { Role } from 'src/common/enums/role.enum';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateCategoryDto } from 'src/dtos/create-category.dto';
 import { UpdateCategoryDto } from 'src/dtos/update-category.dto';
+import { GetCategoriesDto } from 'src/dtos/get-categories.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 
 @ApiTags('Category')
@@ -32,7 +33,7 @@ export class CategoryController {
     @Get()
     @Public()
     @ApiOperation({ summary: 'Kategorileri listele (Public)' })
-    async list(@Query() query: any) {
+    async list(@Query() query: GetCategoriesDto) {
         return await this.categoryService.list(query);
     }
 

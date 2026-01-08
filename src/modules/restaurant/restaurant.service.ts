@@ -63,6 +63,7 @@ export class RestaurantService extends ResourceService<
 
   async getPublicRestaurantsList(filters: {
     category?: string;
+    discount?: number;
     userLat?: number;
     userLon?: number;
     maxDistance?: number;
@@ -72,6 +73,7 @@ export class RestaurantService extends ResourceService<
   }): Promise<PublicRestaurantsListResponse> {
     const {
       category,
+      discount,
       userLat,
       userLon,
       maxDistance,
@@ -117,6 +119,23 @@ export class RestaurantService extends ResourceService<
     }
     if (Object.keys(matchStage).length > 0) {
       pipeline.push({ $match: matchStage });
+    }
+
+    // Discount filtering via slots lookup
+    if (discount !== undefined) {
+      pipeline.push({
+        $lookup: {
+          from: 'slots',
+          localField: '_id',
+          foreignField: 'restaurant',
+          as: 'slots',
+        },
+      });
+      pipeline.push({
+        $match: {
+          'slots.discount': discount,
+        },
+      });
     }
 
     pipeline.push({

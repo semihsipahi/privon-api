@@ -6,6 +6,16 @@ export class CreateBannerDto {
     @IsString()
     image: string;
 
+    @ApiProperty({ description: 'Banner başlığı', required: false })
+    @IsString()
+    @IsOptional()
+    title?: string;
+
+    @ApiProperty({ description: 'Banner alt başlığı', required: false })
+    @IsString()
+    @IsOptional()
+    subtitle?: string;
+
     @ApiProperty({ description: 'Sıralama numarası', default: 0 })
     @IsNumber()
     @IsOptional()

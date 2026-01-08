@@ -6,6 +6,12 @@ export class Banner extends Document {
     @Prop({ required: true })
     image: string;
 
+    @Prop()
+    title: string;
+
+    @Prop()
+    subtitle: string;
+
     @Prop({ required: true, default: 0 })
     order: number;
 }

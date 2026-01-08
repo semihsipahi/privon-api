@@ -18,6 +18,7 @@ import { SlotModule } from './modules/slot/slot.module';
 import { ReservationModule } from './modules/reservation/reservation.module';
 import { ReviewModule } from './modules/review/review.module';
 import { CategoryModule } from './modules/category/category.module';
+import { SupportRequestModule } from './modules/support-request/support-request.module';
 
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -58,6 +59,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     ReservationModule,
     ReviewModule,
     CategoryModule,
+    SupportRequestModule,
   ],
   controllers: [AppController],
   providers: [
