@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import {
   S3Client,
@@ -10,17 +11,39 @@ import {
   DeleteObjectsCommand,
   DeleteObjectsRequest,
   DeleteObjectCommand,
+  HeadBucketCommand,
+  CreateBucketCommand,
+  PutBucketPolicyCommand,
 } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class UploadService {
+export class UploadService implements OnModuleInit {
   private readonly s3Client: S3Client;
   private readonly logger = new Logger(UploadService.name);
+  private readonly bucketName: string;
+  private readonly endpoint: string;
+  private readonly publicUrl: string;
 
   constructor(private config: ConfigService) {
+    const minioEndpoint = config.get('MINIO_ENDPOINT');
+    const minioPort = config.get('MINIO_PORT');
+
+    // Add http:// if no protocol specified (for internal Docker network)
+    const hasProtocol =
+      minioEndpoint?.startsWith('http://') ||
+      minioEndpoint?.startsWith('https://');
+    const baseEndpoint = hasProtocol
+      ? minioEndpoint
+      : `http://${minioEndpoint}`;
+
+    this.endpoint = minioPort ? `${baseEndpoint}:${minioPort}` : baseEndpoint;
+    this.bucketName = config.get('MINIO_BUCKET');
+
+    this.publicUrl = config.get('MINIO_PUBLIC_URL') || this.endpoint;
+
     this.s3Client = new S3Client({
-      endpoint: config.get('MINIO_ENDPOINT') + ':' + config.get('MINIO_PORT'),
+      endpoint: this.endpoint,
       region: config.get('MINIO_REGION'),
       credentials: {
         accessKeyId: config.get('MINIO_ACCESS_KEY'),
@@ -30,17 +53,96 @@ export class UploadService {
     });
   }
 
+  async onModuleInit() {
+    try {
+      await this.ensureBucketExists();
+    } catch (error) {
+      this.logger.warn(
+        `⚠️ Could not connect to MinIO at startup: ${error.message}. Will retry on first upload.`,
+      );
+    }
+  }
+
+  private async ensureBucketExists(): Promise<void> {
+    try {
+      // Check if bucket exists
+      await this.s3Client.send(
+        new HeadBucketCommand({ Bucket: this.bucketName }),
+      );
+      this.logger.log(`✅ Bucket "${this.bucketName}" already exists.`);
+    } catch (error) {
+      if (
+        error.name === 'NotFound' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
+        this.logger.log(
+          `🪣 Bucket "${this.bucketName}" not found. Creating...`,
+        );
+        await this.createBucket();
+      } else {
+        this.logger.error(`❌ Error checking bucket: ${error.message}`);
+        throw error;
+      }
+    }
+  }
+
+  private async createBucket(): Promise<void> {
+    try {
+      // Create the bucket
+      await this.s3Client.send(
+        new CreateBucketCommand({ Bucket: this.bucketName }),
+      );
+      this.logger.log(`✅ Bucket "${this.bucketName}" created successfully.`);
+
+      // Set public read policy for GET requests
+      await this.setBucketPublicReadPolicy();
+    } catch (error) {
+      this.logger.error(`❌ Error creating bucket: ${error.message}`);
+      throw new InternalServerErrorException('Failed to create bucket.');
+    }
+  }
+
+  private async setBucketPublicReadPolicy(): Promise<void> {
+    const policy = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Sid: 'PublicReadGetObject',
+          Effect: 'Allow',
+          Principal: '*',
+          Action: ['s3:GetObject'],
+          Resource: [`arn:aws:s3:::${this.bucketName}/*`],
+        },
+      ],
+    };
+
+    try {
+      await this.s3Client.send(
+        new PutBucketPolicyCommand({
+          Bucket: this.bucketName,
+          Policy: JSON.stringify(policy),
+        }),
+      );
+      this.logger.log(
+        `✅ Public read policy set for bucket "${this.bucketName}".`,
+      );
+    } catch (error) {
+      this.logger.error(`❌ Error setting bucket policy: ${error.message}`);
+      throw new InternalServerErrorException('Failed to set bucket policy.');
+    }
+  }
+
   async uploadFile(file: Express.Multer.File) {
     try {
       const key = Date.now().toString() + file.originalname;
       const params: PutObjectCommandInput = {
-        Bucket: this.config.get('MINIO_BUCKET'),
+        Bucket: this.bucketName,
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
       };
       await this.s3Client.send(new PutObjectCommand(params));
-      return `${this.config.get('MINIO_ENDPOINT')}:${this.config.get('MINIO_PORT')}/${this.config.get('MINIO_BUCKET')}/${key}`;
+      return `${this.publicUrl}/${this.bucketName}/${key}`;
     } catch (error) {
       console.error('Error uploading file:', error);
       throw new InternalServerErrorException('File upload failed.');
@@ -49,13 +151,11 @@ export class UploadService {
 
   async deleteFile(urlList: string[]) {
     try {
-      const bucketName = this.config.get('MINIO_BUCKET');
-
       const params: DeleteObjectsRequest = {
-        Bucket: bucketName,
+        Bucket: this.bucketName,
         Delete: {
           Objects: urlList.map((url) => {
-            const bucketPath = `/${bucketName}/`;
+            const bucketPath = `/${this.bucketName}/`;
             const bucketIndex = url.indexOf(bucketPath);
 
             let objectKey: string;
@@ -63,7 +163,7 @@ export class UploadService {
               objectKey = url.substring(bucketIndex + bucketPath.length);
             } else {
               const urlParts = url.split('/');
-              objectKey = urlParts.slice(-2).join('/'); 
+              objectKey = urlParts.slice(-2).join('/');
             }
 
             return { Key: decodeURIComponent(objectKey) };
@@ -77,13 +177,11 @@ export class UploadService {
       throw new InternalServerErrorException('File deletion failed.');
     }
   }
-  async deleteFiles(urlList: string[]): Promise<void> {
-    const bucket = this.config.get('MINIO_BUCKET');
-    const endpoint = `${this.config.get('MINIO_ENDPOINT')}:${this.config.get('MINIO_PORT')}/${bucket}`;
 
+  async deleteFiles(urlList: string[]): Promise<void> {
     const deleteObjects = urlList.map((url) => {
       const key = decodeURI(url)
-        .split(endpoint + `${bucket}/`)
+        .split(`${this.endpoint}/${this.bucketName}/`)
         .pop();
       return { Key: key };
     });
@@ -92,7 +190,7 @@ export class UploadService {
 
     try {
       const deleteParams = {
-        Bucket: bucket,
+        Bucket: this.bucketName,
         Delete: { Objects: deleteObjects },
       };
 
@@ -124,7 +222,7 @@ export class UploadService {
 
       for (const obj of deleteObjects) {
         try {
-          const deleteParams = { Bucket: bucket, Key: obj.Key };
+          const deleteParams = { Bucket: this.bucketName, Key: obj.Key };
           await this.s3Client.send(new DeleteObjectCommand(deleteParams));
           this.logger.log(`✅ Successfully deleted file: ${obj.Key}`);
         } catch (error) {
