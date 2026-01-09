@@ -62,6 +62,23 @@ export class ReservationController {
         return await this.reservationService.list(query);
     }
 
+    @Get('report/completed')
+    @Roles(Role.SuperAdmin)
+    @ApiOperation({
+        summary: 'Tamamlanmış rezervasyon raporu (SuperAdmin)',
+        description: 'Tamamlanmış rezervasyonları paginasyonlu listeler. Kullanıcı adı, indirim %, kazanç, restoran adı ve tarih bilgileri döner.',
+    })
+    @ApiQuery({ name: '_start', required: false, description: 'Başlangıç index (default: 0)' })
+    @ApiQuery({ name: '_end', required: false, description: 'Bitiş index (default: 10)' })
+    @ApiQuery({ name: '_sort', required: false, description: 'Sıralama alanı (default: date)' })
+    @ApiQuery({ name: '_order', required: false, description: 'Sıralama yönü: asc/desc (default: desc)' })
+    @ApiQuery({ name: 'restaurantId', required: false, description: 'Restoran ID ile filtrele' })
+    @ApiQuery({ name: 'startDate', required: false, description: 'Başlangıç tarihi (YYYY-MM-DD)' })
+    @ApiQuery({ name: 'endDate', required: false, description: 'Bitiş tarihi (YYYY-MM-DD)' })
+    async getCompletedReport(@Query() query: any) {
+        return await this.reservationService.getCompletedReservationsReport(query);
+    }
+
     @Put(':id/status')
     @Roles(Role.SuperAdmin, Role.RestaurantOwner)
     @ApiOperation({ summary: 'Rezervasyon durumu güncelle' })

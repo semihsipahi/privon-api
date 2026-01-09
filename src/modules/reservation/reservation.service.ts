@@ -163,4 +163,74 @@ export class ReservationService extends ResourceService<
         reservation.status = ReservationStatus.CANCELLED;
         return await reservation.save();
     }
+
+    /**
+     * SuperAdmin için tamamlanmış rezervasyon raporu
+     * Pagination destekler
+     */
+    async getCompletedReservationsReport(query: {
+        _start?: number;
+        _end?: number;
+        _sort?: string;
+        _order?: 'asc' | 'desc';
+        restaurantId?: string;
+        startDate?: string;
+        endDate?: string;
+    }) {
+        const {
+            _start = 0,
+            _end = 10,
+            _sort = 'date',
+            _order = 'desc',
+            restaurantId,
+            startDate,
+            endDate,
+        } = query;
+
+        const filter: any = { status: ReservationStatus.COMPLETED };
+
+        if (restaurantId) {
+            filter.restaurant = new Types.ObjectId(restaurantId);
+        }
+
+        if (startDate || endDate) {
+            filter.date = {};
+            if (startDate) filter.date.$gte = startDate;
+            if (endDate) filter.date.$lte = endDate;
+        }
+
+        const sortOrder = _order === 'asc' ? 1 : -1;
+        const skip = Number(_start);
+        const limit = Number(_end) - Number(_start);
+
+        const [reservations, total] = await Promise.all([
+            this.reservationModel
+                .find(filter)
+                .populate('customer', 'fullName phoneNumber')
+                .populate('restaurant', 'name')
+                .populate('slot', 'discount time')
+                .sort({ [_sort]: sortOrder })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            this.reservationModel.countDocuments(filter),
+        ]);
+
+        const data = reservations.map((r: any) => ({
+            id: r._id,
+            customerName: r.customer?.fullName || 'Bilinmiyor',
+            customerPhone: r.customer?.phoneNumber || '',
+            restaurantName: r.restaurant?.name || 'Bilinmiyor',
+            date: r.date,
+            time: r.slot?.time || '',
+            discountPercent: r.slot?.discount || 0,
+            totalAmount: r.totalAmount || 0,
+            finalAmount: r.finalAmount || 0,
+            userSavings: r.savedAmount || 0, // Kullanıcının kazancı (indirim tutarı)
+            personCount: r.personCount,
+            createdAt: r.createdAt,
+        }));
+
+        return { data, total };
+    }
 }
