@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { User } from '../../models/user.schema';
+import { Restaurant } from '../../models/restaurant.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateUserDto } from 'src/dtos';
 import { ResourceService } from 'src/services/resource.service';
 import { maskName } from 'src/helpers/mask-name.util';
+import { Role } from 'src/common/enums/role.enum';
 
 @Injectable()
 export class UserService extends ResourceService<
@@ -12,7 +14,10 @@ export class UserService extends ResourceService<
   CreateUserDto,
   CreateUserDto
 > {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {
+  constructor(
+    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Restaurant.name) private restaurantModel: Model<Restaurant>,
+  ) {
     super(userModel);
   }
 
@@ -31,5 +36,44 @@ export class UserService extends ResourceService<
 
   async findByPhoneNumber(phoneNumber: string): Promise<User> {
     return this.userModel.findOne({ phoneNumber }).exec();
+  }
+
+  async getMe(userId: string) {
+    const user = await this.userModel
+      .findById(userId)
+      .select('-password -verificationCode -codeExpiresAt')
+      .lean();
+
+    if (!user) {
+      throw new UnauthorizedException('Kullanıcı bulunamadı.');
+    }
+
+    const response: any = {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      imageUrl: user.imageUrl,
+      isPhoneVerified: user.isPhoneVerified,
+    };
+
+    // Restoran sahibi ise restoran bilgisini ekle
+    if (user.role === Role.RestaurantOwner) {
+      const restaurant = await this.restaurantModel
+        .findOne({ owner: user._id })
+        .select('_id name images')
+        .lean();
+
+      if (restaurant) {
+        response.restaurant = {
+          id: restaurant._id,
+          name: restaurant.name,
+          imageUrl: restaurant.images?.[0],
+        };
+      }
+    }
+
+    return response;
   }
 }

@@ -6,4 +6,9 @@ export class LoginResponseDto {
   email: string;
   role: Role;
   imageUrl: string;
+  restaurant?: {
+    id: string;
+    name: string;
+    imageUrl?: string;
+  };
 }

@@ -66,6 +66,32 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
+  private async buildLoginResponse(user: User, accessToken: string): Promise<LoginResponseDto> {
+    const response: LoginResponseDto = {
+      accessToken,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      imageUrl: user.imageUrl,
+    };
+
+    if (user.role === Role.RestaurantOwner) {
+      const restaurant = await this.restaurantModel
+        .findOne({ owner: user._id })
+        .select('_id name images');
+
+      if (restaurant) {
+        response.restaurant = {
+          id: restaurant._id.toString(),
+          name: restaurant.name,
+          imageUrl: restaurant.images?.[0],
+        };
+      }
+    }
+
+    return response;
+  }
+
   async register(
     registerDto: RegisterDto,
   ): Promise<{ token: string; message: string; isPhoneVerified: boolean }> {
@@ -164,14 +190,7 @@ export class AuthService {
     await user.save();
 
     const accessToken = await this.generateToken(user);
-
-    return {
-      accessToken,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role,
-      imageUrl: user.imageUrl,
-    };
+    return this.buildLoginResponse(user, accessToken);
   }
 
   async login(phoneLoginDto: PhoneLoginDto): Promise<LoginResponseDto> {
@@ -198,14 +217,7 @@ export class AuthService {
     }
 
     const accessToken = await this.generateToken(user);
-
-    return {
-      accessToken,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role,
-      imageUrl: user.imageUrl,
-    };
+    return this.buildLoginResponse(user, accessToken);
   }
 
   async resendVerificationCode(userId: string): Promise<{ message: string }> {

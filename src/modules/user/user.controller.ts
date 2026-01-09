@@ -7,6 +7,7 @@ import {
   Param,
   Put,
   Delete,
+  Req,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -23,7 +24,18 @@ import { CustomException } from 'src/common/exceptions/custom.exception';
 @ApiTags('User')
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
+
+  /**
+   * Get current user info
+   * GET /user/me
+   */
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mevcut kullanıcı bilgilerini getir' })
+  async getMe(@Req() req: any) {
+    return await this.userService.getMe(req.user.userId);
+  }
 
   /**
    * Refine getList endpoint
