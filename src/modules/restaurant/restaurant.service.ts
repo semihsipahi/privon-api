@@ -62,6 +62,7 @@ export class RestaurantService extends ResourceService<
   }
 
   async getPublicRestaurantsList(filters: {
+    q?: string;
     categories?: string;
     discount?: number;
     userLat?: number;
@@ -70,8 +71,10 @@ export class RestaurantService extends ResourceService<
     sortBy?: 'distance' | 'rating';
     _start?: number;
     _end?: number;
+    date?: string; // YYYY-MM-DD formatında tarih
   }): Promise<PublicRestaurantsListResponse> {
     const {
+      q,
       categories,
       discount,
       userLat,
@@ -80,10 +83,24 @@ export class RestaurantService extends ResourceService<
       sortBy = 'distance',
       _start = 0,
       _end = 10,
+      date,
     } = filters;
     const start = Number(_start);
     const end = Number(_end);
     const limit = end - start;
+
+    // Tarih yoksa UTC+3'e göre bugünü hesapla
+    let effectiveDate = date;
+    if (!effectiveDate) {
+      const now = new Date();
+      // UTC+3 için 3 saat ekle
+      const utcPlus3 = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+      effectiveDate = utcPlus3.toISOString().split('T')[0];
+    }
+
+    // Haftanın gününü hesapla (0=Pazar, 6=Cumartesi)
+    const dateObj = new Date(effectiveDate);
+    const dayOfWeek = dateObj.getDay();
 
     const hasUserLocation =
       userLat !== undefined &&
@@ -114,6 +131,12 @@ export class RestaurantService extends ResourceService<
     }
 
     const matchStage: any = {};
+
+    // Arama sorgusu
+    if (q && q.trim()) {
+      matchStage.name = { $regex: q.trim(), $options: 'i' };
+    }
+
     if (categories) {
       const categoryIds = categories.split(',').map(id => new Types.ObjectId(id.trim()));
       matchStage.categories = { $in: categoryIds };
@@ -122,19 +145,21 @@ export class RestaurantService extends ResourceService<
       pipeline.push({ $match: matchStage });
     }
 
-    // Discount filtering via slots lookup
+    // Slots lookup - her zaman yap
+    pipeline.push({
+      $lookup: {
+        from: 'slots',
+        localField: '_id',
+        foreignField: 'restaurant',
+        as: 'allSlots',
+      },
+    });
+
+    // Discount filtering
     if (discount !== undefined) {
       pipeline.push({
-        $lookup: {
-          from: 'slots',
-          localField: '_id',
-          foreignField: 'restaurant',
-          as: 'slots',
-        },
-      });
-      pipeline.push({
         $match: {
-          'slots.discount': discount,
+          'allSlots.discount': discount,
         },
       });
     }
@@ -147,6 +172,15 @@ export class RestaurantService extends ResourceService<
         as: 'categories',
       },
     });
+
+    // Slot'ları o güne göre filtrele
+    const slotsProjection = {
+      $filter: {
+        input: '$allSlots',
+        as: 'slot',
+        cond: { $in: [dayOfWeek, '$$slot.days'] },
+      },
+    };
 
     pipeline.push({
       $project: {
@@ -170,6 +204,20 @@ export class RestaurantService extends ResourceService<
             },
           }
           : null,
+        slots: {
+          $map: {
+            input: slotsProjection,
+            as: 's',
+            in: {
+              _id: '$$s._id',
+              time: '$$s.time',
+              discount: '$$s.discount',
+              minPersons: '$$s.minPersons',
+              maxPersons: '$$s.maxPersons',
+              tableQuota: '$$s.tableQuota',
+            },
+          },
+        },
       },
     });
 

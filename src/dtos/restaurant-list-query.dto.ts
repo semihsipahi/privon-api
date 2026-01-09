@@ -6,10 +6,19 @@ import {
   IsEnum,
   Min,
   Max,
+  Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class RestaurantListQueryDto {
+  @ApiPropertyOptional({
+    description: 'Restoran adına göre arama',
+    example: 'pizza',
+  })
+  @IsOptional()
+  @IsString()
+  q?: string;
+
   @ApiPropertyOptional({
     description: 'Kategori ID listesi ile filtrele (virgülle ayrılmış)',
     example: '507f1f77bcf86cd799439011,507f1f77bcf86cd799439012',
@@ -90,4 +99,13 @@ export class RestaurantListQueryDto {
   @Type(() => Number)
   @IsNumber()
   _end?: number;
+
+  @ApiPropertyOptional({
+    description: 'Tarih (YYYY-MM-DD) - Gönderilmezse bugün (UTC+3) kullanılır',
+    example: '2026-01-09',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Tarih YYYY-MM-DD formatında olmalıdır' })
+  date?: string;
 }
