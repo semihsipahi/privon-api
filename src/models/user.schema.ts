@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Schema as MongooseSchema } from 'mongoose';
 import { Role } from 'src/common/enums/role.enum';
 
 @Schema({ timestamps: true })
@@ -36,6 +36,12 @@ export class User extends Document {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Restaurant' }],
+    default: [],
+  })
+  favoriteRestaurants: MongooseSchema.Types.ObjectId[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

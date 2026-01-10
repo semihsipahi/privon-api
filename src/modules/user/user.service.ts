@@ -76,4 +76,42 @@ export class UserService extends ResourceService<
 
     return response;
   }
+
+  async addFavoriteRestaurant(userId: string, restaurantId: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { $addToSet: { favoriteRestaurants: restaurantId } },
+      { new: true },
+    );
+  }
+
+  async removeFavoriteRestaurant(userId: string, restaurantId: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { $pull: { favoriteRestaurants: restaurantId } },
+      { new: true },
+    );
+  }
+
+  async getFavoriteRestaurants(userId: string, query: any = {}) {
+    const start = parseInt(query._start) || 0;
+    const end = parseInt(query._end) || 0;
+    const limit = end > start ? end - start : 0;
+
+    const populateOptions: any = {};
+    if (limit > 0) {
+      populateOptions.skip = start;
+      populateOptions.limit = limit;
+    }
+
+    const user = await this.userModel
+      .findById(userId)
+      .populate({
+        path: 'favoriteRestaurants',
+        options: populateOptions,
+      })
+      .exec();
+
+    return user.favoriteRestaurants;
+  }
 }

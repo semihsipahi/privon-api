@@ -71,7 +71,7 @@ export class RestaurantService extends ResourceService<
     sortBy?: 'distance' | 'rating';
     _start?: number;
     _end?: number;
-    date?: string; // YYYY-MM-DD formatında tarih
+    date?: string;
   }): Promise<PublicRestaurantsListResponse> {
     const {
       q,
@@ -186,6 +186,8 @@ export class RestaurantService extends ResourceService<
       $project: {
         _id: 1,
         name: 1,
+        rating: 1,
+        reviewCount: 1,
         categories: {
           $map: {
             input: '$categories',

@@ -8,8 +8,10 @@ import {
   Delete,
   Put,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { RestaurantService } from './restaurant.service';
+import { UserService } from '../user/user.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { RequiresOwnership } from 'src/common/decorators/requires-ownership.decorator';
@@ -29,7 +31,10 @@ import { RestaurantListQueryDto } from 'src/dtos/restaurant-list-query.dto';
 @ApiTags('Restaurant')
 @Controller('restaurant')
 export class RestaurantController {
-  constructor(private readonly restaurantService: RestaurantService) { }
+  constructor(
+    private readonly restaurantService: RestaurantService,
+    private readonly userService: UserService,
+  ) { }
 
   @Get()
   @ApiBearerAuth()
@@ -128,5 +133,39 @@ export class RestaurantController {
   @ApiOperation({ summary: 'Restoran sil (Restoran Sahibi ve Süper Admin)' })
   async delete(@Param('id') id: string) {
     return await this.restaurantService.delete(id);
+  }
+
+  @Post('favorite/:id')
+  @ApiBearerAuth()
+  @Roles(Role.User, Role.RestaurantOwner, Role.SuperAdmin)
+  @ApiOperation({ summary: 'Restoranı favorilere ekle' })
+  async addFavorite(@Param('id') id: string, @Req() req: any) {
+    return await this.userService.addFavoriteRestaurant(req.user.userId, id);
+  }
+
+  @Delete('favorite/:id')
+  @ApiBearerAuth()
+  @Roles(Role.User, Role.RestaurantOwner, Role.SuperAdmin)
+  @ApiOperation({ summary: 'Restoranı favorilerden çıkar' })
+  async removeFavorite(@Param('id') id: string, @Req() req: any) {
+    return await this.userService.removeFavoriteRestaurant(req.user.userId, id);
+  }
+
+  @Get('favorites/my')
+  @ApiBearerAuth()
+  @Roles(Role.User, Role.RestaurantOwner, Role.SuperAdmin)
+  @ApiOperation({ summary: 'Favori restoranlarımı getir' })
+  @ApiQuery({
+    name: '_start',
+    required: false,
+    description: 'Başlangıç index',
+  })
+  @ApiQuery({
+    name: '_end',
+    required: false,
+    description: 'Bitiş index (hariç)',
+  })
+  async getFavorites(@Req() req: any, @Query() query: any) {
+    return await this.userService.getFavoriteRestaurants(req.user.userId, query);
   }
 }
