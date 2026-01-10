@@ -16,6 +16,7 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { RequiresOwnership } from 'src/common/decorators/requires-ownership.decorator';
 import { ResourceOwnerGuard } from 'src/common/guards/resource-owner.guard';
+import { OptionalJwtAuthGuard } from 'src/common/guards/optional-jwt-auth.guard';
 import { Role } from 'src/common/enums/role.enum';
 import {
   ApiBearerAuth,
@@ -76,17 +77,20 @@ export class RestaurantController {
 
   @Get('public/:id')
   @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
     summary: 'Restoran detaylarını getir (Kuponlar ve Yorumlar ile)',
   })
   async getPublicRestaurant(
     @Param('id') id: string,
     @Query() locationQuery: LocationQueryDto,
+    @Req() req: any,
   ) {
     return await this.restaurantService.getPublicRestaurantDetails(
       id,
       locationQuery.userLat,
       locationQuery.userLon,
+      req.user?.userId,
     );
   }
 
@@ -155,17 +159,7 @@ export class RestaurantController {
   @ApiBearerAuth()
   @Roles(Role.User, Role.RestaurantOwner, Role.SuperAdmin)
   @ApiOperation({ summary: 'Favori restoranlarımı getir' })
-  @ApiQuery({
-    name: '_start',
-    required: false,
-    description: 'Başlangıç index',
-  })
-  @ApiQuery({
-    name: '_end',
-    required: false,
-    description: 'Bitiş index (hariç)',
-  })
-  async getFavorites(@Req() req: any, @Query() query: any) {
-    return await this.userService.getFavoriteRestaurants(req.user.userId, query);
+  async getFavorites(@Req() req: any) {
+    return await this.userService.getFavoriteRestaurants(req.user.userId);
   }
 }

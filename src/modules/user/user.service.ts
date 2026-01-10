@@ -93,22 +93,12 @@ export class UserService extends ResourceService<
     );
   }
 
-  async getFavoriteRestaurants(userId: string, query: any = {}) {
-    const start = parseInt(query._start) || 0;
-    const end = parseInt(query._end) || 0;
-    const limit = end > start ? end - start : 0;
-
-    const populateOptions: any = {};
-    if (limit > 0) {
-      populateOptions.skip = start;
-      populateOptions.limit = limit;
-    }
-
+  async getFavoriteRestaurants(userId: string) {
     const user = await this.userModel
       .findById(userId)
       .populate({
         path: 'favoriteRestaurants',
-        options: populateOptions,
+        select: '_id name images',
       })
       .exec();
 

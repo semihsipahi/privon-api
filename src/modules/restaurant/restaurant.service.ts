@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Restaurant } from '../../models/restaurant.schema';
+import { User } from '../../models/user.schema';
 import { CreateRestaurantDto } from 'src/dtos/create-restaurant.dto';
 import { UpdateRestaurantDto } from 'src/dtos/update-restaurant.dto';
 import { ResourceService } from 'src/services/resource.service';
@@ -10,6 +11,7 @@ import { calculateDistance } from 'src/utils/distance-calculation.util';
 export interface PublicRestaurantDetailsResponse {
   restaurant: any;
   distance: number | null;
+  isFavorite: boolean;
 }
 
 export interface PublicRestaurantsListResponse {
@@ -26,6 +28,8 @@ export class RestaurantService extends ResourceService<
   constructor(
     @InjectModel(Restaurant.name)
     private restaurantModel: Model<Restaurant>,
+    @InjectModel('User')
+    private userModel: Model<User>,
   ) {
     super(restaurantModel);
   }
@@ -34,6 +38,7 @@ export class RestaurantService extends ResourceService<
     id: string,
     userLat?: number,
     userLon?: number,
+    userId?: string,
   ): Promise<PublicRestaurantDetailsResponse> {
     const restaurant = await this.restaurantModel
       .findById(id)
@@ -55,9 +60,19 @@ export class RestaurantService extends ResourceService<
       distance = calculateDistance(userLat, userLon, restLat, restLon);
     }
 
+    let isFavorite = false;
+    if (userId) {
+      const exists = await this.userModel.exists({
+        _id: userId,
+        favoriteRestaurants: id,
+      });
+      isFavorite = !!exists;
+    }
+
     return {
       restaurant,
       distance,
+      isFavorite,
     };
   }
 

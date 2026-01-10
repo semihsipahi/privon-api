@@ -73,6 +73,9 @@ export class Restaurant extends Document {
   @Prop()
   menu?: string;
 
+  @Prop()
+  campaignTerms?: string;
+
   @Prop({ type: [WorkingHours], default: [] })
   workingHours: WorkingHours[];
 }

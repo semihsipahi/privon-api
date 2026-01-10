@@ -98,6 +98,11 @@ export class CreateRestaurantDto {
   @IsOptional()
   menu?: string;
 
+  @ApiPropertyOptional({ description: 'Kampanya koşulları metni' })
+  @IsString()
+  @IsOptional()
+  campaignTerms?: string;
+
   @ApiPropertyOptional({
     description: 'Çalışma saatleri',
     type: [WorkingHoursDto],
