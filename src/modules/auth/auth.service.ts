@@ -285,23 +285,35 @@ export class AuthService {
       );
     }
 
-    return { message: 'Kod doğrulandı.' };
+    // Reset token oluştur (30 dakika geçerli)
+    const resetToken = this.jwtService.sign(
+      { sub: user._id, purpose: 'password_reset' },
+      { expiresIn: '30m' },
+    );
+
+    return {
+      message: 'Kod doğrulandı.',
+      resetToken,
+    };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const { phoneNumber, verificationCode, newPassword } = resetPasswordDto;
+    const { resetToken, newPassword } = resetPasswordDto;
 
-    const user = await this.userModel.findOne({
-      phoneNumber,
-      verificationCode,
-      codeExpiresAt: { $gt: new Date() },
-    });
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(resetToken);
+    } catch (error) {
+      throw new CustomException('Geçersiz veya süresi dolmuş token.', 400);
+    }
 
+    if (payload.purpose !== 'password_reset') {
+      throw new CustomException('Geçersiz token tipi.', 400);
+    }
+
+    const user = await this.userModel.findById(payload.sub);
     if (!user) {
-      throw new CustomException(
-        'Doğrulama kodu geçersiz veya süresi dolmuş.',
-        400,
-      );
+      throw new CustomException('Kullanıcı bulunamadı.', 400);
     }
 
     user.password = await bcrypt.hash(newPassword, 10);

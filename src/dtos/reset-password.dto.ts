@@ -41,26 +41,12 @@ export class VerifyResetCodeDto {
 
 export class ResetPasswordDto {
   @ApiProperty({
-    description: 'Kullanıcının telefon numarası',
-    example: '+905551234567',
+    description: 'Şifre sıfırlama tokenı (verify-reset-code endpointinden döner)',
     required: true,
   })
-  @IsString({ message: 'Telefon numarası bir metin olmalıdır.' })
-  @IsNotEmpty({ message: 'Telefon numarası boş bırakılamaz.' })
-  @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
-  })
-  phoneNumber: string;
-
-  @ApiProperty({
-    description: 'SMS ile gönderilen 6 haneli doğrulama kodu',
-    example: '123456',
-    required: true,
-  })
-  @IsString({ message: 'Doğrulama kodu bir metin olmalıdır.' })
-  @IsNotEmpty({ message: 'Doğrulama kodu boş bırakılamaz.' })
-  @Length(6, 6, { message: 'Doğrulama kodu 6 haneli olmalıdır.' })
-  verificationCode: string;
+  @IsString({ message: 'Token bir metin olmalıdır.' })
+  @IsNotEmpty({ message: 'Token boş bırakılamaz.' })
+  resetToken: string;
 
   @ApiProperty({
     description: 'Kullanıcının yeni şifresi',
