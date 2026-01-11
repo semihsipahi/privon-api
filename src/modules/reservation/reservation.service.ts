@@ -74,13 +74,29 @@ export class ReservationService extends ResourceService<
     }
 
     async getMyReservations(user: AuthUser) {
-        return await this.reservationModel
+        const reservations = await this.reservationModel
             .find({ customer: new Types.ObjectId(user.userId) })
-            .populate('restaurant', 'name location images categories')
+            .populate({
+                path: 'restaurant',
+                select: 'name location images categories',
+                populate: {
+                    path: 'categories',
+                    select: 'name',
+                },
+            })
             .populate('slot', 'time discount')
             .populate('review', 'rating comment')
             .sort({ date: -1, createdAt: -1 })
             .lean();
+
+        return reservations.map((reservation: any) => {
+            if (reservation.restaurant && reservation.restaurant.categories) {
+                reservation.restaurant.categories = reservation.restaurant.categories.map(
+                    (c: any) => c.name,
+                );
+            }
+            return reservation;
+        });
     }
 
     async getRestaurantReservations(restaurantId: string) {

@@ -99,10 +99,21 @@ export class UserService extends ResourceService<
       .populate({
         path: 'favoriteRestaurants',
         select: '_id name images categories rating reviewCount',
+        populate: {
+          path: 'categories',
+          select: 'name',
+        },
       })
-      .exec();
+      .lean();
 
-    return user.favoriteRestaurants;
+    if (!user || !user.favoriteRestaurants) {
+      return [];
+    }
+
+    return (user.favoriteRestaurants as any[]).map((restaurant) => ({
+      ...restaurant,
+      categories: restaurant.categories?.map((c: any) => c.name) || [],
+    }));
   }
 
   async updateProfile(
