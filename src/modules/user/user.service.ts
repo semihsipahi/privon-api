@@ -118,7 +118,12 @@ export class UserService extends ResourceService<
 
   async updateProfile(
     userId: string,
-    data: { fullName?: string; imageUrl?: string },
+    data: {
+      fullName?: string;
+      imageUrl?: string;
+      email?: string;
+      phoneNumber?: string;
+    },
   ) {
     const updateData: any = {};
 
@@ -129,6 +134,14 @@ export class UserService extends ResourceService<
 
     if (data.imageUrl !== undefined) {
       updateData.imageUrl = data.imageUrl;
+    }
+
+    if (data.email) {
+      updateData.email = data.email;
+    }
+
+    if (data.phoneNumber) {
+      updateData.phoneNumber = data.phoneNumber;
     }
 
     const user = await this.userModel

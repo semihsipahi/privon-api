@@ -19,4 +19,13 @@ export class UpdateProfileDto {
     @IsOptional()
     @IsString()
     imageUrl?: string;
+
+    @ApiProperty({
+        description: 'Email address',
+        example: 'user@example.com',
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    email?: string;
 }
