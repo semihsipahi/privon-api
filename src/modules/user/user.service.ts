@@ -112,7 +112,10 @@ export class UserService extends ResourceService<
 
     return (user.favoriteRestaurants as any[]).map((restaurant) => ({
       ...restaurant,
-      categories: restaurant.categories?.map((c: any) => c.name) || [],
+      categories:
+        restaurant.categories
+          ?.filter((c: any) => c && c.name)
+          .map((c: any) => c.name) || [],
     }));
   }
 

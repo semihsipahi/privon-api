@@ -183,10 +183,10 @@ export class ReviewService extends ResourceService<Review, CreateReviewDto, any>
             .lean();
 
         return reviews.map((review: any) => {
-            if (review.restaurant && review.restaurant.categories) {
-                review.restaurant.categories = review.restaurant.categories.map(
-                    (c: any) => c.name,
-                );
+            if (review.restaurant && Array.isArray(review.restaurant.categories)) {
+                review.restaurant.categories = review.restaurant.categories
+                    .filter((c: any) => c && c.name)
+                    .map((c: any) => c.name);
             }
             return review;
         });
