@@ -7,6 +7,7 @@ export * from './change-password.dto';
 export * from './reset-password.dto';
 export * from './set-password.dto';
 export * from './verify-phone.dto';
+export * from './update-review.dto';
 export * from './phone-login.dto';
 export * from './restaurant-list-query.dto';
 export * from './location-query.dto';

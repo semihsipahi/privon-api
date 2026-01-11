@@ -164,6 +164,87 @@ export class ReservationService extends ResourceService<
         return await reservation.save();
     }
 
+    async getUserSavings(userId: string) {
+        const result = await this.reservationModel.aggregate([
+            {
+                $match: {
+                    customer: new Types.ObjectId(userId),
+                    status: ReservationStatus.COMPLETED,
+                    savedAmount: { $gt: 0 },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'restaurants',
+                    localField: 'restaurant',
+                    foreignField: '_id',
+                    as: 'restaurant',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$restaurant',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: 'slots',
+                    localField: 'slot',
+                    foreignField: '_id',
+                    as: 'slot',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$slot',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $facet: {
+                    totalStats: [
+                        {
+                            $group: {
+                                _id: null,
+                                total: { $sum: '$savedAmount' },
+                            },
+                        },
+                    ],
+                    savings: [
+                        { $sort: { date: -1 } },
+                        {
+                            $project: {
+                                id: '$_id',
+                                _id: 0,
+                                savedAmount: { $ifNull: ['$savedAmount', 0] },
+                                discountPercent: { $ifNull: ['$slot.discount', 0] },
+                                restaurantName: {
+                                    $ifNull: ['$restaurant.name', 'Bilinmiyor'],
+                                },
+                                restaurantImage: {
+                                    $arrayElemAt: [
+                                        { $ifNull: ['$restaurant.images', []] },
+                                        0,
+                                    ],
+                                },
+                                date: 1,
+                            },
+                        },
+                    ],
+                },
+            },
+        ]);
+
+        const totalSavedAmount = result[0]?.totalStats?.[0]?.total || 0;
+        const savings = result[0]?.savings || [];
+
+        return {
+            totalSavedAmount,
+            savings,
+        };
+    }
+
     /**
      * SuperAdmin için tamamlanmış rezervasyon raporu
      * Pagination destekler

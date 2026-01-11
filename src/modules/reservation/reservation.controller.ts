@@ -45,6 +45,16 @@ export class ReservationController {
         return await this.reservationService.getMyReservations(req.user);
     }
 
+    @Get('my-savings')
+    @Roles(Role.User)
+    @ApiOperation({
+        summary: 'Kazanç özeti (Cebinde Kalan)',
+        description: 'Kullanıcının tamamlanmış rezervasyonlardan elde ettiği toplam tasarrufu ve detayları döner.',
+    })
+    async getMySavings(@Request() req: any) {
+        return await this.reservationService.getUserSavings(req.user.userId);
+    }
+
     @Get('restaurant/:id')
     @Roles(Role.SuperAdmin, Role.RestaurantOwner)
     @UseGuards(ResourceOwnerGuard)

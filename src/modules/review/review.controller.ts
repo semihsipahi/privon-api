@@ -8,6 +8,7 @@ import {
     Request,
     UseGuards,
     Query,
+    Delete,
 } from '@nestjs/common';
 import { ReviewService } from './review.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -18,6 +19,7 @@ import {
     ApiTags,
 } from '@nestjs/swagger';
 import { CreateReviewDto } from 'src/dtos/create-review.dto';
+import { UpdateReviewDto } from 'src/dtos/update-review.dto';
 import { ReplyReviewDto } from 'src/dtos/reply-review.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 
@@ -67,6 +69,28 @@ export class ReviewController {
     @ApiOperation({ summary: 'Kendi değerlendirmelerimi getir' })
     async getMyReviews(@Request() req: any) {
         return await this.reviewService.getUserReviews(req.user.userId);
+    }
+
+    @Put('my/:id')
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Kendi değerlendirmemi güncelle' })
+    async updateMyReview(
+        @Param('id') id: string,
+        @Body() updateDto: UpdateReviewDto,
+        @Request() req: any,
+    ) {
+        return await this.reviewService.updateUserReview(
+            id,
+            updateDto,
+            req.user.userId,
+        );
+    }
+
+    @Delete('my/:id')
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Kendi değerlendirmemi sil' })
+    async deleteMyReview(@Param('id') id: string, @Request() req: any) {
+        return await this.reviewService.deleteUserReview(id, req.user.userId);
     }
 
     @Get('restaurant/:id')

@@ -11,6 +11,7 @@ import { Restaurant } from '../../models/restaurant.schema';
 import { Reservation } from '../../models/reservation.schema';
 import { ResourceService } from 'src/services/resource.service';
 import { CreateReviewDto } from 'src/dtos/create-review.dto';
+import { UpdateReviewDto } from 'src/dtos/update-review.dto';
 import { ReplyReviewDto } from 'src/dtos/reply-review.dto';
 import { AuthUser } from 'src/common/interfaces/auth-user.interface';
 import { Role } from 'src/common/enums/role.enum';
@@ -100,6 +101,63 @@ export class ReviewService extends ResourceService<Review, CreateReviewDto, any>
 
         review.reply = replyDto.reply;
         return await review.save();
+    }
+
+    async updateUserReview(id: string, updateDto: UpdateReviewDto, userId: string) {
+        const review = await this.reviewModel.findById(id);
+
+        if (!review) {
+            throw new NotFoundException('Değerlendirme bulunamadı');
+        }
+
+        if (review.customer.toString() !== userId) {
+            throw new ForbiddenException(
+                'Sadece kendi değerlendirmenizi düzenleyebilirsiniz',
+            );
+        }
+
+        const wasActive = review.isActive;
+
+        review.rating = updateDto.rating || review.rating;
+        review.comment = updateDto.comment || review.comment;
+        review.isActive = false;
+
+        await review.save();
+
+        if (wasActive) {
+            await this.calculateRestaurantRating(
+                review.restaurant as unknown as Types.ObjectId,
+            );
+        }
+
+        return review;
+    }
+
+    async deleteUserReview(id: string, userId: string) {
+        const review = await this.reviewModel.findById(id);
+
+        if (!review) {
+            throw new NotFoundException('Değerlendirme bulunamadı');
+        }
+
+        if (review.customer.toString() !== userId) {
+            throw new ForbiddenException(
+                'Sadece kendi değerlendirmenizi silebilirsiniz',
+            );
+        }
+
+        const wasActive = review.isActive;
+        const restaurantId = review.restaurant;
+
+        await this.reviewModel.findByIdAndDelete(id);
+
+        if (wasActive) {
+            await this.calculateRestaurantRating(
+                restaurantId as unknown as Types.ObjectId,
+            );
+        }
+
+        return { success: true };
     }
 
     async getRestaurantReviews(restaurantId: string) {
