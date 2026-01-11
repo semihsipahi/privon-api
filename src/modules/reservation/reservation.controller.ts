@@ -22,7 +22,6 @@ import {
 } from '@nestjs/swagger';
 import { CreateReservationDto } from 'src/dtos/create-reservation.dto';
 import { UpdateReservationStatusDto } from 'src/dtos/update-reservation-status.dto';
-import { AuthUser } from 'src/common/interfaces/auth-user.interface';
 import { RequiresOwnership } from 'src/common/decorators/requires-ownership.decorator';
 import { ResourceOwnerGuard } from 'src/common/guards/resource-owner.guard';
 

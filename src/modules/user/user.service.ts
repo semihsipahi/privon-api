@@ -104,4 +104,35 @@ export class UserService extends ResourceService<
 
     return user.favoriteRestaurants;
   }
+
+  async updateProfile(
+    userId: string,
+    data: { fullName?: string; imageUrl?: string },
+  ) {
+    const updateData: any = {};
+
+    if (data.fullName) {
+      updateData.fullName = data.fullName;
+      updateData.maskedName = maskName(data.fullName);
+    }
+
+    if (data.imageUrl !== undefined) {
+      updateData.imageUrl = data.imageUrl;
+    }
+
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, updateData, { new: true })
+      .select('-password -verificationCode -codeExpiresAt')
+      .lean();
+
+    return {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      imageUrl: user.imageUrl,
+      isPhoneVerified: user.isPhoneVerified,
+    };
+  }
 }

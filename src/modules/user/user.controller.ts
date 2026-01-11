@@ -6,6 +6,7 @@ import {
   Query,
   Param,
   Put,
+  Patch,
   Delete,
   Req,
 } from '@nestjs/common';
@@ -18,7 +19,7 @@ import {
   ApiTags,
   ApiQuery,
 } from '@nestjs/swagger';
-import { CreateUserDto } from 'src/dtos';
+import { CreateUserDto, UpdateProfileDto } from 'src/dtos';
 import { CustomException } from 'src/common/exceptions/custom.exception';
 
 @ApiTags('User')
@@ -35,6 +36,20 @@ export class UserController {
   @ApiOperation({ summary: 'Mevcut kullanıcı bilgilerini getir' })
   async getMe(@Req() req: any) {
     return await this.userService.getMe(req.user.userId);
+  }
+
+  /**
+   * Update current user profile
+   * PATCH /user/me
+   */
+  @Patch('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mevcut kullanıcı profilini güncelle' })
+  async updateMe(@Req() req: any, @Body() updateProfileDto: UpdateProfileDto) {
+    return await this.userService.updateProfile(
+      req.user.userId,
+      updateProfileDto,
+    );
   }
 
   /**
