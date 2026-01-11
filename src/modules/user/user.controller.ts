@@ -6,7 +6,6 @@ import {
   Query,
   Param,
   Put,
-  Patch,
   Delete,
   Req,
 } from '@nestjs/common';
@@ -38,11 +37,8 @@ export class UserController {
     return await this.userService.getMe(req.user.userId);
   }
 
-  /**
-   * Update current user profile
-   * PATCH /user/me
-   */
-  @Patch('me')
+
+  @Put('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Mevcut kullanıcı profilini güncelle' })
   async updateMe(@Req() req: any, @Body() updateProfileDto: UpdateProfileDto) {
