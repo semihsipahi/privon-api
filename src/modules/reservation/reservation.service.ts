@@ -78,6 +78,7 @@ export class ReservationService extends ResourceService<
             .find({ customer: new Types.ObjectId(user.userId) })
             .populate('restaurant', 'name location images categories')
             .populate('slot', 'time discount')
+            .populate('review', 'rating comment')
             .sort({ date: -1, createdAt: -1 })
             .lean();
     }

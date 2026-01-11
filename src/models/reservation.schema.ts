@@ -44,6 +44,13 @@ export class Reservation extends Document {
 
 export const ReservationSchema = SchemaFactory.createForClass(Reservation);
 
+ReservationSchema.virtual('review', {
+    ref: 'Review',
+    localField: '_id',
+    foreignField: 'reservation',
+    justOne: true,
+});
+
 ReservationSchema.index({ restaurant: 1, date: 1 });
 ReservationSchema.index({ slot: 1, date: 1, status: 1 });
 ReservationSchema.index({ customer: 1 });
