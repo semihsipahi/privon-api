@@ -8,6 +8,8 @@ import {
   VerifyPhoneDto,
   PhoneLoginDto,
   SetPasswordDto,
+  ForgotPasswordDto,
+  VerifyResetCodeDto,
 } from 'src/dtos';
 import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -50,23 +52,16 @@ export class AuthController {
   }
 
   @Public()
-  @ApiBody({
-    description: 'Telefon numarası',
-    schema: {
-      type: 'object',
-      properties: {
-        phoneNumber: {
-          type: 'string',
-          example: '+905551234567',
-          description: 'Kullanıcının telefon numarası',
-        },
-      },
-      required: ['phoneNumber'],
-    },
-  })
+  @Public()
   @Post('forgot-password')
-  forgotPassword(@Body('phoneNumber') phoneNumber: string) {
-    return this.authService.forgotPassword(phoneNumber);
+  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto.phoneNumber);
+  }
+
+  @Public()
+  @Post('verify-reset-code')
+  verifyResetCode(@Body() verifyResetCodeDto: VerifyResetCodeDto) {
+    return this.authService.verifyResetCode(verifyResetCodeDto);
   }
 
   @Public()

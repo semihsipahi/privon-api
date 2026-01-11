@@ -17,6 +17,7 @@ import {
   VerifyPhoneDto,
   PhoneLoginDto,
   SetPasswordDto,
+  VerifyResetCodeDto,
 } from 'src/dtos';
 import { TemplateService } from 'src/services/template.service';
 import { Role } from 'src/common/enums/role.enum';
@@ -266,6 +267,25 @@ export class AuthService {
     await this.sendSMS(phoneNumber, verificationCode);
 
     return { message: 'Şifre sıfırlama kodu telefonunuza gönderildi.' };
+  }
+
+  async verifyResetCode(verifyResetCodeDto: VerifyResetCodeDto) {
+    const { phoneNumber, verificationCode } = verifyResetCodeDto;
+
+    const user = await this.userModel.findOne({
+      phoneNumber,
+      verificationCode,
+      codeExpiresAt: { $gt: new Date() },
+    });
+
+    if (!user) {
+      throw new CustomException(
+        'Doğrulama kodu geçersiz veya süresi dolmuş.',
+        400,
+      );
+    }
+
+    return { message: 'Kod doğrulandı.' };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
