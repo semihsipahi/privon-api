@@ -52,7 +52,6 @@ export class AuthController {
   }
 
   @Public()
-  @Public()
   @Post('forgot-password')
   forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto.phoneNumber);
