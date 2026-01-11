@@ -110,6 +110,14 @@ export class ReviewService extends ResourceService<Review, CreateReviewDto, any>
             .lean();
     }
 
+    async getUserReviews(userId: string) {
+        return await this.reviewModel
+            .find({ customer: new Types.ObjectId(userId) })
+            .populate('restaurant', '_id name images categories rating reviewCount')
+            .sort({ createdAt: -1 })
+            .lean();
+    }
+
     private async calculateRestaurantRating(restaurantId: Types.ObjectId) {
         const result = await this.reviewModel.aggregate([
             {

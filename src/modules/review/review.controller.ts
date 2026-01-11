@@ -62,6 +62,13 @@ export class ReviewController {
         return await this.reviewService.replyToReview(id, replyDto, req.user);
     }
 
+    @Get('my')
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Kendi değerlendirmelerimi getir' })
+    async getMyReviews(@Request() req: any) {
+        return await this.reviewService.getUserReviews(req.user.userId);
+    }
+
     @Get('restaurant/:id')
     @Public()
     @ApiOperation({ summary: 'Restoran yorumlarını getir (Public - Sadece Onaylılar)' })
