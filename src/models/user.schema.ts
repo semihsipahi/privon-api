@@ -38,6 +38,19 @@ export class User extends Document {
   isActive: boolean;
 
   @Prop({
+    type: {
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: true },
+    },
+    default: { email: true, sms: true },
+    _id: false,
+  })
+  notification: {
+    email: boolean;
+    sms: boolean;
+  };
+
+  @Prop({
     type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Restaurant' }],
     default: [],
   })

@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { NotificationSettingsDto } from './notification-settings.dto';
 
 export class UpdateProfileDto {
     @ApiProperty({
@@ -28,4 +30,14 @@ export class UpdateProfileDto {
     @IsOptional()
     @IsString()
     email?: string;
+
+    @ApiProperty({
+        description: 'Update notification settings',
+        type: () => NotificationSettingsDto,
+        required: false,
+    })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => NotificationSettingsDto)
+    notification?: NotificationSettingsDto;
 }

@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsEnum, IsMongoId, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Role } from 'src/common/enums/role.enum';
+import { NotificationSettingsDto } from './notification-settings.dto';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -45,4 +47,14 @@ export class CreateUserDto {
   })
   @IsNotEmpty({ message: 'Şifre alanı boş bırakılamaz.' })
   password: string;
+
+  @ApiProperty({
+    description: 'Bildirim ayarları',
+    type: () => NotificationSettingsDto,
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => NotificationSettingsDto)
+  notification?: NotificationSettingsDto;
 }
