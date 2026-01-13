@@ -102,8 +102,8 @@ export class ReservationService extends ResourceService<
     async getRestaurantReservations(restaurantId: string) {
         return await this.reservationModel
             .find({ restaurant: new Types.ObjectId(restaurantId) })
-            .populate('customer', 'name phone')
-            .populate('slot', 'time')
+            .populate('customer', 'fullName phoneNumber imageUrl email')
+            .populate('slot', 'discount time')
             .sort({ date: -1, createdAt: -1 })
             .lean();
     }
