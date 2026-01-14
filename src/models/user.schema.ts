@@ -41,8 +41,10 @@ export class User extends Document {
     type: {
       email: { type: Boolean, default: true },
       sms: { type: Boolean, default: true },
+      campaign: { type: Boolean, default: true },
+      promotion: { type: Boolean, default: true },
     },
-    default: { email: true, sms: true },
+    default: { email: true, sms: true, campaign: true, promotion: true },
     _id: false,
   })
   notification: {
