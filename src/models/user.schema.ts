@@ -48,6 +48,8 @@ export class User extends Document {
   notification: {
     email: boolean;
     sms: boolean;
+    campaign: boolean;
+    promotion: boolean;
   };
 
   @Prop({
