@@ -56,6 +56,7 @@ export class UserService extends ResourceService<
       role: user.role,
       imageUrl: user.imageUrl,
       isPhoneVerified: user.isPhoneVerified,
+      notification: user.notification,
     };
 
     // Restoran sahibi ise restoran bilgisini ekle
