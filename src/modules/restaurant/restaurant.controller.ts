@@ -75,6 +75,24 @@ export class RestaurantController {
     return await this.restaurantService.getPublicRestaurantsList(query);
   }
 
+  @Get('stats')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin, Role.RestaurantOwner)
+  @ApiOperation({
+    summary: 'Restoran istatistiklerini getir',
+  })
+  @ApiQuery({ name: 'restaurantId', required: false, description: 'Restoran ID (SuperAdmin için)' })
+  @ApiQuery({ name: 'reservationDate', required: false, description: 'Günlük rezervasyon tarihi (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'salesDate', required: false, description: 'Aylık ciro ayı (YYYY-MM)' })
+  async getStats(
+    @Req() req: any,
+    @Query('restaurantId') restaurantId?: string,
+    @Query('reservationDate') reservationDate?: string,
+    @Query('salesDate') salesDate?: string,
+  ) {
+    return await this.restaurantService.getStats(req.user.role === Role.SuperAdmin ? restaurantId : req.user.restaurantId, reservationDate, salesDate);
+  }
+
   @Get('stats/categories')
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)

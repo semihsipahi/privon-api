@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Restaurant } from '../../models/restaurant.schema';
+import { Reservation } from '../../models/reservation.schema';
+import { Review } from '../../models/review.schema';
 import { User } from '../../models/user.schema';
 import { CreateRestaurantDto } from 'src/dtos/create-restaurant.dto';
 import { UpdateRestaurantDto } from 'src/dtos/update-restaurant.dto';
@@ -28,6 +30,10 @@ export class RestaurantService extends ResourceService<
   constructor(
     @InjectModel(Restaurant.name)
     private restaurantModel: Model<Restaurant>,
+    @InjectModel(Reservation.name)
+    private reservationModel: Model<Reservation>,
+    @InjectModel(Review.name)
+    private reviewModel: Model<Review>,
     @InjectModel('User')
     private userModel: Model<User>,
   ) {
@@ -267,6 +273,105 @@ export class RestaurantService extends ResourceService<
     return {
       data,
       total,
+    };
+  }
+
+
+  async getStats(restaurantId: string, reservationDate?: string, salesDate?: string) {
+    const now = new Date(Date.now() + 3 * 60 * 60 * 1000); // UTC+3
+    const today = reservationDate || now.toISOString().split('T')[0];
+    const currentMonth = salesDate || now.toISOString().slice(0, 7);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const [year, month] = currentMonth.split('-').map(Number);
+    const prevMonth = new Date(year, month - 2, 1).toISOString().slice(0, 7);
+    const nextMonthStart = new Date(year, month, 1);
+    const prevMonthStart = new Date(year, month - 2, 1);
+
+    const restaurantObjectId = new Types.ObjectId(restaurantId);
+
+    const [
+      todayCount,
+      yesterdayCount,
+      turnoverResults,
+      ratingResults,
+    ] = await Promise.all([
+      this.reservationModel.countDocuments({ restaurant: restaurantObjectId, date: today }),
+      this.reservationModel.countDocuments({ restaurant: restaurantObjectId, date: yesterdayStr }),
+
+      this.reservationModel.aggregate([
+        {
+          $match: {
+            restaurant: restaurantObjectId,
+            date: { $regex: `^(${currentMonth}|${prevMonth})` },
+            status: { $in: ['seated', 'completed'] },
+          },
+        },
+        {
+          $group: {
+            _id: { $substr: ['$date', 0, 7] },
+            total: { $sum: '$finalAmount' },
+          },
+        },
+      ]),
+
+      this.reviewModel.aggregate([
+        { $match: { restaurant: restaurantObjectId, isActive: true } },
+        {
+          $facet: {
+            overall: [{ $group: { _id: null, avg: { $avg: '$rating' } } }],
+            currentMonth: [
+              { $match: { createdAt: { $gte: new Date(`${currentMonth}-01`), $lt: nextMonthStart } } },
+              { $group: { _id: null, avg: { $avg: '$rating' } } },
+            ],
+            prevMonth: [
+              { $match: { createdAt: { $gte: prevMonthStart, $lt: new Date(`${currentMonth}-01`) } } },
+              { $group: { _id: null, avg: { $avg: '$rating' } } },
+            ],
+          },
+        },
+      ]),
+    ]);
+
+    const currentTurnover = turnoverResults.find(r => r._id === currentMonth)?.total || 0;
+    const prevTurnover = turnoverResults.find(r => r._id === prevMonth)?.total || 0;
+
+    const overallRating = +(ratingResults[0]?.overall[0]?.avg?.toFixed(1) || 0);
+    const currentMonthRating = ratingResults[0]?.currentMonth[0]?.avg || 0;
+    const prevMonthRating = ratingResults[0]?.prevMonth[0]?.avg || 0;
+
+    const calcChange = (curr: number, prev: number) => {
+      if (prev > 0) return Math.round(((curr - prev) / prev) * 100);
+      return curr > 0 ? 100 : 0;
+    };
+
+    const getTrend = (change: number) => change > 0 ? 'up' : change < 0 ? 'down' : 'stable';
+
+    const dailyChange = calcChange(todayCount, yesterdayCount);
+    const turnoverChange = calcChange(currentTurnover, prevTurnover);
+    const ratingChange = calcChange(currentMonthRating, prevMonthRating);
+
+    return {
+      dailyReservations: {
+        value: todayCount,
+        percentageChange: dailyChange,
+        trend: getTrend(dailyChange),
+        date: today,
+      },
+      monthlyTurnover: {
+        value: currentTurnover,
+        percentageChange: turnoverChange,
+        trend: getTrend(turnoverChange),
+        month: currentMonth,
+      },
+      averageRating: {
+        value: overallRating,
+        percentageChange: ratingChange,
+        trend: getTrend(ratingChange),
+      },
     };
   }
 
