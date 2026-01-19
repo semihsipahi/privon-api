@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Post, Req, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Query, UseGuards } from '@nestjs/common';
+import { OptionalJwtAuthGuard } from 'src/common/guards/optional-jwt-auth.guard';
 import { SupportRequestService } from './support-request.service';
 import { CreateSupportRequestDto } from 'src/dtos/create-support-request.dto';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Public } from 'src/common/decorators/public.decorator';
+
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'src/common/enums/role.enum';
 
@@ -12,7 +13,7 @@ export class SupportRequestController {
     constructor(private readonly supportRequestService: SupportRequestService) { }
 
     @Post()
-    @Public()
+    @UseGuards(OptionalJwtAuthGuard)
     @ApiOperation({ summary: 'Destek talebi oluştur' })
     async create(@Body() dto: CreateSupportRequestDto, @Req() req: any) {
         const userId = req.user?.userId;
