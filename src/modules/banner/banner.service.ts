@@ -23,7 +23,6 @@ export class BannerService extends ResourceService<
         return await this.bannerModel
             .find({})
             .sort({ order: 1 })
-            .select('image order')
             .lean();
     }
 }
