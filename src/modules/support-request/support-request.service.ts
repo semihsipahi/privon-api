@@ -37,4 +37,8 @@ export class SupportRequestService extends ResourceService<
 
         return await this.supportRequestModel.create(data);
     }
+
+    async list(query: any) {
+        return await super.list(query, null, ['user']);
+    }
 }
