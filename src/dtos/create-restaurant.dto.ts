@@ -55,10 +55,14 @@ export class CreateRestaurantDto {
   @IsOptional()
   owner?: string;
 
-  @ApiPropertyOptional({ description: 'Restoran ismi' })
   @IsString()
   @IsOptional()
   name?: string;
+
+  @ApiPropertyOptional({ description: 'Fiyat seviyesi (1: Ucuz, 2: Orta, 3: Pahalı)' })
+  @IsNumber()
+  @IsOptional()
+  priceLevel?: number;
 
   @ApiPropertyOptional({ description: 'Restoran resimleri (URL dizisi)' })
   @IsArray()

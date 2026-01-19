@@ -37,6 +37,15 @@ export class RestaurantListQueryDto {
   discount?: number;
 
   @ApiPropertyOptional({
+    description: 'Fiyat seviyesine göre filtrele (1: Ucuz, 2: Orta, 3: Pahalı)',
+    example: 2,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  priceLevel?: number;
+
+  @ApiPropertyOptional({
     description: 'Kullanıcının enlem koordinatı (-90 ile 90 arası)',
     example: 41.0082,
     minimum: -90,

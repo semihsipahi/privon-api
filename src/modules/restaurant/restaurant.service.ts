@@ -89,6 +89,7 @@ export class RestaurantService extends ResourceService<
     _start?: number;
     _end?: number;
     date?: string;
+    priceLevel?: number;
   }): Promise<PublicRestaurantsListResponse> {
     const {
       q,
@@ -101,6 +102,7 @@ export class RestaurantService extends ResourceService<
       _start = 0,
       _end = 10,
       date,
+      priceLevel,
     } = filters;
     const start = Number(_start);
     const end = Number(_end);
@@ -158,6 +160,11 @@ export class RestaurantService extends ResourceService<
       const categoryIds = categories.split(',').map(id => new Types.ObjectId(id.trim()));
       matchStage.categories = { $in: categoryIds };
     }
+
+    if (priceLevel) {
+      matchStage.priceLevel = priceLevel;
+    }
+
     if (Object.keys(matchStage).length > 0) {
       pipeline.push({ $match: matchStage });
     }
@@ -204,6 +211,7 @@ export class RestaurantService extends ResourceService<
         _id: 1,
         name: 1,
         rating: 1,
+        priceLevel: 1,
         reviewCount: 1,
         categories: {
           $map: {

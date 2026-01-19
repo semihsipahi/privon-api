@@ -58,6 +58,9 @@ export class Restaurant extends Document {
   @Prop({ default: 0 })
   reviewCount: number;
 
+  @Prop()
+  priceLevel: number;
+
   @Prop({ type: Location })
   location: Location;
 
