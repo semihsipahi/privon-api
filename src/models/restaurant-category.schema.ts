@@ -14,6 +14,9 @@ export class RestaurantCategory extends Document {
 
     @Prop()
     visibleOnHomePage: boolean;
+
+    @Prop()
+    order: number;
 }
 
 export const RestaurantCategorySchema =

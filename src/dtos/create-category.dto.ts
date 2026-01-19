@@ -21,4 +21,8 @@ export class CreateCategoryDto {
     @IsBoolean()
     @IsOptional()
     visibleOnHomePage?: boolean;
+
+    @ApiProperty({ description: 'Sıralama', example: 1, required: false })
+    @IsOptional()
+    order?: number;
 }

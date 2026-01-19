@@ -22,6 +22,14 @@ export class CategoryService extends ResourceService<
         super(categoryModel);
     }
 
+    async list(query: any) {
+        if (!query._sort) {
+            query._sort = 'order';
+            query._order = 'asc';
+        }
+        return super.list(query);
+    }
+
     async deleteCategory(id: string) {
         const category = await this.categoryModel.findById(id);
         if (!category) {

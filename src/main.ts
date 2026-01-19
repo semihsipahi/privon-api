@@ -7,6 +7,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -19,7 +20,11 @@ async function bootstrap() {
   );
 
   // Register fastify multipart for file uploads
-  await app.register(multipart);
+  await app.register(multipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB limit
+    },
+  });
 
   app.enableCors({
     origin: ['*'],
@@ -76,7 +81,7 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(new AllExceptionsFilter());
   const config = new DocumentBuilder()
     .setTitle('NestJS API')
     .setDescription('API documentation with Swagger')
