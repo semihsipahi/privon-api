@@ -269,4 +269,33 @@ export class RestaurantService extends ResourceService<
       total,
     };
   }
+
+  async getCategoryStats() {
+    return await this.restaurantModel.aggregate([
+      { $unwind: '$categories' },
+      {
+        $group: {
+          _id: '$categories',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'restaurantcategories',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'category',
+        },
+      },
+      { $unwind: '$category' },
+      {
+        $project: {
+          _id: 0,
+          name: '$category.name',
+          count: 1,
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+  }
 }

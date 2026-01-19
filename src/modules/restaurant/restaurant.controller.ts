@@ -75,6 +75,16 @@ export class RestaurantController {
     return await this.restaurantService.getPublicRestaurantsList(query);
   }
 
+  @Get('stats/categories')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({
+    summary: 'Kategori istatistiklerini getir (Restoran sayıları)',
+  })
+  async getCategoryStats() {
+    return await this.restaurantService.getCategoryStats();
+  }
+
   @Get('public/:id')
   @Public()
   @UseGuards(OptionalJwtAuthGuard)
