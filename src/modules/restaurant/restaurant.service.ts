@@ -397,6 +397,7 @@ export class RestaurantService extends ResourceService<
         $project: {
           _id: 0,
           name: '$category.name',
+          color: '$category.color',
           count: 1,
         },
       },
