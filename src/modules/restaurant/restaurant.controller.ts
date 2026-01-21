@@ -9,6 +9,7 @@ import {
   Put,
   UseGuards,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { RestaurantService } from './restaurant.service';
 import { UserService } from '../user/user.service';
@@ -150,7 +151,7 @@ export class RestaurantController {
     }
 
     if (!createRestaurantDto.phone && !createRestaurantDto.owner) {
-      throw new Error('Telefon numarası veya sahibi belirtilmelidir');
+      throw new BadRequestException('Telefon numarası veya sahibi belirtilmelidir');
     }
 
     return await this.restaurantService.create(createRestaurantDto);

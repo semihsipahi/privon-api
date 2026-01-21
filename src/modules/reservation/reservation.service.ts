@@ -314,6 +314,7 @@ export class ReservationService extends ResourceService<
         restaurantId?: string;
         startDate?: string;
         endDate?: string;
+        customerName?: string;
     }) {
         const {
             _start = 0,
@@ -323,36 +324,106 @@ export class ReservationService extends ResourceService<
             restaurantId,
             startDate,
             endDate,
+            customerName,
         } = query;
-
-        const filter: any = { status: ReservationStatus.COMPLETED };
-
-        if (restaurantId) {
-            filter.restaurant = new Types.ObjectId(restaurantId);
-        }
-
-        if (startDate || endDate) {
-            filter.date = {};
-            if (startDate) filter.date.$gte = startDate;
-            if (endDate) filter.date.$lte = endDate;
-        }
 
         const sortOrder = _order === 'asc' ? 1 : -1;
         const skip = Number(_start);
         const limit = Number(_end) - Number(_start);
 
-        const [reservations, total] = await Promise.all([
-            this.reservationModel
-                .find(filter)
-                .populate('customer', 'fullName phoneNumber')
-                .populate('restaurant', 'name')
-                .populate('slot', 'discount time')
-                .sort({ [_sort]: sortOrder })
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            this.reservationModel.countDocuments(filter),
+        // Base match filter
+        const matchFilter: any = { status: ReservationStatus.COMPLETED };
+
+        if (restaurantId) {
+            matchFilter.restaurant = new Types.ObjectId(restaurantId);
+        }
+
+        if (startDate || endDate) {
+            matchFilter.date = {};
+            if (startDate) matchFilter.date.$gte = startDate;
+            if (endDate) matchFilter.date.$lte = endDate;
+        }
+
+        // Aggregation pipeline
+        const pipeline: any[] = [
+            { $match: matchFilter },
+
+            // Customer lookup
+            {
+                $lookup: {
+                    from: 'users', // customer collection adı
+                    localField: 'customer',
+                    foreignField: '_id',
+                    as: 'customer',
+                },
+            },
+            { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+
+            // Restaurant lookup
+            {
+                $lookup: {
+                    from: 'restaurants',
+                    localField: 'restaurant',
+                    foreignField: '_id',
+                    as: 'restaurant',
+                },
+            },
+            { $unwind: { path: '$restaurant', preserveNullAndEmptyArrays: true } },
+
+            // Slot lookup
+            {
+                $lookup: {
+                    from: 'slots',
+                    localField: 'slot',
+                    foreignField: '_id',
+                    as: 'slot',
+                },
+            },
+            { $unwind: { path: '$slot', preserveNullAndEmptyArrays: true } },
+        ];
+
+        // Customer name filter (lookup'tan sonra)
+        if (customerName) {
+            pipeline.push({
+                $match: {
+                    'customer.fullName': { $regex: customerName, $options: 'i' },
+                },
+            });
+        }
+
+        // Total count için ayrı pipeline
+        const countPipeline = [...pipeline, { $count: 'total' }];
+
+        // Data pipeline - sort, skip, limit
+        const dataPipeline = [
+            ...pipeline,
+            { $sort: { [_sort]: sortOrder } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $project: {
+                    _id: 1,
+                    'customer.fullName': 1,
+                    'customer.phoneNumber': 1,
+                    'restaurant.name': 1,
+                    'slot.time': 1,
+                    'slot.discount': 1,
+                    date: 1,
+                    totalAmount: 1,
+                    finalAmount: 1,
+                    savedAmount: 1,
+                    personCount: 1,
+                    createdAt: 1,
+                },
+            },
+        ];
+
+        const [reservations, countResult] = await Promise.all([
+            this.reservationModel.aggregate(dataPipeline),
+            this.reservationModel.aggregate(countPipeline),
         ]);
+
+        const total = countResult[0]?.total || 0;
 
         const data = reservations.map((r: any) => ({
             id: r._id,
@@ -364,7 +435,7 @@ export class ReservationService extends ResourceService<
             discountPercent: r.slot?.discount || 0,
             totalAmount: r.totalAmount || 0,
             finalAmount: r.finalAmount || 0,
-            userSavings: r.savedAmount || 0, // Kullanıcının kazancı (indirim tutarı)
+            userSavings: r.savedAmount || 0,
             personCount: r.personCount,
             createdAt: r.createdAt,
         }));

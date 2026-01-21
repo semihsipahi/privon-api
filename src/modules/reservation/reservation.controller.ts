@@ -90,6 +90,7 @@ export class ReservationController {
     @ApiQuery({ name: 'restaurantId', required: false, description: 'Restoran ID ile filtrele' })
     @ApiQuery({ name: 'startDate', required: false, description: 'Başlangıç tarihi (YYYY-MM-DD)' })
     @ApiQuery({ name: 'endDate', required: false, description: 'Bitiş tarihi (YYYY-MM-DD)' })
+    @ApiQuery({ name: 'customerName', required: false, description: 'Müşteri adı ile filtrele' })
     async getCompletedReport(@Query() query: any) {
         return await this.reservationService.getCompletedReservationsReport(query);
     }
