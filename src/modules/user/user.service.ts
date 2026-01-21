@@ -1,12 +1,32 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { User } from '../../models/user.schema';
 import { Restaurant } from '../../models/restaurant.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from 'src/dtos';
 import { ResourceService } from 'src/services/resource.service';
 import { maskName } from 'src/helpers/mask-name.util';
 import { Role } from 'src/common/enums/role.enum';
+import { MailService } from '../mail/mail.service';
+
+function generateRandomPassword(length: number = 12): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
+export interface PrepareRestaurantOwnerResult {
+  id: string;
+  email: string;
+  fullName: string;
+  phoneNumber: string;
+  temporaryPassword: string | null;
+  isNewUser: boolean;
+}
 
 @Injectable()
 export class UserService extends ResourceService<
@@ -17,6 +37,7 @@ export class UserService extends ResourceService<
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Restaurant.name) private restaurantModel: Model<Restaurant>,
+    private readonly mailService: MailService,
   ) {
     super(userModel);
   }
@@ -162,5 +183,104 @@ export class UserService extends ResourceService<
       imageUrl: user.imageUrl,
       isPhoneVerified: user.isPhoneVerified,
     };
+  }
+
+  async prepareRestaurantOwner(data: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+  }): Promise<PrepareRestaurantOwnerResult> {
+    // 1. Telefon numarasına göre mevcut kullanıcı kontrolü
+    const existingPhone = await this.findByPhoneNumber(data.phoneNumber);
+    if (existingPhone) {
+      await this.update(existingPhone._id.toString(), {
+        role: Role.RestaurantOwner,
+      } as any);
+      await this.sendRoleUpdateEmail(existingPhone.email, existingPhone.fullName);
+
+      return {
+        id: existingPhone._id.toString(),
+        email: existingPhone.email,
+        fullName: existingPhone.fullName,
+        phoneNumber: existingPhone.phoneNumber,
+        temporaryPassword: null,
+        isNewUser: false,
+      };
+    }
+
+    // 2. Email kontrolü
+    const existingEmail = await this.findByEmail(data.email);
+    if (existingEmail) {
+      throw new ConflictException(`Bu email adresi ile kayıtlı farklı bir kullanıcı mevcut: ${data.email}`);
+    }
+
+    // 3. Yeni kullanıcı oluştur
+    const temporaryPassword = generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+    const user = await this.create({
+      fullName: data.fullName,
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+      role: Role.RestaurantOwner,
+      password: hashedPassword,
+    });
+
+    await this.sendWelcomeEmail(data.email, data.fullName, temporaryPassword);
+
+    return {
+      id: user._id.toString(),
+      email: data.email,
+      fullName: data.fullName,
+      phoneNumber: data.phoneNumber,
+      temporaryPassword,
+      isNewUser: true,
+    };
+  }
+
+  private async sendWelcomeEmail(email: string, fullName: string, password: string): Promise<void> {
+    try {
+      await this.mailService.sendEmail({
+        to: email,
+        subject: 'Restoran Hesabınız Oluşturuldu - Hoş Geldiniz!',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #333;">Hoş Geldiniz, ${fullName}!</h1>
+            <p>Restoran hesabınız oluşturuldu. Artık sisteme giriş yapabilirsiniz.</p>
+            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>E-posta:</strong> ${email}</p>
+              <p><strong>Geçici Şifre:</strong> ${password}</p>
+            </div>
+            <p style="color: #666;">Güvenliğiniz için lütfen ilk girişinizde şifrenizi değiştirin.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">Bu email otomatik olarak gönderilmiştir.</p>
+          </div>
+        `,
+        account: 'info',
+      });
+    } catch (error) {
+      console.error('Hoşgeldin emaili gönderilemedi:', error.message);
+    }
+  }
+
+  private async sendRoleUpdateEmail(email: string, fullName: string): Promise<void> {
+    try {
+      await this.mailService.sendEmail({
+        to: email,
+        subject: 'Restoran Hesabınız Aktifleştirildi!',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #333;">Tebrikler, ${fullName}!</h1>
+            <p>Hesabınız restoran sahibi olarak güncellenmiştir.</p>
+            <p>Mevcut giriş bilgileriniz ile sisteme giriş yapabilirsiniz.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">Bu email otomatik olarak gönderilmiştir.</p>
+          </div>
+        `,
+        account: 'info',
+      });
+    } catch (error) {
+      console.error('Rol güncelleme emaili gönderilemedi:', error.message);
+    }
   }
 }

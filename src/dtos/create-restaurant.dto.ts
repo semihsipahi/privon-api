@@ -55,6 +55,16 @@ export class CreateRestaurantDto {
   @IsOptional()
   owner?: string;
 
+  @ApiPropertyOptional({ description: 'Restoran sahibi adı (Yeni kullanıcı oluşturmak için)' })
+  @IsString({ message: 'Sahip adı metin formatında olmalıdır' })
+  @IsOptional()
+  ownerName?: string;
+
+  @ApiPropertyOptional({ description: 'Restoran sahibi emaili (Yeni kullanıcı oluşturmak için)' })
+  @IsString({ message: 'Sahip emaili metin formatında olmalıdır' })
+  @IsOptional()
+  ownerEmail?: string;
+
   @IsString({ message: 'Restoran ismi metin formatında olmalıdır' })
   @IsOptional()
   name?: string;

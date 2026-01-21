@@ -134,14 +134,25 @@ export class RestaurantController {
 
   @Post()
   @ApiBearerAuth()
-  @Roles(Role.SuperAdmin, Role.RestaurantOwner)
+  @Roles(Role.SuperAdmin)
   @ApiOperation({
-    summary: 'Yeni bir restoran oluştur (Restoran Sahibi ve Süper Admin)',
+    summary: 'Yeni bir restoran oluştur (Süper Admin)',
   })
   async create(@Body() createRestaurantDto: CreateRestaurantDto, @Req() req: any) {
-    if (req.user.role !== Role.SuperAdmin) {
-      createRestaurantDto.owner = req.user.userId;
+    // Super Admin yeni kullanıcı oluşturarak restoran ekleyebilir
+    if (!createRestaurantDto.owner && createRestaurantDto.phone) {
+      const ownerResult = await this.userService.prepareRestaurantOwner({
+        fullName: createRestaurantDto.ownerName || createRestaurantDto.name || 'Restoran Sahibi',
+        email: createRestaurantDto.ownerEmail || createRestaurantDto.email,
+        phoneNumber: createRestaurantDto.phone,
+      });
+      createRestaurantDto.owner = ownerResult.id;
     }
+
+    if (!createRestaurantDto.phone && !createRestaurantDto.owner) {
+      throw new Error('Telefon numarası veya sahibi belirtilmelidir');
+    }
+
     return await this.restaurantService.create(createRestaurantDto);
   }
 
