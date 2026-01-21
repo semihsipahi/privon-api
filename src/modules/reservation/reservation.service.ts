@@ -93,9 +93,9 @@ export class ReservationService extends ResourceService<
         return reservations.map((reservation: any) => {
             if (reservation.restaurant && Array.isArray(reservation.restaurant.categories)) {
                 reservation.restaurant.categories = reservation.restaurant.categories
-                    .filter((c: any) => c && c.name)
-                    .map((c: any) => c.name);
+                    .filter((c: any) => c && c.name);
             }
+
             return reservation;
         });
     }
