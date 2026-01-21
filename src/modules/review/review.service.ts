@@ -77,7 +77,7 @@ export class ReviewService extends ResourceService<Review, CreateReviewDto, any>
         return await this.reviewModel
             .find({ isActive: false })
             .populate('restaurant', 'name')
-            .populate('customer', 'name')
+            .populate('customer', 'fullName')
             .sort({ createdAt: -1 })
             .lean();
     }
