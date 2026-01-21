@@ -99,7 +99,7 @@ export class UserService extends ResourceService<
       .findById(userId)
       .populate({
         path: 'favoriteRestaurants',
-        select: '_id name images categories rating reviewCount',
+        select: '_id name images categories rating reviewCount priceLevel',
         populate: {
           path: 'categories',
           select: 'name',
