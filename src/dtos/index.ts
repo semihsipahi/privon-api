@@ -24,4 +24,4 @@ export * from './reply-review.dto';
 export * from './create-category.dto';
 export * from './update-category.dto';
 export * from './update-profile.dto';
-
+export * from './bulk-cancel-reservation.dto';

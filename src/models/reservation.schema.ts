@@ -40,6 +40,15 @@ export class Reservation extends Document {
 
     @Prop()
     savedAmount?: number; // Kazanç (indirim tutarı)
+
+    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
+    cancelledBy?: MongooseSchema.Types.ObjectId;
+
+    @Prop()
+    cancelledByRole?: string;
+
+    @Prop()
+    cancelReason?: string;
 }
 
 export const ReservationSchema = SchemaFactory.createForClass(Reservation);

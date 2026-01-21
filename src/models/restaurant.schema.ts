@@ -6,7 +6,7 @@ export class Location {
   @Prop({ type: String, enum: ['Point'], default: 'Point' })
   type: string;
 
-  @Prop({ type: [Number], required: true })
+  @Prop({ type: [Number] })
   coordinates: number[]; // [longitude, latitude] - GeoJSON format
 
   @Prop()

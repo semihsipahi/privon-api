@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsArray,
@@ -12,7 +12,7 @@ import { Type } from 'class-transformer';
 
 export class LocationDto {
   @ApiPropertyOptional({ description: 'Restoran adresi' })
-  @IsString()
+  @IsString({ message: 'Adres metin formatında olmalıdır' })
   @IsOptional()
   address?: string;
 
@@ -21,89 +21,89 @@ export class LocationDto {
     example: [28.9784, 41.0082],
     type: [Number],
   })
-  @IsArray()
-  @IsNumber({}, { each: true })
+  @IsArray({ message: 'Koordinatlar bir liste olmalıdır' })
+  @IsNumber({}, { each: true, message: 'Koordinat listesi sadece sayı içermelidir' })
   @IsOptional()
   coordinates?: number[];
 }
 
 export class WorkingHoursDto {
   @ApiPropertyOptional({ description: 'Gün ismi', example: 'Pazartesi' })
-  @IsString()
+  @IsString({ message: 'Gün ismi metin formatında olmalıdır' })
   @IsOptional()
   dayName?: string;
 
   @ApiPropertyOptional({ description: 'Açılış saati', example: '09:00' })
-  @IsString()
+  @IsString({ message: 'Açılış saati metin formatında olmalıdır (ör: 09:00)' })
   @IsOptional()
   openingTime?: string;
 
   @ApiPropertyOptional({ description: 'Kapanış saati', example: '22:00' })
-  @IsString()
+  @IsString({ message: 'Kapanış saati metin formatında olmalıdır (ör: 22:00)' })
   @IsOptional()
   closingTime?: string;
 
   @ApiPropertyOptional({ description: 'Kapalı mı?', default: false })
-  @IsBoolean()
+  @IsBoolean({ message: 'Kapalı durumu true veya false olmalıdır' })
   @IsOptional()
   isClosed?: boolean;
 }
 
 export class CreateRestaurantDto {
   @ApiPropertyOptional({ description: 'Restoran sahibi (User ID)' })
-  @IsMongoId()
+  @IsMongoId({ message: 'Geçerli bir sahibi kullanıcı ID\'si giriniz' })
   @IsOptional()
   owner?: string;
 
-  @IsString()
+  @IsString({ message: 'Restoran ismi metin formatında olmalıdır' })
   @IsOptional()
   name?: string;
 
   @ApiPropertyOptional({ description: 'Fiyat seviyesi (1: Ucuz, 2: Orta, 3: Pahalı)' })
-  @IsNumber()
+  @IsNumber({}, { message: 'Fiyat seviyesi sayı olmalıdır' })
   @IsOptional()
   priceLevel?: number;
 
   @ApiPropertyOptional({ description: 'Restoran resimleri (URL dizisi)' })
-  @IsArray()
-  @IsString({ each: true })
+  @IsArray({ message: 'Resimler bir liste olmalıdır' })
+  @IsString({ each: true, message: 'Her bir resim URL\'i metin olmalıdır' })
   @IsOptional()
   images?: string[];
 
   @ApiPropertyOptional({ description: 'Restoran kategorileri ID listesi' })
-  @IsMongoId({ each: true })
-  @IsArray()
+  @IsMongoId({ each: true, message: 'Kategori ID\'leri geçerli formatta olmalıdır' })
+  @IsArray({ message: 'Kategoriler bir liste olmalıdır' })
   @IsOptional()
   categories?: string[];
 
   @ApiPropertyOptional({ description: 'Restoran konumu', type: LocationDto })
-  @ValidateNested()
+  @ValidateNested({ message: 'Konum bilgisi geçersiz formatta' })
   @Type(() => LocationDto)
   @IsOptional()
   location?: LocationDto;
 
   @ApiPropertyOptional({ description: 'Website' })
-  @IsString()
+  @IsString({ message: 'Website metin formatında olmalıdır' })
   @IsOptional()
   website?: string;
 
   @ApiPropertyOptional({ description: 'Telefon' })
-  @IsString()
+  @IsString({ message: 'Telefon metin formatında olmalıdır' })
   @IsOptional()
   phone?: string;
 
   @ApiPropertyOptional({ description: 'E-posta' })
-  @IsString()
+  @IsString({ message: 'E-posta metin formatında olmalıdır' })
   @IsOptional()
   email?: string;
 
   @ApiPropertyOptional({ description: 'Menü metni' })
-  @IsString()
+  @IsString({ message: 'Menü metin formatında olmalıdır' })
   @IsOptional()
   menu?: string;
 
   @ApiPropertyOptional({ description: 'Kampanya koşulları metni' })
-  @IsString()
+  @IsString({ message: 'Kampanya koşulları metin formatında olmalıdır' })
   @IsOptional()
   campaignTerms?: string;
 
@@ -111,15 +111,15 @@ export class CreateRestaurantDto {
     description: 'Çalışma saatleri',
     type: [WorkingHoursDto],
   })
-  @IsArray()
-  @ValidateNested({ each: true })
+  @IsArray({ message: 'Çalışma saatleri bir liste olmalıdır' })
+  @ValidateNested({ each: true, message: 'Çalışma saatleri listesi geçersiz formatta' })
   @Type(() => WorkingHoursDto)
   @IsOptional()
   workingHours?: WorkingHoursDto[];
 
   @ApiPropertyOptional({ description: 'Feed videoları (URL dizisi)' })
-  @IsArray()
-  @IsString({ each: true })
+  @IsArray({ message: 'Videolar bir liste olmalıdır' })
+  @IsString({ each: true, message: 'Her bir video URL\'i metin olmalıdır' })
   @IsOptional()
   feedVideos?: string[];
 }

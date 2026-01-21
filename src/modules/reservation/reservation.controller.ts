@@ -24,6 +24,7 @@ import { CreateReservationDto } from 'src/dtos/create-reservation.dto';
 import { UpdateReservationStatusDto } from 'src/dtos/update-reservation-status.dto';
 import { RequiresOwnership } from 'src/common/decorators/requires-ownership.decorator';
 import { ResourceOwnerGuard } from 'src/common/guards/resource-owner.guard';
+import { BulkCancelReservationDto } from 'src/dtos/bulk-cancel-reservation.dto';
 
 @ApiTags('Reservation')
 @Controller('reservation')
@@ -68,7 +69,12 @@ export class ReservationController {
     @Roles(Role.SuperAdmin)
     @ApiOperation({ summary: 'Tüm rezervasyonları listele (Refine)' })
     async list(@Query() query: any) {
-        return await this.reservationService.list(query);
+        return await this.reservationService.list(query, null, [
+            'customer',
+            'restaurant',
+            'slot',
+            'cancelledBy',
+        ]);
     }
 
     @Get('report/completed')
@@ -124,5 +130,21 @@ export class ReservationController {
     @ApiOperation({ summary: 'Rezervasyon iptal et' })
     async cancel(@Param('id') id: string, @Request() req: any) {
         return await this.reservationService.cancelReservation(id, req.user);
+    }
+
+    @Post('bulk-cancel')
+    @Roles(Role.SuperAdmin, Role.RestaurantOwner)
+    @ApiOperation({
+        summary: 'Toplu rezervasyon iptal et',
+        description: 'Belirli bir tarihteki tüm rezervasyonları iptal eder.',
+    })
+    async bulkCancel(
+        @Body() bulkCancelDto: BulkCancelReservationDto,
+        @Request() req: any,
+    ) {
+        return await this.reservationService.bulkCancelReservations(
+            bulkCancelDto,
+            req.user,
+        );
     }
 }

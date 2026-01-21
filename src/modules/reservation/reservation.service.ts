@@ -11,6 +11,7 @@ import { Slot } from '../../models/slot.schema';
 import { ResourceService } from 'src/services/resource.service';
 import { CreateReservationDto } from 'src/dtos/create-reservation.dto';
 import { UpdateReservationStatusDto } from 'src/dtos/update-reservation-status.dto';
+import { BulkCancelReservationDto } from 'src/dtos/bulk-cancel-reservation.dto';
 import { AuthUser } from 'src/common/interfaces/auth-user.interface';
 import { Role } from 'src/common/enums/role.enum';
 import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
@@ -103,6 +104,7 @@ export class ReservationService extends ResourceService<
         return await this.reservationModel
             .find({ restaurant: new Types.ObjectId(restaurantId) })
             .populate('customer', 'fullName phoneNumber imageUrl email')
+            .populate('cancelledBy', 'fullName role')
             .populate('slot', 'discount time')
             .sort({ date: -1, createdAt: -1 })
             .lean();
@@ -170,7 +172,6 @@ export class ReservationService extends ResourceService<
                 'Sadece kendi rezervasyonunuzu iptal edebilirsiniz',
             );
         }
-
         if (reservation.status !== ReservationStatus.PENDING) {
             throw new BadRequestException(
                 'Sadece beklemedeki rezervasyonlar iptal edilebilir',
@@ -179,6 +180,45 @@ export class ReservationService extends ResourceService<
 
         reservation.status = ReservationStatus.CANCELLED;
         return await reservation.save();
+    }
+
+    async bulkCancelReservations(dto: BulkCancelReservationDto, user: AuthUser) {
+        // Yetki Kontrolü
+        if (user.role === Role.RestaurantOwner) {
+            if (user.restaurantId !== dto.restaurantId) {
+                throw new ForbiddenException(
+                    'Sadece kendi restoranınıza ait rezervasyonları iptal edebilirsiniz',
+                );
+            }
+        } else if (user.role !== Role.SuperAdmin) {
+            throw new ForbiddenException('Bu işlem için yetkiniz yok');
+        }
+
+        const result = await this.reservationModel.updateMany(
+            {
+                restaurant: new Types.ObjectId(dto.restaurantId),
+                date: dto.date,
+                status: {
+                    $in: [
+                        ReservationStatus.PENDING,
+                        ReservationStatus.CONFIRMED,
+                        ReservationStatus.SEATED,
+                    ],
+                },
+            },
+            {
+                $set: {
+                    status: ReservationStatus.CANCELLED,
+                    cancelledBy: new Types.ObjectId(user.userId),
+                    cancelledByRole: user.role,
+                },
+            },
+        );
+
+        return {
+            message: `${result.modifiedCount} rezervasyon iptal edildi`,
+            count: result.modifiedCount,
+        };
     }
 
     async getUserSavings(userId: string) {

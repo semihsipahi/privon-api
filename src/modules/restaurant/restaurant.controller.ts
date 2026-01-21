@@ -138,7 +138,10 @@ export class RestaurantController {
   @ApiOperation({
     summary: 'Yeni bir restoran oluştur (Restoran Sahibi ve Süper Admin)',
   })
-  async create(@Body() createRestaurantDto: CreateRestaurantDto) {
+  async create(@Body() createRestaurantDto: CreateRestaurantDto, @Req() req: any) {
+    if (req.user.role !== Role.SuperAdmin) {
+      createRestaurantDto.owner = req.user.userId;
+    }
     return await this.restaurantService.create(createRestaurantDto);
   }
 
