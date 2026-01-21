@@ -48,7 +48,7 @@ export class UploadController {
     },
   })
   @ApiResponse({ status: 400, description: 'Dosya yükleme hatası.' })
-  @Roles(Role.SuperAdmin, Role.User)
+  @Roles(Role.SuperAdmin, Role.RestaurantOwner, Role.User)
   @Post('single')
   async uploadSingle(@Req() req: FastifyRequest) {
     const data = await req.file();
@@ -69,7 +69,7 @@ export class UploadController {
   }
 
   @ApiBearerAuth()
-  @Roles(Role.SuperAdmin, Role.User)
+  @Roles(Role.SuperAdmin, Role.RestaurantOwner, Role.User)
   @Delete(':url')
   async deleteFile(@Param('url') url: string) {
     return await this.uploadService.deleteFile([url]);
