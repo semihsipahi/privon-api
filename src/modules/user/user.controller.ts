@@ -48,6 +48,13 @@ export class UserController {
     );
   }
 
+  @Delete('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mevcut kullanıcı hesabını sil' })
+  async deleteMe(@Req() req: any) {
+    return await this.userService.delete(req.user.userId);
+  }
+
   /**
    * Refine getList endpoint
    * GET /user?_start=0&_end=10&_sort=createdAt&_order=desc&name_like=john

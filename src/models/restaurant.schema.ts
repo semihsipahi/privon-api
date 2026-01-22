@@ -67,7 +67,7 @@ export class Restaurant extends Document {
   @Prop()
   website?: string;
 
-  @Prop()
+  @Prop({ unique: true })
   phone?: string;
 
   @Prop()

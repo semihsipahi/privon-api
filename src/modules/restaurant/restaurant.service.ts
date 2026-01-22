@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Restaurant } from '../../models/restaurant.schema';
@@ -38,6 +38,16 @@ export class RestaurantService extends ResourceService<
     private userModel: Model<User>,
   ) {
     super(restaurantModel);
+  }
+
+  async create(data: CreateRestaurantDto, session?: any) {
+    if (data.phone) {
+      const existingRestaurant = await this.restaurantModel.findOne({ phone: data.phone });
+      if (existingRestaurant) {
+        throw new BadRequestException('Bu telefon numarası ile kayıtlı bir restoran zaten var.');
+      }
+    }
+    return super.create(data, session);
   }
 
   async getPublicRestaurantDetails(
