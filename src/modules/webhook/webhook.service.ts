@@ -13,19 +13,13 @@ export class WebhookService {
 
     async handleRevenueCatWebhook(payload: RevenueCatWebhookDto) {
         const { event } = payload;
-        this.logger.log(`Received RevenueCat webhook event: ${event.type} for user: ${event.app_user_id}`);
+        const userId = event.app_user_id;
+        this.logger.log(`Received RevenueCat webhook event: ${event.type} for user: ${userId}`);
 
-        const possibleUserIds = (event.aliases || [])
-            .filter((id) => id && isValidObjectId(id));
-
-        let user = null;
-        for (const userId of possibleUserIds) {
-            user = await this.userModel.findById(userId);
-            if (user) break;
-        }
+        const user = await this.userModel.findById(userId);
 
         if (!user) {
-            this.logger.error(`User not found for identifiers: ${JSON.stringify(possibleUserIds)}`);
+            this.logger.error(`User not found for identifiers: ${JSON.stringify(userId)}`);
             throw new NotFoundException(`User not found`);
         }
 
