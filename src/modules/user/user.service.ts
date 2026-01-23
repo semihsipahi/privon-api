@@ -80,6 +80,15 @@ export class UserService extends ResourceService<
       notification: user.notification,
     };
 
+    if (user.subscriptionExpiresAt && new Date() > new Date(user.subscriptionExpiresAt)) {
+      const shouldDowngrade = [Role.TrialUser, Role.PremiumUser].includes(user.role as Role);
+
+      if (shouldDowngrade) {
+        await this.userModel.findByIdAndUpdate(user._id, { role: Role.User });
+        response.role = Role.User;
+      }
+    }
+
     // Restoran sahibi ise restoran bilgisini ekle
     if (user.role === Role.RestaurantOwner) {
       const restaurant = await this.restaurantModel

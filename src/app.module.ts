@@ -19,6 +19,7 @@ import { ReservationModule } from './modules/reservation/reservation.module';
 import { ReviewModule } from './modules/review/review.module';
 import { CategoryModule } from './modules/category/category.module';
 import { SupportRequestModule } from './modules/support-request/support-request.module';
+import { WebhookModule } from './modules/webhook/webhook.module';
 
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -60,6 +61,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     ReviewModule,
     CategoryModule,
     SupportRequestModule,
+    WebhookModule,
   ],
   controllers: [AppController],
   providers: [

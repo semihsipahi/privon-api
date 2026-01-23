@@ -8,6 +8,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Reservation } from '../../models/reservation.schema';
 import { Slot } from '../../models/slot.schema';
+import { User } from '../../models/user.schema';
 import { ResourceService } from 'src/services/resource.service';
 import { CreateReservationDto } from 'src/dtos/create-reservation.dto';
 import { UpdateReservationStatusDto } from 'src/dtos/update-reservation-status.dto';
@@ -15,6 +16,7 @@ import { BulkCancelReservationDto } from 'src/dtos/bulk-cancel-reservation.dto';
 import { AuthUser } from 'src/common/interfaces/auth-user.interface';
 import { Role } from 'src/common/enums/role.enum';
 import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class ReservationService extends ResourceService<
@@ -27,6 +29,9 @@ export class ReservationService extends ResourceService<
         private reservationModel: Model<Reservation>,
         @InjectModel(Slot.name)
         private slotModel: Model<Slot>,
+        @InjectModel(User.name)
+        private userModel: Model<User>,
+        private mailService: MailService,
     ) {
         super(reservationModel);
     }
@@ -35,6 +40,31 @@ export class ReservationService extends ResourceService<
         createDto: CreateReservationDto,
         user: AuthUser,
     ): Promise<Reservation> {
+        const fullUser = await this.userModel.findById(user.userId);
+
+        if (fullUser?.reservationBanExpiresAt && fullUser.reservationBanExpiresAt > new Date()) {
+            throw new ForbiddenException(
+                'No-show (Gelmeme) cezası nedeniyle rezervasyon yapmanız 7 gün süreyle kısıtlanmıştır.',
+            );
+        }
+
+        if (user.role === Role.User) {
+            throw new ForbiddenException('Rezervasyon yapabilmek için ödeme yapmanız gerekmektedir.');
+        }
+
+        if (user.role === Role.TrialUser || user.role === Role.PremiumUser) {
+            if (fullUser?.subscriptionExpiresAt) {
+                const reservationDate = new Date(createDto.date);
+                const expiresAt = new Date(fullUser.subscriptionExpiresAt);
+
+                if (reservationDate > expiresAt) {
+                    throw new ForbiddenException(
+                        'Seçtiğiniz tarih abonelik sürenizin dışındadır. Lütfen aboneliğinizi yenileyin.',
+                    );
+                }
+            }
+        }
+
         const slot = await this.slotModel.findById(createDto.slot);
         if (!slot) {
             throw new NotFoundException('Slot bulunamadı');
@@ -157,6 +187,39 @@ export class ReservationService extends ResourceService<
             reservation.savedAmount = discountValue;
         }
 
+        // NO_SHOW Logic
+        if (updateDto.status === ReservationStatus.NO_SHOW && reservation.status !== ReservationStatus.NO_SHOW) {
+            const customer = await this.userModel.findById(reservation.customer);
+            if (customer) {
+                customer.noShowDates.push(new Date());
+
+                const noShowCount = customer.noShowDates.length;
+
+                if (noShowCount === 1) {
+                    await this.mailService.sendEmail({
+                        to: customer.email,
+                        subject: 'Rezervasyon Uyarısı',
+                        html: `
+                            <h3>Sayın Müşterimiz,</h3>
+                            <p>Rezervasyonunuza gelmediğiniz tespit edilmiştir.</p>
+                            <p>Tekrarı durumunda 7 gün süreyle rezervasyon yapmanız kısıtlanacaktır.</p>
+                            <p>Anlayışınız için teşekkür ederiz.</p>
+                        `,
+                        account: 'info',
+                    });
+                    console.log(`User ${customer._id} warned for first no-show via email`);
+                } else if (noShowCount >= 2) {
+                    // 7 Gün Ban
+                    const banDate = new Date();
+                    banDate.setDate(banDate.getDate() + 7);
+                    customer.reservationBanExpiresAt = banDate;
+                    console.log(`User ${customer._id} banned until ${banDate}`);
+                }
+
+                await customer.save();
+            }
+        }
+
         reservation.status = updateDto.status;
         return await reservation.save();
     }
@@ -176,6 +239,25 @@ export class ReservationService extends ResourceService<
             throw new BadRequestException(
                 'Sadece beklemedeki rezervasyonlar iptal edilebilir',
             );
+        }
+
+        // 4 Saat Kuralı
+        const slot = await this.slotModel.findById(reservation.slot);
+        if (slot) {
+            const reservationIsoString = `${reservation.date}T${slot.time}:00+03:00`;
+            const reservationDateTime = new Date(reservationIsoString);
+
+            const now = new Date();
+
+            const timeDiff = reservationDateTime.getTime() - now.getTime();
+
+            const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+            if (hoursDiff < 4) {
+                throw new BadRequestException(
+                    'Rezervasyon saatine 4 saatten az kaldığı için iptal işlemi yapılamaz.',
+                );
+            }
         }
 
         reservation.status = ReservationStatus.CANCELLED;

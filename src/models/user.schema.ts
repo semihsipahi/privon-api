@@ -31,6 +31,15 @@ export class User extends Document {
   @Prop({ required: true, enum: Role })
   role: Role;
 
+  @Prop()
+  subscriptionExpiresAt: Date;
+
+  @Prop({ type: [Date], default: [] })
+  noShowDates: Date[];
+
+  @Prop()
+  reservationBanExpiresAt: Date;
+
   @Prop({ default: '' })
   imageUrl: string;
 

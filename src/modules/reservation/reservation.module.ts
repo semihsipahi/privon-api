@@ -2,15 +2,19 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Reservation, ReservationSchema } from '../../models/reservation.schema';
 import { Slot, SlotSchema } from '../../models/slot.schema';
+import { User, UserSchema } from '../../models/user.schema';
 import { ReservationController } from './reservation.controller';
 import { ReservationService } from './reservation.service';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
     imports: [
         MongooseModule.forFeature([
             { name: Reservation.name, schema: ReservationSchema },
             { name: Slot.name, schema: SlotSchema },
+            { name: User.name, schema: UserSchema },
         ]),
+        MailModule,
     ],
     controllers: [ReservationController],
     providers: [ReservationService],

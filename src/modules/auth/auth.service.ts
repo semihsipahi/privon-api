@@ -108,7 +108,8 @@ export class AuthService {
       user = new this.userModel({
         phoneNumber,
         isPhoneVerified: false,
-        role: Role.User,
+        role: Role.TrialUser,
+        subscriptionExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 gün
       });
     }
 
