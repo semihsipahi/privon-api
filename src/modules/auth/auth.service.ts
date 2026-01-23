@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import { UserService } from 'src/modules/user/user.service';
@@ -24,6 +24,7 @@ import { Role } from 'src/common/enums/role.enum';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
@@ -42,13 +43,41 @@ export class AuthService {
   }
 
   private generateVerificationCode(): string {
-    // return Math.floor(100000 + Math.random() * 900000).toString();
-    return '123456';
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   private async sendSMS(phoneNumber: string, code: string): Promise<void> {
-    // TODO: Gerçek SMS servisi entegrasyonu (Twilio, Netgsm, vb.)
-    console.log(`SMS gönderildi: ${phoneNumber} - Kod: ${code}`);
+    const url = 'https://api.vatansms.net/api/v1/otp';
+    const body = {
+      api_id: process.env.SMSUSER,
+      api_key: process.env.SMSPASSWORD,
+      sender: process.env.SMS_HEADER || 'YemApp',
+      message_type: 'turkce',
+      message: `Dogrulama Kodunuz: ${code}`,
+      phones: [phoneNumber],
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || (data.status && data.status !== 'success')) { // Adjust based on actual API response structure if needed
+        this.logger.error(`VatanSMS Error: ${JSON.stringify(data)}`);
+        // Don't throw error to block registration flow, but log it.
+        // Or throw if strictly required.
+      } else {
+        this.logger.log(`SMS sent successfully to ${phoneNumber}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send SMS: ${error}`);
+    }
   }
 
   private async generateToken(user: User): Promise<string> {
