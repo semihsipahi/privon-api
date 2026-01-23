@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { WebhookService } from './webhook.service';
 import { RevenueCatWebhookDto } from './dtos/revenue-cat-webhook.dto';
 import { WebhookAuthGuard } from './guards/webhook-auth.guard';
@@ -11,6 +11,7 @@ export class WebhookController {
 
     @Public()
     @Post('revenuecat')
+    @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }))
     async handleRevenueCatWebhook(@Body() payload: RevenueCatWebhookDto) {
         return this.webhookService.handleRevenueCatWebhook(payload);
     }
