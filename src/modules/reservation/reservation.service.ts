@@ -87,6 +87,25 @@ export class ReservationService extends ResourceService<
             throw new BadRequestException('Bu slot için kapasite doldu');
         }
 
+        // Günlük rezervasyon sınırı kontrolü (Kullanıcı aynı gün sadece 1 rezervasyon yapabilir)
+        const userReservationsOnDate = await this.reservationModel.countDocuments({
+            customer: new Types.ObjectId(user.userId),
+            date: createDto.date,
+            status: {
+                $in: [
+                    ReservationStatus.PENDING,
+                    ReservationStatus.CONFIRMED,
+                    ReservationStatus.SEATED,
+                ],
+            },
+        });
+
+        if (userReservationsOnDate > 0) {
+            throw new BadRequestException(
+                'Aynı gün için zaten aktif bir rezervasyonunuz bulunmaktadır.',
+            );
+        }
+
         // Kişi sayısı kontrolü
         if (
             createDto.personCount < slot.minPersons ||
