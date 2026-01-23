@@ -36,6 +36,11 @@ export class AuthService {
 
   async validateUser(phoneNumber: string, password: string): Promise<User> {
     const user = await this.userService.findByPhoneNumber(phoneNumber);
+
+    if (!user) {
+      throw new CustomException('Kullanıcı bulunamadı.', 400);
+    }
+
     if (user && (await bcrypt.compare(password, user.password))) {
       return user;
     }
