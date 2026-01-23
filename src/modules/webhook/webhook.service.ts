@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, isValidObjectId } from 'mongoose';
 import { User } from '../../models/user.schema';
 import { RevenueCatWebhookDto } from './dtos/revenue-cat-webhook.dto';
 import { Role } from 'src/common/enums/role.enum';
@@ -15,14 +15,17 @@ export class WebhookService {
         const { event } = payload;
         this.logger.log(`Received RevenueCat webhook event: ${event.type} for user: ${event.app_user_id}`);
 
-        let user = await this.userModel.findById(event.app_user_id);
+        const possibleUserIds = (event.aliases || [])
+            .filter((id) => id && isValidObjectId(id));
 
-        if (!user) {
-            user = await this.userModel.findById(event.original_app_user_id).catch(() => null);
+        let user = null;
+        for (const userId of possibleUserIds) {
+            user = await this.userModel.findById(userId);
+            if (user) break;
         }
 
         if (!user) {
-            this.logger.error(`User not found for app_user_id: ${event.app_user_id}`);
+            this.logger.error(`User not found for identifiers: ${JSON.stringify(possibleUserIds)}`);
             throw new NotFoundException(`User not found`);
         }
 

@@ -8,6 +8,7 @@ export class RevenueCatEvent {
     type: string;
     app_user_id: string;
     original_app_user_id: string;
+    aliases?: string[];
     product_id: string;
     expiration_at_ms: number;
     environment: string;
