@@ -148,6 +148,7 @@ export class UserService extends ResourceService<
       imageUrl?: string;
       email?: string;
       phoneNumber?: string;
+      notification?: any;
     },
   ) {
     const updateData: any = {};
@@ -169,6 +170,10 @@ export class UserService extends ResourceService<
       updateData.phoneNumber = data.phoneNumber;
     }
 
+    if (data.notification) {
+      updateData.notification = data.notification;
+    }
+
     const user = await this.userModel
       .findByIdAndUpdate(userId, updateData, { new: true })
       .select('-password -verificationCode -codeExpiresAt')
@@ -182,6 +187,7 @@ export class UserService extends ResourceService<
       role: user.role,
       imageUrl: user.imageUrl,
       isPhoneVerified: user.isPhoneVerified,
+      notification: user.notification,
     };
   }
 
