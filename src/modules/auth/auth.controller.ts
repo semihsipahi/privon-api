@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Param, Post, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   ChangePasswordDto,
@@ -10,18 +10,23 @@ import {
   SetPasswordDto,
   ForgotPasswordDto,
   VerifyResetCodeDto,
+  ChangeUserStatusDto,
 } from 'src/dtos';
-import { ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorator';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { Role } from 'src/common/enums/role.enum';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) { }
 
   @Public()
   @Post('register')
-  register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  register(@Body() registerDto: RegisterDto, @Req() req: any) {
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    return this.authService.register(registerDto, ipAddress);
   }
 
   @ApiBearerAuth()
@@ -76,5 +81,21 @@ export class AuthController {
     @Req() req: any,
   ) {
     return this.authService.changePassword(req.user.userId, changePasswordDto);
+  }
+
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @Post('admin/:id/resend-verification')
+  @ApiOperation({ summary: 'Kullanıcıya doğrulama SMS\'ini tekrar gönder - Admin' })
+  async adminResendVerification(@Param('id') id: string) {
+    return await this.authService.adminResendVerificationCode(id);
+  }
+
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @Post('admin/:id/send-password-reset')
+  @ApiOperation({ summary: 'Kullanıcıya şifre sıfırlama bağlantısı gönder - Admin' })
+  async adminSendPasswordReset(@Param('id') id: string) {
+    return await this.authService.adminSendPasswordResetLink(id);
   }
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
@@ -12,7 +12,7 @@ import { RestaurantModule } from '../restaurant/restaurant.module';
 
 @Module({
   imports: [
-    UserModule,
+    forwardRef(() => UserModule),
     RestaurantModule,
     MailModule,
     JwtModule.registerAsync(jwtConfig.asProvider()),
@@ -20,5 +20,6 @@ import { RestaurantModule } from '../restaurant/restaurant.module';
   ],
   providers: [AuthService, JwtStrategy, TemplateService],
   controllers: [AuthController],
+  exports: [AuthService],
 })
 export class AuthModule { }

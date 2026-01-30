@@ -21,6 +21,7 @@ import {
 } from 'src/dtos';
 import { TemplateService } from 'src/services/template.service';
 import { Role } from 'src/common/enums/role.enum';
+import { UserStatus } from 'src/common/enums/user-status.enum';
 
 @Injectable()
 export class AuthService {
@@ -129,6 +130,7 @@ export class AuthService {
 
   async register(
     registerDto: RegisterDto,
+    ipAddress?: string,
   ): Promise<{ token: string; message: string; isPhoneVerified: boolean }> {
     const { phoneNumber } = registerDto;
 
@@ -144,6 +146,15 @@ export class AuthService {
         isPhoneVerified: false,
         role: Role.TrialUser,
         subscriptionExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 gün
+        ipAddress,
+        transactions: [
+          {
+            type: 'registration',
+            description: 'Kullanıcı kaydı oluşturuldu - Deneme Süresi Başladı',
+            createdAt: new Date(),
+            ip: ipAddress,
+          },
+        ],
       });
     }
 
@@ -248,8 +259,8 @@ export class AuthService {
       );
     }
 
-    if (!user.isActive) {
-      throw new UnauthorizedException('Hesabınız pasife alınmıştır.');
+    if (user.status !== UserStatus.Active) {
+      throw new UnauthorizedException('Hesabınız aktif değil (Yasaklı veya Pasif).');
     }
 
     const accessToken = await this.generateToken(user);
@@ -335,18 +346,29 @@ export class AuthService {
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
     const { resetToken, newPassword } = resetPasswordDto;
 
-    let payload: any;
+    let userId: string;
+
     try {
-      payload = this.jwtService.verify(resetToken);
+      // Önce JWT olarak dene (SMS flow)
+      const payload = this.jwtService.verify(resetToken);
+      if (payload.purpose !== 'password_reset') {
+        throw new Error('Invalid purpose');
+      }
+      userId = payload.sub;
     } catch (error) {
-      throw new CustomException('Geçersiz veya süresi dolmuş token.', 400);
+      // JWT değilse veya geçersizse, veritabanında ara (Admin link flow)
+      const userWithToken = await this.userModel.findOne({
+        verificationCode: resetToken,
+        codeExpiresAt: { $gt: new Date() },
+      });
+
+      if (!userWithToken) {
+        throw new CustomException('Geçersiz veya süresi dolmuş token.', 400);
+      }
+      userId = userWithToken._id.toString();
     }
 
-    if (payload.purpose !== 'password_reset') {
-      throw new CustomException('Geçersiz token tipi.', 400);
-    }
-
-    const user = await this.userModel.findById(payload.sub);
+    const user = await this.userModel.findById(userId);
     if (!user) {
       throw new CustomException('Kullanıcı bulunamadı.', 400);
     }
@@ -378,5 +400,51 @@ export class AuthService {
     await user.save();
 
     return { message: 'Şifre başarıyla değiştirildi.' };
+  }
+
+  async adminResendVerificationCode(userId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new CustomException('Kullanıcı bulunamadı', 400);
+
+    const verificationCode = this.generateVerificationCode();
+    const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    user.verificationCode = verificationCode;
+    user.codeExpiresAt = codeExpiresAt;
+    await user.save();
+
+    await this.sendSMS(user.phoneNumber, verificationCode);
+    return { message: 'Doğrulama kodu SMS ile gönderildi.' };
+  }
+
+  async adminSendPasswordResetLink(userId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new CustomException('Kullanıcı bulunamadı', 400);
+
+    const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+    user.verificationCode = resetToken;
+    user.codeExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 saat
+    await user.save();
+
+    const resetLink = `https://www.yerinde.com/reset-password?token=${resetToken}&phone=${user.phoneNumber}`;
+
+    await this.mailService.sendEmail({
+      to: user.email,
+      subject: 'Şifre Sıfırlama Bağlantısı',
+      html: `
+            <h3>Şifre Sıfırlama</h3>
+            <p>Şifrenizi sıfırlamak için aşağıdaki bağlantıya tıklayın:</p>
+            <p><a href="${resetLink}">${resetLink}</a></p>
+            <p>Bu bağlantı 1 saat geçerlidir.</p>
+        `,
+      account: 'info',
+    });
+
+    return { message: 'Şifre sıfırlama bağlantısı e-posta ile gönderildi.' };
+  }
+
+  async updateUserStatus(userId: string, status: UserStatus) {
+    return this.userModel.findByIdAndUpdate(userId, { status }, { new: true });
   }
 }

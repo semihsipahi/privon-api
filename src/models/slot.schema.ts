@@ -25,8 +25,11 @@ export class Slot extends Document {
     @Prop()
     discount: number;
 
-    @Prop({ type: [Number], required: true })
+    @Prop({ type: [Number], default: [] })
     days: number[];
+
+    @Prop({ type: Date })
+    specificDate: Date;
 }
 
 export const SlotSchema = SchemaFactory.createForClass(Slot);

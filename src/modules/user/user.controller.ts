@@ -18,13 +18,15 @@ import {
   ApiTags,
   ApiQuery,
 } from '@nestjs/swagger';
-import { CreateUserDto, UpdateProfileDto } from 'src/dtos';
+import { CreateUserDto, UpdateProfileDto, UpdateUserDto, ChangeUserStatusDto } from 'src/dtos';
 import { CustomException } from 'src/common/exceptions/custom.exception';
 
 @ApiTags('User')
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(
+    private readonly userService: UserService,
+  ) { }
 
   /**
    * Get current user info
@@ -127,7 +129,7 @@ export class UserController {
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)
   @ApiOperation({ summary: 'Kullanıcı güncelle' })
-  async update(@Param('id') id: string, @Body() updateUserDto: any) {
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return await this.userService.update(id, updateUserDto);
   }
 

@@ -3,6 +3,7 @@ import { IsEmail, IsEnum, IsMongoId, IsNotEmpty, IsOptional, IsString, ValidateN
 import { Type } from 'class-transformer';
 import { Role } from 'src/common/enums/role.enum';
 import { NotificationSettingsDto } from './notification-settings.dto';
+import { UserStatus } from 'src/common/enums/user-status.enum';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -38,6 +39,26 @@ export class CreateUserDto {
   })
   @IsEnum(Role, { message: 'Rol, yalnızca Role.SuperAdmin veya Role.User olmalıdır.' })
   role: Role;
+
+  @ApiProperty({
+    description: 'Kullanıcı durumu',
+    enum: UserStatus,
+    example: UserStatus.Active,
+    required: false,
+    default: UserStatus.Active,
+  })
+  @IsEnum(UserStatus, { message: 'Geçersiz kullanıcı durumu.' })
+  @IsOptional()
+  status?: UserStatus;
+
+  @ApiProperty({
+    description: 'IP Adresi',
+    example: '127.0.0.1',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  ipAddress?: string;
 
   @ApiProperty({
     description: 'Kullanıcının giriş şifresi',

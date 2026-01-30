@@ -33,7 +33,30 @@ export class SlotService extends ResourceService<Slot, CreateSlotDto, UpdateSlot
         const query: any = { restaurant: new Types.ObjectId(restaurantId) };
 
         if (date) {
-            query.days = new Date(date).getDay();
+            const dateObj = new Date(date);
+            const startOfDay = new Date(date);
+            startOfDay.setUTCHours(0, 0, 0, 0);
+            const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+            const dayOfWeek = dateObj.getDay();
+
+            query.$or = [
+                // Belirli tarihe özgü slotlar
+                {
+                    specificDate: {
+                        $gte: startOfDay,
+                        $lt: endOfDay,
+                    },
+                },
+                // Haftalık tekrarlanan slotlar (specificDate yok veya null)
+                {
+                    specificDate: { $exists: false },
+                    days: dayOfWeek,
+                },
+                {
+                    specificDate: null,
+                    days: dayOfWeek,
+                },
+            ];
         }
 
         if (personCount) {

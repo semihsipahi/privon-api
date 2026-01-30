@@ -1,13 +1,14 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
 import { User } from '../../models/user.schema';
 import { Restaurant } from '../../models/restaurant.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from 'src/dtos';
+import { CreateUserDto, UpdateUserDto } from 'src/dtos';
 import { ResourceService } from 'src/services/resource.service';
 import { maskName } from 'src/helpers/mask-name.util';
 import { Role } from 'src/common/enums/role.enum';
+import { UserStatus } from 'src/common/enums/user-status.enum';
 import { MailService } from '../mail/mail.service';
 
 function generateRandomPassword(length: number = 12): string {
@@ -32,7 +33,7 @@ export interface PrepareRestaurantOwnerResult {
 export class UserService extends ResourceService<
   User,
   CreateUserDto,
-  CreateUserDto
+  UpdateUserDto
 > {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
@@ -78,6 +79,9 @@ export class UserService extends ResourceService<
       imageUrl: user.imageUrl,
       isPhoneVerified: user.isPhoneVerified,
       notification: user.notification,
+      status: user.status,
+      ipAddress: user.ipAddress,
+      transactions: user.transactions,
     };
 
     if (user.subscriptionExpiresAt && new Date() > new Date(user.subscriptionExpiresAt)) {
@@ -85,6 +89,13 @@ export class UserService extends ResourceService<
 
       if (shouldDowngrade) {
         await this.userModel.findByIdAndUpdate(user._id, { role: Role.User });
+
+        await this.addTransaction(user._id.toString(), {
+          type: 'subscription_expired',
+          description: 'Abonelik süresi doldu - Standart Kullanıcıya düşürüldü',
+          expired_at: user.subscriptionExpiresAt,
+        });
+
         response.role = Role.User;
       }
     }
@@ -276,6 +287,21 @@ export class UserService extends ResourceService<
     } catch (error) {
       console.error('Hoşgeldin emaili gönderilemedi:', error.message);
     }
+  }
+
+  async addTransaction(userId: string, transaction: Record<string, any>) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        $push: {
+          transactions: {
+            ...transaction,
+            createdAt: new Date(),
+          },
+        },
+      },
+      { new: true },
+    );
   }
 
   private async sendRoleUpdateEmail(email: string, fullName: string): Promise<void> {

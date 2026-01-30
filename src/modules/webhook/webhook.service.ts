@@ -4,12 +4,13 @@ import { Model, isValidObjectId } from 'mongoose';
 import { User } from '../../models/user.schema';
 import { RevenueCatWebhookDto } from './dtos/revenue-cat-webhook.dto';
 import { Role } from 'src/common/enums/role.enum';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class WebhookService {
     private readonly logger = new Logger(WebhookService.name);
 
-    constructor(@InjectModel(User.name) private userModel: Model<User>) { }
+    constructor(@InjectModel(User.name) private userModel: Model<User>, private userService: UserService) { }
 
     async handleRevenueCatWebhook(payload: RevenueCatWebhookDto) {
         const { event } = payload;
@@ -38,6 +39,17 @@ export class WebhookService {
             await this.userModel.findByIdAndUpdate(user._id, updateData);
 
             this.logger.log(`Updated user ${user._id} subscription. Expires at: ${updateData.subscriptionExpiresAt}`);
+
+            // Transaction logla
+            await this.userService.addTransaction(user._id.toString(), {
+                type: 'subscription_renewal',
+                description: 'Abonelik yenilendi/satın alındı',
+                amount: event.price_in_purchased_currency,
+                currency: event.currency,
+                event_id: event.id,
+                period_type: event.period_type,
+                expiration_at: updateData.subscriptionExpiresAt,
+            });
 
             return { success: true };
         }

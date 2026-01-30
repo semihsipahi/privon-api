@@ -137,6 +137,11 @@ export class RestaurantService extends ResourceService<
     const dateObj = new Date(effectiveDate);
     const dayOfWeek = dateObj.getDay();
 
+    // specificDate karşılaştırması için tarih aralığı
+    const startOfDay = new Date(effectiveDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
     const hasUserLocation =
       userLat !== undefined &&
       userLon !== undefined &&
@@ -213,12 +218,34 @@ export class RestaurantService extends ResourceService<
       },
     });
 
-    // Slot'ları o güne göre filtrele
+    // Slot'ları o güne göre filtrele (specificDate veya days ile eşleşen)
     const slotsProjection = {
       $filter: {
         input: '$allSlots',
         as: 'slot',
-        cond: { $in: [dayOfWeek, '$$slot.days'] },
+        cond: {
+          $or: [
+            // specificDate ile eşleşen slotlar
+            {
+              $and: [
+                { $gte: ['$$slot.specificDate', startOfDay] },
+                { $lt: ['$$slot.specificDate', endOfDay] },
+              ],
+            },
+            // specificDate olmayan ve days ile eşleşen slotlar
+            {
+              $and: [
+                {
+                  $or: [
+                    { $eq: ['$$slot.specificDate', null] },
+                    { $eq: [{ $type: '$$slot.specificDate' }, 'missing'] },
+                  ],
+                },
+                { $in: [dayOfWeek, '$$slot.days'] },
+              ],
+            },
+          ],
+        },
       },
     };
 

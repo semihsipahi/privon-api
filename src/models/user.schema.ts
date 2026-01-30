@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 import { Role } from 'src/common/enums/role.enum';
+import { UserStatus } from 'src/common/enums/user-status.enum';
 
 @Schema({ timestamps: true })
 export class User extends Document {
@@ -45,6 +46,15 @@ export class User extends Document {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({ required: true, enum: UserStatus, default: UserStatus.Active })
+  status: UserStatus;
+
+  @Prop()
+  ipAddress: string;
+
+  @Prop({ type: [{ type: Object }], default: [] })
+  transactions: Record<string, any>[];
 
   @Prop({
     type: {
