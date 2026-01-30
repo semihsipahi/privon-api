@@ -218,6 +218,30 @@ export class RestaurantService extends ResourceService<
       },
     });
 
+    // Rezervasyonları lookup et (aktif olanlar)
+    pipeline.push({
+      $lookup: {
+        from: 'reservations',
+        let: { restaurantId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ['$restaurant', '$$restaurantId'] },
+              date: effectiveDate,
+              status: { $in: ['pending', 'confirmed', 'seated', 'completed'] },
+            },
+          },
+          {
+            $group: {
+              _id: '$slot',
+              count: { $sum: 1 },
+            },
+          },
+        ],
+        as: 'reservationCounts',
+      },
+    });
+
     // Slot'ları o güne göre filtrele (specificDate veya days ile eşleşen)
     const slotsProjection = {
       $filter: {
@@ -260,19 +284,19 @@ export class RestaurantService extends ResourceService<
           $map: {
             input: '$categories',
             as: 'cat',
-            in: { _id: '$$cat._id', name: '$$cat.name' }
-          }
+            in: { _id: '$$cat._id', name: '$$cat.name' },
+          },
         },
         image: { $arrayElemAt: ['$images', 0] },
         location: 1,
         distance: hasUserLocation
           ? {
-            $cond: {
-              if: { $gt: ['$distance', 0] },
-              then: { $round: [{ $divide: ['$distance', 1000] }, 2] },
-              else: null,
-            },
-          }
+              $cond: {
+                if: { $gt: ['$distance', 0] },
+                then: { $round: [{ $divide: ['$distance', 1000] }, 2] },
+                else: null,
+              },
+            }
           : null,
         slots: {
           $map: {
@@ -285,6 +309,49 @@ export class RestaurantService extends ResourceService<
               minPersons: '$$s.minPersons',
               maxPersons: '$$s.maxPersons',
               tableQuota: '$$s.tableQuota',
+              reservedTables: {
+                $let: {
+                  vars: {
+                    matchedReservation: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: '$reservationCounts',
+                            as: 'rc',
+                            cond: { $eq: ['$$rc._id', '$$s._id'] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: { $ifNull: ['$$matchedReservation.count', 0] },
+                },
+              },
+              availableTables: {
+                $subtract: [
+                  '$$s.tableQuota',
+                  {
+                    $let: {
+                      vars: {
+                        matchedReservation: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: '$reservationCounts',
+                                as: 'rc',
+                                cond: { $eq: ['$$rc._id', '$$s._id'] },
+                              },
+                            },
+                            0,
+                          ],
+                        },
+                      },
+                      in: { $ifNull: ['$$matchedReservation.count', 0] },
+                    },
+                  },
+                ],
+              },
             },
           },
         },
