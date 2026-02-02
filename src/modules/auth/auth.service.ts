@@ -421,6 +421,8 @@ export class AuthService {
     const user = await this.userModel.findById(userId);
     if (!user) throw new CustomException('Kullanıcı bulunamadı', 400);
 
+    if (!user.email) throw new CustomException('Kullanıcı e-posta adresi yok', 400);
+
     const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
     user.verificationCode = resetToken;
