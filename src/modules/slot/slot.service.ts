@@ -41,7 +41,7 @@ export class SlotService extends ResourceService<Slot, CreateSlotDto, UpdateSlot
             const startOfDay = new Date(date);
             startOfDay.setUTCHours(0, 0, 0, 0);
             const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-            const dayOfWeek = dateObj.getDay();
+            const dayOfWeek = (dateObj.getDay() + 6) % 7; // 0=Monday, 6=Sunday
 
             query.$or = [
                 // Belirli tarihe özgü slotlar

@@ -133,9 +133,9 @@ export class RestaurantService extends ResourceService<
       effectiveDate = utcPlus3.toISOString().split('T')[0];
     }
 
-    // Haftanın gününü hesapla (0=Pazar, 6=Cumartesi)
+    // Haftanın gününü hesapla (0=Pazartesi, 6=Pazar)
     const dateObj = new Date(effectiveDate);
-    const dayOfWeek = dateObj.getDay();
+    const dayOfWeek = (dateObj.getDay() + 6) % 7; // 0=Monday, 6=Sunday
 
     // specificDate karşılaştırması için tarih aralığı
     const startOfDay = new Date(effectiveDate);
@@ -291,12 +291,12 @@ export class RestaurantService extends ResourceService<
         location: 1,
         distance: hasUserLocation
           ? {
-              $cond: {
-                if: { $gt: ['$distance', 0] },
-                then: { $round: [{ $divide: ['$distance', 1000] }, 2] },
-                else: null,
-              },
-            }
+            $cond: {
+              if: { $gt: ['$distance', 0] },
+              then: { $round: [{ $divide: ['$distance', 1000] }, 2] },
+              else: null,
+            },
+          }
           : null,
         slots: {
           $map: {

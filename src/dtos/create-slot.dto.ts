@@ -54,7 +54,7 @@ export class CreateSlotDto {
 
   @ApiPropertyOptional({
     description:
-      'Slot geçerli günler (0=Pazar, 6=Cumartesi). specificDate yoksa en az 1 gün gerekli.',
+      'Slot geçerli günler (0=Pazartesi, 6=Pazar). specificDate yoksa en az 1 gün gerekli.',
     example: [1, 2, 3, 4, 5],
     type: [Number],
   })

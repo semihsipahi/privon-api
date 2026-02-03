@@ -26,7 +26,7 @@ export class Slot extends Document {
     discount: number;
 
     @Prop({ type: [Number], default: [] })
-    days: number[];
+    days: number[]; // 0 = Pazartesi, 6 = Pazar
 
     @Prop({ type: Date })
     specificDate: Date;
