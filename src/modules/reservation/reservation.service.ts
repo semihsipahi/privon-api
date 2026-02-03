@@ -17,6 +17,7 @@ import { AuthUser } from 'src/common/interfaces/auth-user.interface';
 import { Role } from 'src/common/enums/role.enum';
 import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
 import { MailService } from '../mail/mail.service';
+import { CustomException } from 'src/common/exceptions/custom.exception';
 
 @Injectable()
 export class ReservationService extends ResourceService<
@@ -43,13 +44,14 @@ export class ReservationService extends ResourceService<
         const fullUser = await this.userModel.findById(user.userId);
 
         if (fullUser?.reservationBanExpiresAt && fullUser.reservationBanExpiresAt > new Date()) {
-            throw new ForbiddenException(
+            throw new CustomException(
                 'No-show (Gelmeme) cezası nedeniyle rezervasyon yapmanız 7 gün süreyle kısıtlanmıştır.',
+                403
             );
         }
 
         if (user.role === Role.User) {
-            throw new ForbiddenException('Rezervasyon yapabilmek için ödeme yapmanız gerekmektedir.');
+            throw new CustomException('Rezervasyon yapabilmek için ödeme yapmanız gerekmektedir.', 403);
         }
 
         if (user.role === Role.TrialUser || user.role === Role.PremiumUser) {
@@ -58,8 +60,9 @@ export class ReservationService extends ResourceService<
                 const expiresAt = new Date(fullUser.subscriptionExpiresAt);
 
                 if (reservationDate > expiresAt) {
-                    throw new ForbiddenException(
+                    throw new CustomException(
                         'Seçtiğiniz tarih abonelik sürenizin dışındadır. Lütfen aboneliğinizi yenileyin.',
+                        403
                     );
                 }
             }
@@ -67,7 +70,7 @@ export class ReservationService extends ResourceService<
 
         const slot = await this.slotModel.findById(createDto.slot);
         if (!slot) {
-            throw new NotFoundException('Slot bulunamadı');
+            throw new CustomException('Slot bulunamadı', 404);
         }
 
         // Kota kontrolü
@@ -84,7 +87,7 @@ export class ReservationService extends ResourceService<
         });
 
         if (activeReservationsCount >= slot.tableQuota) {
-            throw new BadRequestException('Bu slot için kapasite doldu');
+            throw new CustomException('Bu slot için kapasite doldu', 400);
         }
 
         // Günlük rezervasyon sınırı kontrolü (Kullanıcı aynı gün sadece 1 rezervasyon yapabilir)
@@ -101,8 +104,9 @@ export class ReservationService extends ResourceService<
         });
 
         if (userReservationsOnDate > 0) {
-            throw new BadRequestException(
+            throw new CustomException(
                 'Aynı gün için zaten aktif bir rezervasyonunuz bulunmaktadır.',
+                400
             );
         }
 
@@ -111,8 +115,9 @@ export class ReservationService extends ResourceService<
             createDto.personCount < slot.minPersons ||
             createDto.personCount > slot.maxPersons
         ) {
-            throw new BadRequestException(
+            throw new CustomException(
                 `Kişi sayısı ${slot.minPersons} ile ${slot.maxPersons} arasında olmalıdır`,
+                400
             );
         }
 
@@ -175,25 +180,26 @@ export class ReservationService extends ResourceService<
                 !user.restaurantId ||
                 user.restaurantId !== reservation.restaurant.toString()
             ) {
-                throw new ForbiddenException('Bu işlem için yetkiniz yok');
+                throw new CustomException('Bu işlem için yetkiniz yok', 403);
             }
         }
 
         // Completed logic
         if (updateDto.status === ReservationStatus.COMPLETED) {
             if (updateDto.totalAmount === undefined) {
-                throw new BadRequestException('Toplam tutar girilmelidir');
+                throw new CustomException('Toplam tutar girilmelidir', 400);
             }
 
             const slot = await this.slotModel.findById(reservation.slot);
-            if (!slot) throw new NotFoundException('Slot bulunamadı');
+            if (!slot) throw new CustomException('Slot bulunamadı', 404);
 
             const totalAmount = updateDto.totalAmount;
             const nonDiscounted = updateDto.nonDiscountedAmount || 0;
 
             if (nonDiscounted > totalAmount) {
-                throw new BadRequestException(
+                throw new CustomException(
                     'İndirime dahil olmayan tutar toplam tutardan büyük olamaz',
+                    400
                 );
             }
 
@@ -246,17 +252,19 @@ export class ReservationService extends ResourceService<
     async cancelReservation(id: string, user: AuthUser) {
         const reservation = await this.reservationModel.findById(id);
         if (!reservation) {
-            throw new NotFoundException('Rezervasyon bulunamadı');
+            throw new CustomException('Rezervasyon bulunamadı', 404);
         }
 
         if (reservation.customer.toString() !== user.userId) {
-            throw new ForbiddenException(
+            throw new CustomException(
                 'Sadece kendi rezervasyonunuzu iptal edebilirsiniz',
+                403
             );
         }
         if (reservation.status !== ReservationStatus.PENDING) {
-            throw new BadRequestException(
+            throw new CustomException(
                 'Sadece beklemedeki rezervasyonlar iptal edilebilir',
+                400
             );
         }
 
@@ -273,8 +281,9 @@ export class ReservationService extends ResourceService<
             const hoursDiff = timeDiff / (1000 * 60 * 60);
 
             if (hoursDiff < 4) {
-                throw new BadRequestException(
+                throw new CustomException(
                     'Rezervasyon saatine 4 saatten az kaldığı için iptal işlemi yapılamaz.',
+                    400
                 );
             }
         }
@@ -287,12 +296,13 @@ export class ReservationService extends ResourceService<
         // Yetki Kontrolü
         if (user.role === Role.RestaurantOwner) {
             if (user.restaurantId !== dto.restaurantId) {
-                throw new ForbiddenException(
+                throw new CustomException(
                     'Sadece kendi restoranınıza ait rezervasyonları iptal edebilirsiniz',
+                    403
                 );
             }
         } else if (user.role !== Role.SuperAdmin) {
-            throw new ForbiddenException('Bu işlem için yetkiniz yok');
+            throw new CustomException('Bu işlem için yetkiniz yok', 403);
         }
 
         const result = await this.reservationModel.updateMany(
