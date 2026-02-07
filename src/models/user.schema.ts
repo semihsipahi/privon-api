@@ -78,6 +78,15 @@ export class User extends Document {
     default: [],
   })
   favoriteRestaurants: MongooseSchema.Types.ObjectId[];
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'ReferralCode' })
+  registeredWithCode: MongooseSchema.Types.ObjectId;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
+  referredBy: MongooseSchema.Types.ObjectId;
+
+  @Prop({ default: 0 })
+  completedReservationCount: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

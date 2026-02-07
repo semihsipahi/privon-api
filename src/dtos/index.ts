@@ -27,3 +27,5 @@ export * from './update-profile.dto';
 export * from './bulk-cancel-reservation.dto';
 export * from './update-user.dto';
 export * from './change-user-status.dto';
+export * from './create-referral-code.dto';
+export * from './update-referral-code.dto';

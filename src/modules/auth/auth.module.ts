@@ -9,11 +9,13 @@ import jwtConfig from 'src/common/config/jwt.config';
 import { ConfigModule } from '@nestjs/config';
 import { JwtStrategy } from 'src/common/strategy/jwt.strategy';
 import { RestaurantModule } from '../restaurant/restaurant.module';
+import { ReferralCodeModule } from '../referral-code/referral-code.module';
 
 @Module({
   imports: [
     forwardRef(() => UserModule),
     RestaurantModule,
+    ReferralCodeModule,
     MailModule,
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),

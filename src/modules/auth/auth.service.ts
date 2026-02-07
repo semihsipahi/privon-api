@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 import { UserService } from 'src/modules/user/user.service';
+import { ReferralCodeService } from 'src/modules/referral-code/referral-code.service';
 import * as bcrypt from 'bcrypt';
 import { User } from 'src/models/user.schema';
 import { Restaurant } from 'src/models/restaurant.schema';
@@ -30,6 +32,8 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private readonly mailService: MailService,
+    private readonly configService: ConfigService,
+    private readonly referralCodeService: ReferralCodeService,
     private templateService: TemplateService,
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Restaurant.name) private readonly restaurantModel: Model<Restaurant>,
@@ -132,7 +136,11 @@ export class AuthService {
     registerDto: RegisterDto,
     ipAddress?: string,
   ): Promise<{ token: string; message: string; isPhoneVerified: boolean }> {
-    const { phoneNumber } = registerDto;
+    const { phoneNumber, referralCode } = registerDto;
+
+    // 1. Davet kodunu doğrula
+    const { referralCode: codeDoc, referrerUserId } =
+      await this.referralCodeService.validateCode(referralCode);
 
     let user = await this.userModel.findOne({ phoneNumber });
 
@@ -140,17 +148,26 @@ export class AuthService {
       throw new CustomException('Bu telefon numarası zaten kayıtlı.', 400);
     }
 
+    const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';
+
     if (!user) {
       user = new this.userModel({
         phoneNumber,
         isPhoneVerified: false,
         role: Role.TrialUser,
-        subscriptionExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 gün
+        subscriptionExpiresAt: isBetaMode
+          ? null
+          : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         ipAddress,
+        registeredWithCode: codeDoc._id,
+        referredBy: referrerUserId || undefined,
         transactions: [
           {
             type: 'registration',
-            description: 'Kullanıcı kaydı oluşturuldu - Deneme Süresi Başladı',
+            description: isBetaMode
+              ? 'Kullanıcı kaydı oluşturuldu - Beta Dönemi'
+              : 'Kullanıcı kaydı oluşturuldu - Deneme Süresi Başladı',
+            referralCode: referralCode,
             createdAt: new Date(),
             ip: ipAddress,
           },
@@ -166,6 +183,12 @@ export class AuthService {
       user.codeExpiresAt = codeExpiresAt;
 
       await user.save();
+
+      // Kullanıcı kaydedildikten sonra kodu kullanılmış olarak işaretle
+      await this.referralCodeService.markCodeUsed(
+        codeDoc._id.toString(),
+        user._id.toString(),
+      );
 
       await this.sendSMS(phoneNumber, verificationCode);
     }

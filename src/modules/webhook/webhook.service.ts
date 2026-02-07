@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
 import { Model, isValidObjectId } from 'mongoose';
 import { User } from '../../models/user.schema';
 import { RevenueCatWebhookDto } from './dtos/revenue-cat-webhook.dto';
@@ -10,9 +11,18 @@ import { UserService } from '../user/user.service';
 export class WebhookService {
     private readonly logger = new Logger(WebhookService.name);
 
-    constructor(@InjectModel(User.name) private userModel: Model<User>, private userService: UserService) { }
+    constructor(
+        @InjectModel(User.name) private userModel: Model<User>,
+        private userService: UserService,
+        private readonly configService: ConfigService,
+    ) { }
 
     async handleRevenueCatWebhook(payload: RevenueCatWebhookDto) {
+        const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';
+        if (isBetaMode) {
+            this.logger.log('Beta modu aktif - webhook işlenmedi');
+            return { message: 'Beta modu - webhook atlandı' };
+        }
         const { event } = payload;
         const userId = event.app_user_id;
         this.logger.log(`Received RevenueCat webhook event: ${event.type} for user: ${userId}`);

@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { User } from '../../models/user.schema';
 import { Restaurant } from '../../models/restaurant.schema';
 import { InjectModel } from '@nestjs/mongoose';
@@ -39,6 +40,7 @@ export class UserService extends ResourceService<
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Restaurant.name) private restaurantModel: Model<Restaurant>,
     private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) {
     super(userModel);
   }
@@ -64,6 +66,8 @@ export class UserService extends ResourceService<
     const user = await this.userModel
       .findById(userId)
       .select('-password -verificationCode -codeExpiresAt')
+      .populate('referredBy', 'fullName maskedName')
+      .populate('registeredWithCode', 'code type assignedTo')
       .lean();
 
     if (!user) {
@@ -82,9 +86,14 @@ export class UserService extends ResourceService<
       status: user.status,
       ipAddress: user.ipAddress,
       transactions: user.transactions,
+      completedReservationCount: user.completedReservationCount || 0,
+      registeredWithCode: user.registeredWithCode || null,
+      referredBy: user.referredBy || null,
     };
 
-    if (user.subscriptionExpiresAt && new Date() > new Date(user.subscriptionExpiresAt)) {
+    const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';
+
+    if (!isBetaMode && user.subscriptionExpiresAt && new Date() > new Date(user.subscriptionExpiresAt)) {
       const shouldDowngrade = [Role.TrialUser, Role.PremiumUser].includes(user.role as Role);
 
       if (shouldDowngrade) {

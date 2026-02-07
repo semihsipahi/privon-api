@@ -3,6 +3,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
 import { Reservation } from '../../models/reservation.schema';
 import { Slot } from '../../models/slot.schema';
@@ -31,6 +32,7 @@ export class ReservationService extends ResourceService<
         @InjectModel(User.name)
         private userModel: Model<User>,
         private mailService: MailService,
+        private readonly configService: ConfigService,
     ) {
         super(reservationModel);
     }
@@ -48,20 +50,24 @@ export class ReservationService extends ResourceService<
             );
         }
 
-        if (user.role === Role.User) {
-            throw new CustomException('Rezervasyon yapabilmek için ödeme yapmanız gerekmektedir.', 403);
-        }
+        const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';
 
-        if (user.role === Role.TrialUser || user.role === Role.PremiumUser) {
-            if (fullUser?.subscriptionExpiresAt) {
-                const reservationDate = new Date(createDto.date);
-                const expiresAt = new Date(fullUser.subscriptionExpiresAt);
+        if (!isBetaMode) {
+            if (user.role === Role.User) {
+                throw new CustomException('Rezervasyon yapabilmek için ödeme yapmanız gerekmektedir.', 403);
+            }
 
-                if (reservationDate > expiresAt) {
-                    throw new CustomException(
-                        'Seçtiğiniz tarih abonelik sürenizin dışındadır. Lütfen aboneliğinizi yenileyin.',
-                        403
-                    );
+            if (user.role === Role.TrialUser || user.role === Role.PremiumUser) {
+                if (fullUser?.subscriptionExpiresAt) {
+                    const reservationDate = new Date(createDto.date);
+                    const expiresAt = new Date(fullUser.subscriptionExpiresAt);
+
+                    if (reservationDate > expiresAt) {
+                        throw new CustomException(
+                            'Seçtiğiniz tarih abonelik sürenizin dışındadır. Lütfen aboneliğinizi yenileyin.',
+                            403
+                        );
+                    }
                 }
             }
         }
@@ -208,6 +214,12 @@ export class ReservationService extends ResourceService<
             reservation.nonDiscountedAmount = nonDiscounted;
             reservation.finalAmount = totalAmount - discountValue;
             reservation.savedAmount = discountValue;
+
+            // Tamamlanan rezervasyon sayacını artır (davet kodu hakkı için)
+            await this.userModel.findByIdAndUpdate(
+                reservation.customer,
+                { $inc: { completedReservationCount: 1 } },
+            );
         }
 
         // NO_SHOW Logic

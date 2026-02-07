@@ -14,4 +14,13 @@ export class RegisterDto {
       'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
   })
   phoneNumber: string;
+
+  @ApiProperty({
+    description: 'Davet kodu',
+    example: 'EMRE2024',
+    required: true,
+  })
+  @IsString({ message: 'Davet kodu bir metin olmalıdır.' })
+  @IsNotEmpty({ message: 'Davet kodu boş bırakılamaz.' })
+  referralCode: string;
 }

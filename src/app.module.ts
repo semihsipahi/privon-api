@@ -20,7 +20,7 @@ import { ReviewModule } from './modules/review/review.module';
 import { CategoryModule } from './modules/category/category.module';
 import { SupportRequestModule } from './modules/support-request/support-request.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
-
+import { ReferralCodeModule } from './modules/referral-code/referral-code.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -62,6 +62,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     CategoryModule,
     SupportRequestModule,
     WebhookModule,
+    ReferralCodeModule,
   ],
   controllers: [AppController],
   providers: [
