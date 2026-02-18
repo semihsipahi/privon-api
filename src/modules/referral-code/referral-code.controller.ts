@@ -47,21 +47,21 @@ export class ReferralCodeController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Kendi davet kodlarımı gör' })
   async getMyCodes(@Req() req: any) {
-    return await this.referralCodeService.getUserReferralCodes(req.user.sub);
+    return await this.referralCodeService.getUserReferralCodes(req.user.userId);
   }
 
   @Get('my-network')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Kendi davet ağacımı gör (tree yapısında)' })
   async getMyNetwork(@Req() req: any) {
-    return await this.referralCodeService.getMyReferralTree(req.user.sub);
+    return await this.referralCodeService.getMyReferralTree(req.user.userId);
   }
 
   @Post('generate')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yeni davet kodu oluştur' })
   async generateCode(@Req() req: any) {
-    return await this.referralCodeService.generateUserReferralCode(req.user.sub);
+    return await this.referralCodeService.generateUserReferralCode(req.user.userId);
   }
 
   // ============= ADMIN ONLY ENDPOINTS =============
@@ -113,7 +113,7 @@ export class ReferralCodeController {
   @Roles(Role.SuperAdmin)
   @ApiOperation({ summary: 'Kurumsal davet kodu oluştur' })
   async createCorporate(@Body() dto: CreateReferralCodeDto, @Req() req: any) {
-    return await this.referralCodeService.createCorporateCode(dto, req.user.sub);
+    return await this.referralCodeService.createCorporateCode(dto, req.user.userId);
   }
 
   @Put(':id')
