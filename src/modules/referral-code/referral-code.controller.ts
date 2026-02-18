@@ -87,7 +87,7 @@ export class ReferralCodeController {
     return await this.referralCodeService.list(
       query,
       null,
-      [{ path: 'createdBy', select: 'fullName phoneNumber' }],
+      [{ path: 'createdBy', select: 'fullName phoneNumber' }, { path: 'usedBy', select: 'fullName imageUrl' }],
       ['code', 'assignedTo'],
     );
   }
