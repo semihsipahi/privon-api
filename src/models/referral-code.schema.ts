@@ -14,8 +14,8 @@ export class ReferralCode extends Document {
   @Prop({ required: true, enum: ReferralCodeStatus, default: ReferralCodeStatus.Active })
   status: ReferralCodeStatus;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Restaurant' })
-  assignedTo: MongooseSchema.Types.ObjectId;
+  @Prop()
+  assignedTo: string;
 
   @Prop()
   description: string;

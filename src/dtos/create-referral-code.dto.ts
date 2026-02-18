@@ -2,9 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, IsNumber, Min, IsOptional } from 'class-validator';
 
 export class CreateReferralCodeDto {
-  @ApiProperty({ description: 'kurum id' })
+  @ApiProperty({ description: 'Kodun atandığı kişi/kurum adı', example: 'Emre' })
   @IsString()
-  @IsNotEmpty({ message: 'Kurum id boş olamaz.' })
+  @IsNotEmpty({ message: 'Atanan isim boş olamaz.' })
   assignedTo: string;
 
   @ApiProperty({ description: 'Açıklama/notlar', example: 'Gastronomi sayfası influencer', required: false })
