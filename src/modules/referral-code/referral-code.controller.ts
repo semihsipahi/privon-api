@@ -74,6 +74,7 @@ export class ReferralCodeController {
     return await this.referralCodeService.getUserReferralNetwork(userId);
   }
 
+
   @Get()
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)

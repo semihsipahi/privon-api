@@ -10,6 +10,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { UserService } from './user.service';
+import { ReferralCodeService } from '../referral-code/referral-code.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'src/common/enums/role.enum';
 import {
@@ -26,6 +27,7 @@ import { CustomException } from 'src/common/exceptions/custom.exception';
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly referralCodeService: ReferralCodeService,
   ) { }
 
   /**
@@ -91,6 +93,7 @@ export class UserController {
     return await this.userService.list(
       query,
       { password: 0 }, // Şifreyi response'a dahil etme
+      [{ path: 'referredBy', select: 'fullName maskedName' }], // referredBy bilgileri gelsin
     );
   }
 
@@ -103,7 +106,18 @@ export class UserController {
   @Roles(Role.SuperAdmin, Role.User)
   @ApiOperation({ summary: 'Tek bir kullanıcı getir' })
   async getOne(@Param('id') id: string) {
-    return await this.userService.findByID(id, { password: 0 });
+    const user = await this.userService.findByID(id, { password: 0 });
+    let networkTree = null;
+    try {
+      networkTree = await this.referralCodeService.getMyReferralTree(id);
+    } catch (error) {
+      // Return user without network tree if fetching tree fails
+    }
+
+    return {
+      ...(user as any)?.toObject ? (user as any).toObject() : user,
+      networkTree,
+    };
   }
 
   /**
