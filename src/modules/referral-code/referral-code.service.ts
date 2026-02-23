@@ -251,16 +251,10 @@ export class ReferralCodeService extends ResourceService<
   }
 
   private getMaxAllowedCodes(completedCount: number): number {
-    if (completedCount >= 10) return 3;
-    if (completedCount >= 3) return 2;
-    if (completedCount >= 1) return 1;
-    return 0;
+    return 1;
   }
 
   private getNextThreshold(completedCount: number): number | null {
-    if (completedCount < 1) return 1;
-    if (completedCount < 3) return 3;
-    if (completedCount < 10) return 10;
     return null;
   }
 

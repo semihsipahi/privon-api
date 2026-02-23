@@ -132,4 +132,10 @@ export class CreateRestaurantDto {
   @IsString({ each: true, message: 'Her bir video URL\'i metin olmalıdır' })
   @IsOptional()
   feedVideos?: string[];
+
+  @ApiPropertyOptional({ description: 'Ödüller listesi (isim veya URL dizisi)' })
+  @IsArray({ message: 'Ödüller bir liste olmalıdır' })
+  @IsString({ each: true, message: 'Her bir ödül metin olmalıdır' })
+  @IsOptional()
+  awards?: string[];
 }

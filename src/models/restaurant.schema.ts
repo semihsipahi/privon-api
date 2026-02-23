@@ -81,6 +81,9 @@ export class Restaurant extends Document {
 
   @Prop({ type: [WorkingHours], default: [] })
   workingHours: WorkingHours[];
+
+  @Prop({ type: [String], default: [] })
+  awards: string[];
 }
 
 export const RestaurantSchema = SchemaFactory.createForClass(Restaurant);
