@@ -280,6 +280,7 @@ export class RestaurantService extends ResourceService<
         rating: 1,
         priceLevel: 1,
         reviewCount: 1,
+        awards: 1,
         categories: {
           $map: {
             input: '$categories',
