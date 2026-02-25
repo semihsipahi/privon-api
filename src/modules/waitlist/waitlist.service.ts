@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ResourceService } from 'src/services/resource.service';
@@ -12,6 +12,8 @@ export class WaitlistService extends ResourceService<
     CreateWaitlistDto,
     Partial<CreateWaitlistDto>
 > {
+    private readonly logger = new Logger(WaitlistService.name);
+
     constructor(
         @InjectModel(Waitlist.name)
         private waitlistModel: Model<Waitlist>,
@@ -21,8 +23,17 @@ export class WaitlistService extends ResourceService<
     }
 
     async createWaitlist(dto: CreateWaitlistDto): Promise<Waitlist> {
-        // Kaydı oluştur
-        const waitlistEntry = await this.waitlistModel.create(dto);
+        this.logger.log(`Yeni waitlist başvurusu alınıyor: ${JSON.stringify(dto)}`);
+
+        let waitlistEntry: Waitlist;
+        try {
+            // Kaydı oluştur (super.create kullanarak ResourceService üzerinden geçiyoruz)
+            waitlistEntry = await super.create(dto);
+            this.logger.log(`Waitlist kaydı başarıyla oluşturuldu: ${waitlistEntry._id}`);
+        } catch (error) {
+            this.logger.error(`Waitlist kaydı oluşturulurken hata: ${error.message}`, error.stack);
+            throw error;
+        }
 
         // E-posta içeriğini hazırla
         const emailHtml = `
@@ -36,18 +47,17 @@ export class WaitlistService extends ResourceService<
         `;
 
         // Yöneticiye (info hesabına) e-posta gönder
-        // Alıcı olarak kendisini (info) kullanıyoruz
-        // Konfigrasyonda info hesabının varsayılan göndereni 'yazilim@wcanx.co' görünüyor.
         try {
             await this.mailService.sendEmail({
                 account: 'info',
-                to: 'yazilim@wcanx.co', // Kendisine gönderiyor
+                to: 'yazilim@wcanx.co',
                 subject: 'Yeni Waitlist Başvurusu',
                 html: emailHtml,
             });
+            this.logger.log('Waitlist bilgilendirme e-postası gönderildi.');
         } catch (error) {
-            console.error('Waitlist email gönderilemedi:', error);
-            // Email hatası kaydı engellememeli, o yüzden throw etmiyoruz
+            this.logger.error('Waitlist email gönderilemedi:', error);
+            // Email hatası kaydı engellememeli
         }
 
         return waitlistEntry;
