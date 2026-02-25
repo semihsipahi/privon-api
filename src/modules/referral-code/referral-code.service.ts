@@ -251,11 +251,11 @@ export class ReferralCodeService extends ResourceService<
   }
 
   private getMaxAllowedCodes(completedCount: number): number {
-    return 1;
+    return completedCount >= 1 ? 1 : 0;
   }
 
   private getNextThreshold(completedCount: number): number | null {
-    return null;
+    return completedCount < 1 ? 1 : null;
   }
 
   private async generateUniqueCode(): Promise<string> {
