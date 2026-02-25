@@ -21,4 +21,9 @@ export class CreateReferralCodeDto {
   @IsString()
   @IsOptional()
   code?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ description: 'Referral code type', example: 'corporate' })
+  type?: string;
 }
