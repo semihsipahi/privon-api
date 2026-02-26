@@ -29,3 +29,5 @@ export * from './update-user.dto';
 export * from './change-user-status.dto';
 export * from './create-referral-code.dto';
 export * from './update-referral-code.dto';
+export * from './create-section.dto';
+export * from './update-section.dto';

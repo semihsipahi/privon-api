@@ -22,6 +22,7 @@ import { SupportRequestModule } from './modules/support-request/support-request.
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { ReferralCodeModule } from './modules/referral-code/referral-code.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
+import { SectionModule } from './modules/section/section.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -65,6 +66,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     WebhookModule,
     ReferralCodeModule,
     WaitlistModule,
+    SectionModule,
   ],
   controllers: [AppController],
   providers: [
