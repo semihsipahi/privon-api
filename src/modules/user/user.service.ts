@@ -259,7 +259,8 @@ export class UserService extends ResourceService<
       phoneNumber: data.phoneNumber,
       role: Role.RestaurantOwner,
       password: hashedPassword,
-    });
+      isPhoneVerified: true,
+    } as any);
 
     await this.sendWelcomeEmail(data.email, data.fullName, temporaryPassword);
 
