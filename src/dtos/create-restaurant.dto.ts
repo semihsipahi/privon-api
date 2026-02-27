@@ -16,6 +16,16 @@ export class LocationDto {
   @IsOptional()
   address?: string;
 
+  @ApiPropertyOptional({ description: 'İl' })
+  @IsString({ message: 'İl metin formatında olmalıdır' })
+  @IsOptional()
+  city?: string;
+
+  @ApiPropertyOptional({ description: 'İlçe' })
+  @IsString({ message: 'İlçe metin formatında olmalıdır' })
+  @IsOptional()
+  district?: string;
+
   @ApiPropertyOptional({
     description: 'GeoJSON koordinatları [longitude, latitude]',
     example: [28.9784, 41.0082],

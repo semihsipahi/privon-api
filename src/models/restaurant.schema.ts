@@ -11,6 +11,12 @@ export class Location {
 
   @Prop()
   address: string;
+
+  @Prop()
+  city?: string; // il
+
+  @Prop()
+  district?: string; // ilçe
 }
 
 @Schema({ _id: false })
