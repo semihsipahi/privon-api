@@ -113,6 +113,25 @@ export class ReservationService extends ResourceService<
                 400
             );
         }
+        const userReservationsCount = await this.reservationModel.countDocuments({
+            customer: new Types.ObjectId(user.userId),
+            status: {
+                $in: [
+                    ReservationStatus.PENDING,
+                    ReservationStatus.CONFIRMED,
+                    ReservationStatus.SEATED,
+                ],
+            },
+        });
+
+
+        if (userReservationsCount >= 2) {
+            throw new CustomException(
+                'En fazla 2 aktif rezervasyon yapabilirsiniz.',
+                400
+            );
+        }
+
 
         // Kişi sayısı kontrolü
         if (
