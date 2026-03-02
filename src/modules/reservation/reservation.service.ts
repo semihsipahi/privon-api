@@ -77,6 +77,20 @@ export class ReservationService extends ResourceService<
             throw new CustomException('Slot bulunamadı', 404);
         }
 
+        const reservationIsoString = `${createDto.date}T${slot.time}:00+03:00`;
+        const reservationDateTime = new Date(reservationIsoString);
+
+        const now = new Date();
+        const timeDiffCreate = reservationDateTime.getTime() - now.getTime();
+        const hoursDiffCreate = timeDiffCreate / (1000 * 60 * 60);
+
+        if (hoursDiffCreate < 1) {
+            throw new CustomException(
+                'Rezervasyon saatine 1 saatten az kaldığı için rezervasyon yapılamaz.',
+                400
+            );
+        }
+
         // Kota kontrolü
         const activeReservationsCount = await this.reservationModel.countDocuments({
             slot: createDto.slot,
@@ -297,7 +311,7 @@ export class ReservationService extends ResourceService<
             );
         }
 
-        // 4 Saat Kuralı
+        // 12 Saat Kuralı ve 30 Dakika Grace Period
         const slot = await this.slotModel.findById(reservation.slot);
         if (slot) {
             const reservationIsoString = `${reservation.date}T${slot.time}:00+03:00`;
@@ -306,12 +320,22 @@ export class ReservationService extends ResourceService<
             const now = new Date();
 
             const timeDiff = reservationDateTime.getTime() - now.getTime();
-
             const hoursDiff = timeDiff / (1000 * 60 * 60);
 
-            if (hoursDiff < 4) {
+            const createdAt = (reservation as any).createdAt;
+            let isGracePeriodActive = false;
+
+            if (createdAt) {
+                const createdTimeDiff = now.getTime() - createdAt.getTime();
+                const minutesSinceCreation = createdTimeDiff / (1000 * 60);
+                if (minutesSinceCreation <= 30) {
+                    isGracePeriodActive = true;
+                }
+            }
+
+            if (hoursDiff < 12 && !isGracePeriodActive) {
                 throw new CustomException(
-                    'Rezervasyon saatine 4 saatten az kaldığı için iptal işlemi yapılamaz.',
+                    'Rezervasyon saatine 12 saatten az kaldığı için iptal işlemi yapılamaz.',
                     400
                 );
             }
