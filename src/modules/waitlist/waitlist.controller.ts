@@ -26,4 +26,12 @@ export class WaitlistController {
     async list(@Query() query: any) {
         return await this.waitlistService.list(query);
     }
+
+    @Post("mail-gonder")
+    @ApiBearerAuth()
+    @Roles(Role.SuperAdmin)
+    @ApiOperation({ summary: 'Waitlist başvurularına mail gönder (SuperAdmin)' })
+    async sendMail(@Body() dto: { email: string, code: string }) {
+        return await this.waitlistService.sendMail(dto);
+    }
 }
