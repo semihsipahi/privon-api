@@ -60,17 +60,15 @@ export class User extends Document {
     type: {
       email: { type: Boolean, default: true },
       sms: { type: Boolean, default: true },
-      campaign: { type: Boolean, default: true },
-      promotion: { type: Boolean, default: true },
+      app: { type: Boolean, default: true },
     },
-    default: { email: true, sms: true, campaign: true, promotion: true },
+    default: { email: true, sms: true, app: true },
     _id: false,
   })
   notification: {
     email: boolean;
     sms: boolean;
-    campaign: boolean;
-    promotion: boolean;
+    app: boolean;
   };
 
   @Prop({
