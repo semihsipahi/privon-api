@@ -21,20 +21,12 @@ export class NotificationSettingsDto {
     sms?: boolean;
 
     @ApiProperty({
-        description: 'Campaign notification preference',
+        description: 'app notification preference',
         example: true,
         required: false,
     })
     @IsOptional()
     @IsBoolean()
-    campaign?: boolean;
+    app?: boolean;
 
-    @ApiProperty({
-        description: 'Promotion notification preference',
-        example: true,
-        required: false,
-    })
-    @IsOptional()
-    @IsBoolean()
-    promotion?: boolean;
 }
