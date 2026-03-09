@@ -6,8 +6,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
 import { Reservation } from '../../models/reservation.schema';
+import { Restaurant } from '../../models/restaurant.schema';
 import { Slot } from '../../models/slot.schema';
 import { User } from '../../models/user.schema';
+import { DelayedNotificationJob, DelayedNotificationJobStatus, DelayedNotificationJobType } from '../../models/delayed-notification-job.schema';
 import { ResourceService } from 'src/services/resource.service';
 import { CreateReservationDto } from 'src/dtos/create-reservation.dto';
 import { UpdateReservationStatusDto } from 'src/dtos/update-reservation-status.dto';
@@ -17,6 +19,8 @@ import { Role } from 'src/common/enums/role.enum';
 import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
 import { MailService } from '../mail/mail.service';
 import { CustomException } from 'src/common/exceptions/custom.exception';
+import { NotificationService } from '../notification/notification.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class ReservationService extends ResourceService<
@@ -29,10 +33,15 @@ export class ReservationService extends ResourceService<
         private reservationModel: Model<Reservation>,
         @InjectModel(Slot.name)
         private slotModel: Model<Slot>,
+        @InjectModel(Restaurant.name)
+        private restaurantModel: Model<Restaurant>,
         @InjectModel(User.name)
         private userModel: Model<User>,
         private mailService: MailService,
+        private readonly notificationService: NotificationService,
         private readonly configService: ConfigService,
+        @InjectModel(DelayedNotificationJob.name)
+        private delayedJobModel: Model<DelayedNotificationJob>,
     ) {
         super(reservationModel);
     }
@@ -158,11 +167,24 @@ export class ReservationService extends ResourceService<
             );
         }
 
-        return await this.create({
+        const reservation = await this.create({
             ...createDto,
             restaurant: slot.restaurant,
             customer: new Types.ObjectId(user.userId),
         } as any);
+
+        // --- 5 Dakika Gecikmeli Yeni Rezervasyon Bildirimi (MongoDB Job Queue) ---
+        const executeAt = new Date();
+        executeAt.setMinutes(executeAt.getMinutes() + 5);
+
+        await this.delayedJobModel.create({
+            reservation: reservation._id,
+            executeAt,
+            type: DelayedNotificationJobType.NEW_RESERVATION,
+            status: DelayedNotificationJobStatus.PENDING,
+        });
+
+        return reservation;
     }
 
     async getMyReservations(user: AuthUser) {
@@ -334,7 +356,27 @@ export class ReservationService extends ResourceService<
         }
 
         reservation.status = ReservationStatus.CANCELLED;
-        return await reservation.save();
+        const result = await reservation.save();
+
+        const delayedJob = await this.delayedJobModel.findOne({
+            reservation: new Types.ObjectId(id),
+            status: DelayedNotificationJobStatus.PENDING,
+        });
+
+        if (delayedJob) {
+            // 5 dakika dolmadan iptal edildi -> Bildirim gitmemeli
+            delayedJob.status = DelayedNotificationJobStatus.CANCELLED;
+            await delayedJob.save();
+        } else {
+            // 5 dakika dolduktan sonra iptal edildi -> Restorana İptal Bildirimi gitmeli
+            try {
+                await this.sendRestaurantNotification(id, 'CANCEL');
+            } catch (err) {
+                console.error('Error sending delayed cancellation notification:', err);
+            }
+        }
+
+        return result;
     }
 
     async bulkCancelReservations(dto: BulkCancelReservationDto, user: AuthUser) {
@@ -350,17 +392,21 @@ export class ReservationService extends ResourceService<
             throw new CustomException('Bu işlem için yetkiniz yok', 403);
         }
 
+        const reservationsToCancel = await this.reservationModel.find({
+            restaurant: new Types.ObjectId(dto.restaurantId),
+            date: dto.date,
+            status: {
+                $in: [
+                    ReservationStatus.PENDING,
+                    ReservationStatus.CONFIRMED,
+                    ReservationStatus.SEATED,
+                ],
+            },
+        });
+
         const result = await this.reservationModel.updateMany(
             {
-                restaurant: new Types.ObjectId(dto.restaurantId),
-                date: dto.date,
-                status: {
-                    $in: [
-                        ReservationStatus.PENDING,
-                        ReservationStatus.CONFIRMED,
-                        ReservationStatus.SEATED,
-                    ],
-                },
+                _id: { $in: reservationsToCancel.map(r => r._id) }
             },
             {
                 $set: {
@@ -370,6 +416,27 @@ export class ReservationService extends ResourceService<
                 },
             },
         );
+
+        for (const res of reservationsToCancel) {
+            const id = res._id.toString();
+            const delayedJob = await this.delayedJobModel.findOne({
+                reservation: new Types.ObjectId(id),
+                status: DelayedNotificationJobStatus.PENDING,
+            });
+
+            if (delayedJob) {
+                // 5 dakika dolmadan iptal edildi -> Bildirim gitmemeli
+                delayedJob.status = DelayedNotificationJobStatus.CANCELLED;
+                await delayedJob.save();
+            } else {
+                // 5 dakika dolduktan sonra iptal edildi -> Restorana İptal Bildirimi gitmeli
+                try {
+                    await this.sendRestaurantNotification(id, 'CANCEL');
+                } catch (err) {
+                    console.error('Error sending delayed cancellation notification in bulk:', err);
+                }
+            }
+        }
 
         return {
             message: `${result.modifiedCount} rezervasyon iptal edildi`,
@@ -597,5 +664,145 @@ export class ReservationService extends ResourceService<
         }));
 
         return { data, total };
+    }
+
+    private async sendRestaurantNotification(reservationId: string, type: 'NEW' | 'CANCEL') {
+        try {
+            const reservation = await this.reservationModel
+                .findById(reservationId)
+                .select('date slot customer restaurant personCount');
+            if (!reservation) return;
+
+            const slot = await this.slotModel
+                .findById(reservation.slot)
+                .select('time');
+
+            const fullUser = await this.userModel
+                .findById(reservation.customer)
+                .select('fullName');
+
+            const restaurant = await this.restaurantModel
+                .findById(reservation.restaurant)
+                .select('name email owner')
+                .populate({
+                    path: 'owner',
+                    select: '_id notification',
+                });
+            const restaurantOwner = restaurant?.owner as any as User;
+
+            if (!slot || !fullUser || !restaurant) return;
+
+            const resDateStr = new Date(reservation.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            let pushTitle = '';
+            let pushBody = '';
+            let emailSubject = '';
+            let emailHtml = '';
+
+            if (type === 'NEW') {
+                pushTitle = 'Yeni Rezervasyon';
+                pushBody = `${fullUser.fullName} - ${resDateStr}, ${slot.time} (${reservation.personCount} Kişi). İşlem detayları için panele gidin.`;
+                emailSubject = `YENİ REZERVASYON | ${fullUser.fullName} - ${resDateStr} ${slot.time}`;
+                emailHtml = `
+                    <p>Sayın ${restaurant.name} Yönetimi,</p>
+                    <p>PRIVON sistemi üzerinden yeni bir rezervasyon kaydı alınmıştır.</p>
+                    <br/>
+                    <b>Rezervasyon Bilgileri:</b><br/>
+                    Misafir: ${fullUser.fullName}<br/>
+                    Tarih: ${resDateStr}<br/>
+                    Saat: ${slot.time}<br/>
+                    Kişi: ${reservation.personCount}<br/>
+                    <br/>
+                    <p><b>Operasyon Talimatı:</b> İlgili ayrıcalıklar hesap kapatma aşamasında sisteminizde otomatik olarak uygulanacaktır. Misafirden masada herhangi bir sözlü teyit istenmemelidir.</p>
+                    <p><b>Panel ve Destek:</b> Rezervasyon detaylarını yönetmek için Restoran Paneline giriş yapabilirsiniz. Misafirle iletişime geçilmesi gereken operasyonel durumlarda veya destek taleplerinizde doğrudan PRIVON Destek Ekibi ile irtibat kurunuz.</p>
+                    <br/>
+                    <p>İyi çalışmalar,</p>
+                    <p>PRIVON</p>
+                `;
+            } else if (type === 'CANCEL') {
+                pushTitle = 'Rezervasyon İptali';
+                pushBody = `${fullUser.fullName} - ${resDateStr}, ${slot.time} (${reservation.personCount} Kişi) rezervasyonu iptal edilmiştir. Güncel durum için panele gidin.`;
+                emailSubject = `REZERVASYON İPTALİ | ${fullUser.fullName} - ${resDateStr} ${slot.time}`;
+                emailHtml = `
+                    <p>Sayın ${restaurant.name} Yönetimi,</p>
+                    <p>PRIVON sistemi üzerinden oluşturulan aşağıdaki rezervasyon kaydı iptal edilmiştir.</p>
+                    <br/>
+                    <b>İptal Edilen Rezervasyon Bilgileri:</b><br/>
+                    Misafir: ${fullUser.fullName}<br/>
+                    Tarih: ${resDateStr}<br/>
+                    Saat: ${slot.time}<br/>
+                    Kişi: ${reservation.personCount}<br/>
+                    <br/>
+                    <p><b>Sistem Bilgilendirmesi:</b> İlgili iptal işlemi panelinize otomatik olarak yansıtılmış olup, söz konusu kapasite sistem üzerinde yeniden müsait duruma getirilmiştir. Bu işlem için tarafınızca herhangi bir manuel güncelleme yapılmasına gerek yoktur.</p>
+                    <p><b>Panel ve Destek:</b> Güncel rezervasyon durumunuzu görüntülemek için Restoran Paneline giriş yapabilirsiniz. Herhangi bir operasyonel destek talebinizde doğrudan PRIVON Destek Ekibi ile irtibat kurunuz.</p>
+                    <br/>
+                    <p>İyi çalışmalar,</p>
+                    <p>PRIVON</p>
+                `;
+            }
+
+            // OneSignal Push Notification (Restaurant Owner)
+            if (restaurantOwner?._id && restaurantOwner?.notification?.app !== false) {
+                await this.notificationService.sendNotification({
+                    userIds: [restaurantOwner._id.toString()],
+                    title: pushTitle,
+                    body: pushBody,
+                    data: { type: type === 'NEW' ? 'NEW_RESERVATION' : 'CANCELLED_RESERVATION', reservationId: reservation._id },
+                });
+            }
+
+            // Email Bildirimi (Restaurant)
+            if (restaurant?.email && restaurantOwner?.notification?.email !== false) {
+                await this.mailService.sendEmail({
+                    to: restaurant.email,
+                    subject: emailSubject,
+                    html: emailHtml,
+                    account: 'info',
+                });
+            }
+        } catch (err) {
+            console.error(`Error sending ${type} reservation notification:`, err);
+        }
+    }
+
+    @Cron(CronExpression.EVERY_MINUTE)
+    async handleDelayedNotifications() {
+        const now = new Date();
+
+        // 1) PENDING ve zamanı gelmiş olan job'ları bul
+        const pendingJobs = await this.delayedJobModel.find({
+            status: DelayedNotificationJobStatus.PENDING,
+            executeAt: { $lte: now },
+        });
+
+        if (pendingJobs.length === 0) {
+            return;
+        }
+
+        console.log(`Cron: Processing ${pendingJobs.length} delayed notifications...`);
+
+        for (const job of pendingJobs) {
+            try {
+                // Her ihtimale karşı rezervasyon durumunu tekrar kontrol edelim
+                const currentRes = await this.reservationModel.findById(job.reservation);
+
+                // Sadece veritabanında silinmişse veya iptal edilmişse atla (ve iptal et)
+                if (!currentRes || currentRes.status === ReservationStatus.CANCELLED) {
+                    job.status = DelayedNotificationJobStatus.CANCELLED;
+                    await job.save();
+                    continue;
+                }
+
+                if (job.type === DelayedNotificationJobType.NEW_RESERVATION) {
+                    await this.sendRestaurantNotification(job.reservation.toString(), 'NEW');
+                }
+
+                // Başarılı olursa job'u tamamlandı olarak işaretle
+                job.status = DelayedNotificationJobStatus.COMPLETED;
+                await job.save();
+            } catch (err) {
+                console.error(`Cron: Error processing delayed job ${job._id}:`, err);
+            }
+        }
     }
 }

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -23,6 +24,7 @@ import { WebhookModule } from './modules/webhook/webhook.module';
 import { ReferralCodeModule } from './modules/referral-code/referral-code.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { SectionModule } from './modules/section/section.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -51,6 +53,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',
     }),
+    ScheduleModule.forRoot(),
     UserModule,
     AuthModule,
     UploadModule,
@@ -67,6 +70,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     ReferralCodeModule,
     WaitlistModule,
     SectionModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [
