@@ -10,6 +10,8 @@ export enum DelayedNotificationJobStatus {
 
 export enum DelayedNotificationJobType {
     NEW_RESERVATION = 'NEW_RESERVATION',
+    USER_REMINDER_24H = 'USER_REMINDER_24H',
+    USER_REMINDER_4H = 'USER_REMINDER_4H',
 }
 
 @Schema({ timestamps: true })

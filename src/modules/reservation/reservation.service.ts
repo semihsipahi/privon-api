@@ -173,7 +173,10 @@ export class ReservationService extends ResourceService<
             customer: new Types.ObjectId(user.userId),
         } as any);
 
-        // --- 5 Dakika Gecikmeli Yeni Rezervasyon Bildirimi (MongoDB Job Queue) ---
+        // --- Anında Müşteri (Üye) Rezervasyon Onay Bildirimi ---
+        await this.sendCustomerNotification(reservation._id.toString(), 'NEW');
+
+        // --- 5 Dakika Gecikmeli Yeni Rezervasyon Bildirimi (Restoran İçin) ---
         const executeAt = new Date();
         executeAt.setMinutes(executeAt.getMinutes() + 5);
 
@@ -183,6 +186,35 @@ export class ReservationService extends ResourceService<
             type: DelayedNotificationJobType.NEW_RESERVATION,
             status: DelayedNotificationJobStatus.PENDING,
         });
+
+        // --- Müşteri (Üye) Hatırlatma Bildirimleri (Cron Job İçin) ---
+        const hoursUntilReservation = (reservationDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+        if (hoursUntilReservation >= 36) {
+            // 24 Saat Öncesi Hatırlatması
+            const executeAt24h = new Date(reservationDateTime);
+            executeAt24h.setHours(executeAt24h.getHours() - 24);
+
+            await this.delayedJobModel.create({
+                reservation: reservation._id,
+                executeAt: executeAt24h,
+                type: DelayedNotificationJobType.USER_REMINDER_24H,
+                status: DelayedNotificationJobStatus.PENDING,
+            });
+        }
+
+        if (hoursUntilReservation > 4) {
+            // 4 Saat Öncesi Hatırlatması
+            const executeAt4h = new Date(reservationDateTime);
+            executeAt4h.setHours(executeAt4h.getHours() - 4);
+
+            await this.delayedJobModel.create({
+                reservation: reservation._id,
+                executeAt: executeAt4h,
+                type: DelayedNotificationJobType.USER_REMINDER_4H,
+                status: DelayedNotificationJobStatus.PENDING,
+            });
+        }
 
         return reservation;
     }
@@ -360,11 +392,25 @@ export class ReservationService extends ResourceService<
 
         const delayedJob = await this.delayedJobModel.findOne({
             reservation: new Types.ObjectId(id),
+            type: DelayedNotificationJobType.NEW_RESERVATION,
             status: DelayedNotificationJobStatus.PENDING,
         });
 
+        // Müşteriye anında iptal bildirimi
+        await this.sendCustomerNotification(id, 'CANCEL');
+
+        // Müşteri için bekleyen Hatırlatma (24h veya 4h) bildirimlerini iptal et
+        await this.delayedJobModel.updateMany(
+            {
+                reservation: new Types.ObjectId(id),
+                type: { $in: [DelayedNotificationJobType.USER_REMINDER_24H, DelayedNotificationJobType.USER_REMINDER_4H] },
+                status: DelayedNotificationJobStatus.PENDING,
+            },
+            { $set: { status: DelayedNotificationJobStatus.CANCELLED } }
+        );
+
         if (delayedJob) {
-            // 5 dakika dolmadan iptal edildi -> Bildirim gitmemeli
+            // 5 dakika dolmadan iptal edildi -> Restorana Yeni Rezervasyon gitmeyecek
             delayedJob.status = DelayedNotificationJobStatus.CANCELLED;
             await delayedJob.save();
         } else {
@@ -421,11 +467,25 @@ export class ReservationService extends ResourceService<
             const id = res._id.toString();
             const delayedJob = await this.delayedJobModel.findOne({
                 reservation: new Types.ObjectId(id),
+                type: DelayedNotificationJobType.NEW_RESERVATION,
                 status: DelayedNotificationJobStatus.PENDING,
             });
 
+            // Müşteriye anında iptal bildirimi
+            await this.sendCustomerNotification(id, 'CANCEL');
+
+            // Müşteri için bekleyen Hatırlatma (24h veya 4h) bildirimlerini iptal et
+            await this.delayedJobModel.updateMany(
+                {
+                    reservation: new Types.ObjectId(id),
+                    type: { $in: [DelayedNotificationJobType.USER_REMINDER_24H, DelayedNotificationJobType.USER_REMINDER_4H] },
+                    status: DelayedNotificationJobStatus.PENDING,
+                },
+                { $set: { status: DelayedNotificationJobStatus.CANCELLED } }
+            );
+
             if (delayedJob) {
-                // 5 dakika dolmadan iptal edildi -> Bildirim gitmemeli
+                // 5 dakika dolmadan iptal edildi -> Restorana Yeni Rezervasyon gitmeyecek
                 delayedJob.status = DelayedNotificationJobStatus.CANCELLED;
                 await delayedJob.save();
             } else {
@@ -765,6 +825,107 @@ export class ReservationService extends ResourceService<
         }
     }
 
+    private async sendCustomerNotification(reservationId: string, type: 'NEW' | 'CANCEL' | 'REMINDER_24H' | 'REMINDER_4H') {
+        try {
+            const reservation = await this.reservationModel
+                .findById(reservationId)
+                .select('date slot customer restaurant personCount');
+            if (!reservation) return;
+
+            const slot = await this.slotModel
+                .findById(reservation.slot)
+                .select('time');
+
+            const fullUser = await this.userModel
+                .findById(reservation.customer)
+                .select('fullName email notification');
+
+            const restaurant = await this.restaurantModel
+                .findById(reservation.restaurant)
+                .select('name location');
+
+            if (!slot || !fullUser || !restaurant) return;
+
+            const resDateStr = new Date(reservation.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            let pushTitle = '';
+            let pushBody = '';
+            let emailSubject = '';
+            let emailHtml = '';
+
+            const mapsLink = restaurant.location?.coordinates
+                ? `https://maps.google.com/?q=${restaurant.location.coordinates[1]},${restaurant.location.coordinates[0]}`
+                : '';
+
+            const mapsText = mapsLink ? `<a href="${mapsLink}">Google Haritalar'da Gör</a>` : '';
+
+            if (type === 'NEW') {
+                pushTitle = 'Rezervasyonunuz Onaylandı';
+                pushBody = `${restaurant.name} rezervasyonunuz onaylanmıştır (${resDateStr}, ${slot.time} - ${reservation.personCount} Kişi). İşlem detayları e-posta adresinize iletilmiştir.`;
+                emailSubject = `Rezervasyon Onayı: ${restaurant.name}, ${resDateStr} | PRIVON`;
+                emailHtml = `
+                    <p>Sayın ${fullUser.fullName},</p>
+                    <p>PRIVON üzerinden oluşturduğunuz ${restaurant.name} rezervasyonunuz onaylanmıştır. İlgili detayları aşağıda bilgilerinize sunarız.</p>
+                    <br/>
+                    <b>Rezervasyon Detayları:</b><br/>
+                    Mekan: ${restaurant.name} ${mapsText}<br/>
+                    Tarih: ${resDateStr}<br/>
+                    Saat: ${slot.time}<br/>
+                    Kişi Sayısı: ${reservation.personCount}<br/>
+                    <br/>
+                    <p><b>Ayrıcalık Kullanımı:</b> PRIVON üyeliğinize ait ayrıcalıkları, hesap ödeme aşamasında restoran sistemine otomatik olarak yansıtılacaktır. Mekanda ek bir beyanda bulunmanıza gerek yoktur.</p>
+                    <p><b>İptal ve Değişiklik Politikası:</b> Partner restoranlarımızın masa planlaması gereği, olası iptal ve değişiklik işlemlerinizi rezervasyon saatinize en geç 12 saat kalana kadar uygulama üzerinden gerçekleştirebilirsiniz.</p>
+                    <p><i>(Not: Rezervasyon saatinize 12 saatten daha az bir süre kala oluşturduğunuz anlık rezervasyonlar, sistem tarafından doğrudan kesinleşmiş olarak kabul edilir ve değişikliğe kapalıdır.)</i></p>
+                    <br/>
+                    <p>İyi günler dileriz.</p>
+                    <p>PRIVON</p>
+                `;
+            } else if (type === 'CANCEL') {
+                pushTitle = 'Rezervasyon İptali';
+                pushBody = `${restaurant.name} (${resDateStr}, ${slot.time}) rezervasyonunuz iptal edilmiştir.`;
+                emailSubject = `Rezervasyon İptali: ${restaurant.name}, ${resDateStr} | PRIVON`;
+                emailHtml = `
+                    <p>Sayın ${fullUser.fullName},</p>
+                    <p>${resDateStr}, saat ${slot.time} tarihli ${restaurant.name} (${reservation.personCount} Kişi) rezervasyonunuz talebiniz doğrultusunda iptal edilmiştir.</p>
+                    <br/>
+                    <p>İptal işleminiz sistemlerimize yansımış olup, partner restoranımıza gerekli bilgilendirme tarafımızca yapılmıştır. Gelecekteki gastronomi planlamalarınızda size yeniden ayrıcalıklı bir deneyim sunmaktan memnuniyet duyarız.</p>
+                    <br/>
+                    <p>PRIVON</p>
+                `;
+            } else if (type === 'REMINDER_24H') {
+                pushTitle = 'PRIVON: Rezervasyon Hatırlatması';
+                pushBody = `Yarın ${slot.time}'daki ${restaurant.name} rezervasyonunuzu hatırlatmak isteriz. Olası değişiklikleri uygulamanız üzerinden yönetebilirsiniz.`;
+                // No email for reminders as per requirements
+            } else if (type === 'REMINDER_4H') {
+                pushTitle = 'PRIVON: Rezervasyon Hatırlatması';
+                pushBody = `Bugün ${slot.time} ${restaurant.name} rezervasyonunuz için bekleniyorsunuz. Tüm detaylar ve ayrıcalıklarınız restoranın sistemine tanımlanmıştır.`;
+                // No email for reminders as per requirements
+            }
+
+            // OneSignal Push Notification (Customer)
+            if (fullUser._id && fullUser.notification?.app !== false) {
+                await this.notificationService.sendNotification({
+                    userIds: [fullUser._id.toString()],
+                    title: pushTitle,
+                    body: pushBody,
+                    data: { type: `CUSTOMER_${type}`, reservationId: reservation._id },
+                });
+            }
+
+            // Email Bildirimi (Customer)
+            if (emailHtml && fullUser.email && fullUser.notification?.email !== false) {
+                await this.mailService.sendEmail({
+                    to: fullUser.email,
+                    subject: emailSubject,
+                    html: emailHtml,
+                    account: 'info',
+                });
+            }
+        } catch (err) {
+            console.error(`Error sending ${type} customer notification:`, err);
+        }
+    }
+
     @Cron(CronExpression.EVERY_MINUTE)
     async handleDelayedNotifications() {
         const now = new Date();
@@ -795,13 +956,17 @@ export class ReservationService extends ResourceService<
 
                 if (job.type === DelayedNotificationJobType.NEW_RESERVATION) {
                     await this.sendRestaurantNotification(job.reservation.toString(), 'NEW');
+                } else if (job.type === DelayedNotificationJobType.USER_REMINDER_24H) {
+                    await this.sendCustomerNotification(job.reservation.toString(), 'REMINDER_24H');
+                } else if (job.type === DelayedNotificationJobType.USER_REMINDER_4H) {
+                    await this.sendCustomerNotification(job.reservation.toString(), 'REMINDER_4H');
                 }
 
                 // Başarılı olursa job'u tamamlandı olarak işaretle
                 job.status = DelayedNotificationJobStatus.COMPLETED;
                 await job.save();
             } catch (err) {
-                console.error(`Cron: Error processing delayed job ${job._id}:`, err);
+                console.error(`Cron: Error processing delayed job ${job._id}: `, err);
             }
         }
     }
