@@ -25,7 +25,7 @@ export class Reservation extends Document {
 
     @Prop({
         enum: ReservationStatus,
-        default: ReservationStatus.PENDING,
+        default: ReservationStatus.CONFIRMED,
     })
     status: string;
 
