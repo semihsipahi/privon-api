@@ -69,6 +69,11 @@ export class ReservationController {
     @Roles(Role.SuperAdmin)
     @ApiOperation({ summary: 'Tüm rezervasyonları listele (Refine)' })
     async list(@Query() query: any) {
+        // Default sort to date: desc if not provided
+        if (!query._sort) {
+            query._sort = 'date';
+            query._order = 'desc';
+        }
         return await this.reservationService.list(query, null, [
             'customer',
             'restaurant',

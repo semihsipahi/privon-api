@@ -304,41 +304,33 @@ export class ReservationService extends ResourceService<
                 403
             );
         }
-        if (reservation.status !== ReservationStatus.PENDING) {
+        const cancellableStatuses = [
+            ReservationStatus.PENDING,
+            ReservationStatus.CONFIRMED,
+        ];
+        if (!cancellableStatuses.includes(reservation.status as ReservationStatus)) {
             throw new CustomException(
-                'Sadece beklemedeki rezervasyonlar iptal edilebilir',
+                'Sadece beklemedeki veya onaylanmış rezervasyonlar iptal edilebilir',
                 400
             );
         }
 
-        // 12 Saat Kuralı ve 30 Dakika Grace Period
-        const slot = await this.slotModel.findById(reservation.slot);
-        if (slot) {
-            const reservationIsoString = `${reservation.date}T${slot.time}:00+03:00`;
-            const reservationDateTime = new Date(reservationIsoString);
+        const cancellationWindowMinutes = 30;
+        const createdAt = new Date((reservation as any).createdAt);
+        if (Number.isNaN(createdAt.getTime())) {
+            throw new CustomException(
+                'Rezervasyon oluşturulma zamanı doğrulanamadı.',
+                400
+            );
+        }
+        const minutesSinceCreation =
+            (Date.now() - createdAt.getTime()) / (1000 * 60);
 
-            const now = new Date();
-
-            const timeDiff = reservationDateTime.getTime() - now.getTime();
-            const hoursDiff = timeDiff / (1000 * 60 * 60);
-
-            const createdAt = (reservation as any).createdAt;
-            let isGracePeriodActive = false;
-
-            if (createdAt) {
-                const createdTimeDiff = now.getTime() - createdAt.getTime();
-                const minutesSinceCreation = createdTimeDiff / (1000 * 60);
-                if (minutesSinceCreation <= 30) {
-                    isGracePeriodActive = true;
-                }
-            }
-
-            if (hoursDiff < 12 && !isGracePeriodActive) {
-                throw new CustomException(
-                    'Rezervasyon saatine 12 saatten az kaldığı için iptal işlemi yapılamaz.',
-                    400
-                );
-            }
+        if (minutesSinceCreation > cancellationWindowMinutes) {
+            throw new CustomException(
+                'Rezervasyon sadece oluşturulduktan sonraki 30 dakika içinde iptal edilebilir.',
+                400
+            );
         }
 
         reservation.status = ReservationStatus.CANCELLED;

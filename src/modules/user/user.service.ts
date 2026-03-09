@@ -228,16 +228,50 @@ export class UserService extends ResourceService<
     // 1. Telefon numarasına göre mevcut kullanıcı kontrolü
     const existingPhone = await this.findByPhoneNumber(data.phoneNumber);
     if (existingPhone) {
-      await this.update(existingPhone._id.toString(), {
-        role: Role.RestaurantOwner,
-      } as any);
-      await this.sendRoleUpdateEmail(existingPhone.email, existingPhone.fullName);
+      const updateData: Partial<User> = {};
+
+      if (data.email && data.email !== existingPhone.email) {
+        const existingEmailUser = await this.findByEmail(data.email);
+        if (
+          existingEmailUser &&
+          existingEmailUser._id.toString() !== existingPhone._id.toString()
+        ) {
+          throw new ConflictException(
+            `Bu email adresi ile kayıtlı farklı bir kullanıcı mevcut: ${data.email}`,
+          );
+        }
+        updateData.email = data.email;
+      }
+
+      if (data.fullName && data.fullName !== existingPhone.fullName) {
+        updateData.fullName = data.fullName;
+        updateData.maskedName = maskName(data.fullName);
+      }
+
+      if (
+        existingPhone.role !== Role.SuperAdmin &&
+        existingPhone.role !== Role.RestaurantOwner
+      ) {
+        updateData.role = Role.RestaurantOwner;
+      }
+
+      const updatedUser = Object.keys(updateData).length
+        ? await this.userModel
+            .findByIdAndUpdate(existingPhone._id, updateData, { new: true })
+            .exec()
+        : existingPhone;
+
+      const ownerUser = updatedUser || existingPhone;
+
+      if (ownerUser.email) {
+        await this.sendRoleUpdateEmail(ownerUser.email, ownerUser.fullName);
+      }
 
       return {
-        id: existingPhone._id.toString(),
-        email: existingPhone.email,
-        fullName: existingPhone.fullName,
-        phoneNumber: existingPhone.phoneNumber,
+        id: ownerUser._id.toString(),
+        email: ownerUser.email,
+        fullName: ownerUser.fullName,
+        phoneNumber: ownerUser.phoneNumber,
         temporaryPassword: null,
         isNewUser: false,
       };
