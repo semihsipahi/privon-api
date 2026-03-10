@@ -233,7 +233,10 @@ export class ReservationService extends ResourceService<
 
     async getMyReservations(user: AuthUser) {
         const reservations = await this.reservationModel
-            .find({ customer: new Types.ObjectId(user.userId) })
+            .find({
+                customer: new Types.ObjectId(user.userId),
+                status: { $ne: ReservationStatus.REJECTED },
+            })
             .populate({
                 path: 'restaurant',
                 select: 'name location images categories',
@@ -354,11 +357,7 @@ export class ReservationService extends ResourceService<
             }
         }
 
-        if (user.role === Role.SuperAdmin && updateDto.status === ReservationStatus.CANCELLED) {
-            reservation.status = ReservationStatus.REJECTED;
-        } else {
-            reservation.status = updateDto.status;
-        }
+        reservation.status = updateDto.status;
         return await reservation.save();
     }
 
@@ -396,14 +395,30 @@ export class ReservationService extends ResourceService<
         const minutesSinceCreation =
             (Date.now() - createdAt.getTime()) / (1000 * 60);
 
-        if (minutesSinceCreation > cancellationWindowMinutes) {
+        // 12 Saat kuralı kontrolü
+        await reservation.populate('slot', 'time');
+        const slot = reservation.slot as any;
+
+        let isMoreThan12HoursAway = false;
+        if (slot && slot.time) {
+            const reservationIsoString = `${reservation.date}T${slot.time}:00+03:00`;
+            const reservationDateTime = new Date(reservationIsoString);
+            const now = new Date();
+            const timeDiff = reservationDateTime.getTime() - now.getTime();
+            const hoursDiff = timeDiff / (1000 * 60 * 60);
+            if (hoursDiff >= 12) {
+                isMoreThan12HoursAway = true;
+            }
+        }
+
+        if (minutesSinceCreation > cancellationWindowMinutes && !isMoreThan12HoursAway) {
             throw new CustomException(
-                'Rezervasyon sadece oluşturulduktan sonraki 30 dakika içinde iptal edilebilir.',
+                'Rezervasyon sadece oluşturulduktan sonraki 30 dakika içinde veya rezervasyon saatine 12 saatten fazla kala iptal edilebilir.',
                 400
             );
         }
 
-        reservation.status = ReservationStatus.CANCELLED;
+        reservation.status = ReservationStatus.REJECTED;
         const result = await reservation.save();
 
         const delayedJob = await this.delayedJobModel.findOne({
@@ -466,7 +481,7 @@ export class ReservationService extends ResourceService<
             },
         });
 
-        const cancelStatus = user.role === Role.SuperAdmin ? ReservationStatus.REJECTED : ReservationStatus.CANCELLED;
+        const cancelStatus = ReservationStatus.CANCELLED;
 
         const result = await this.reservationModel.updateMany(
             {
