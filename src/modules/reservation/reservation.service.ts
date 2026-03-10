@@ -90,6 +90,18 @@ export class ReservationService extends ResourceService<
         const reservationDateTime = new Date(reservationIsoString);
 
         const now = new Date();
+
+        // 14 gün sınırı kontrolü
+        const fourteenDaysLater = new Date(now);
+        fourteenDaysLater.setDate(fourteenDaysLater.getDate() + 14);
+
+        if (reservationDateTime > fourteenDaysLater) {
+            throw new CustomException(
+                'En fazla 14 gün sonrası için rezervasyon yapabilirsiniz.',
+                400
+            );
+        }
+
         const timeDiffCreate = reservationDateTime.getTime() - now.getTime();
         const hoursDiffCreate = timeDiffCreate / (1000 * 60 * 60);
 
@@ -342,7 +354,11 @@ export class ReservationService extends ResourceService<
             }
         }
 
-        reservation.status = updateDto.status;
+        if (user.role === Role.SuperAdmin && updateDto.status === ReservationStatus.CANCELLED) {
+            reservation.status = ReservationStatus.REJECTED;
+        } else {
+            reservation.status = updateDto.status;
+        }
         return await reservation.save();
     }
 
@@ -450,13 +466,15 @@ export class ReservationService extends ResourceService<
             },
         });
 
+        const cancelStatus = user.role === Role.SuperAdmin ? ReservationStatus.REJECTED : ReservationStatus.CANCELLED;
+
         const result = await this.reservationModel.updateMany(
             {
                 _id: { $in: reservationsToCancel.map(r => r._id) }
             },
             {
                 $set: {
-                    status: ReservationStatus.CANCELLED,
+                    status: cancelStatus,
                     cancelledBy: new Types.ObjectId(user.userId),
                     cancelledByRole: user.role,
                 },
@@ -948,7 +966,7 @@ export class ReservationService extends ResourceService<
                 const currentRes = await this.reservationModel.findById(job.reservation);
 
                 // Sadece veritabanında silinmişse veya iptal edilmişse atla (ve iptal et)
-                if (!currentRes || currentRes.status === ReservationStatus.CANCELLED) {
+                if (!currentRes || currentRes.status === ReservationStatus.CANCELLED || currentRes.status === ReservationStatus.REJECTED) {
                     job.status = DelayedNotificationJobStatus.CANCELLED;
                     await job.save();
                     continue;

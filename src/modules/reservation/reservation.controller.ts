@@ -109,7 +109,7 @@ export class ReservationController {
             properties: {
                 status: {
                     type: 'string',
-                    enum: ['pending', 'confirmed', 'seated', 'no_show', 'cancelled', 'completed'],
+                    enum: ['pending', 'confirmed', 'seated', 'no_show', 'cancelled', 'rejected', 'completed'],
                     example: 'completed',
                 },
                 totalAmount: {
