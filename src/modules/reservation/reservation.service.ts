@@ -262,7 +262,10 @@ export class ReservationService extends ResourceService<
 
     async getRestaurantReservations(restaurantId: string) {
         return await this.reservationModel
-            .find({ restaurant: new Types.ObjectId(restaurantId) })
+            .find({
+                restaurant: new Types.ObjectId(restaurantId),
+                status: { $ne: ReservationStatus.REJECTED },
+            })
             .populate('customer', 'fullName phoneNumber imageUrl email')
             .populate('cancelledBy', 'fullName role')
             .populate('slot', 'discount time')
