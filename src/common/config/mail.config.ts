@@ -1,16 +1,18 @@
-export const mailerConfig = {
+import { registerAs } from '@nestjs/config';
+
+export default registerAs('mail', () => ({
   info: {
     transport: {
       host: 'smtp.gmail.com',
       port: 587,
       secure: false,
       auth: {
-        user: 'yazilim@wcanx.co',
-        pass: 'cczw scpi lneh rkco',
+        user: process.env.MAIL_USER || 'info@privon.co',
+        pass: process.env.MAIL_PASS,
       },
     },
     defaults: {
-      from: '"İLETİŞİM FORMU" <yazilim@wcanx.co>',
+      from: '"Privon" <info@privon.co>',
     },
   },
   support: {
@@ -41,4 +43,4 @@ export const mailerConfig = {
       from: '',
     },
   },
-};
+}));

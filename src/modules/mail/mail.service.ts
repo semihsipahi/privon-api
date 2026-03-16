@@ -1,20 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { mailerConfig } from 'src/common/config/mail.config';
+import mailConfig from 'src/common/config/mail.config';
+
 @Injectable()
 export class MailService {
   private transporters: { [key: string]: nodemailer.Transporter } = {};
 
-  constructor() {
+  constructor(
+    @Inject(mailConfig.KEY)
+    private mailConfiguration: ConfigType<typeof mailConfig>,
+  ) {
     this.initializeTransporters();
   }
 
   private initializeTransporters() {
-    for (const account in mailerConfig) {
-      if (mailerConfig.hasOwnProperty(account)) {
-        const accountConfig = mailerConfig[account];
+    for (const account in this.mailConfiguration) {
+      if (this.mailConfiguration.hasOwnProperty(account)) {
+        const accountConfig = this.mailConfiguration[account];
         if (!accountConfig.transport || !accountConfig.defaults) {
-          throw new Error(`Eksik mail yapılandırması: ${account}`);
+          continue;
         }
         this.transporters[account] = nodemailer.createTransport({
           ...accountConfig.transport,
@@ -36,7 +41,7 @@ export class MailService {
     }
 
     const mailOptions = {
-      from: params.from || mailerConfig[params.account].defaults.from,
+      from: params.from || this.mailConfiguration[params.account].defaults.from,
       to: params.to,
       subject: params.subject,
       html: params.html,

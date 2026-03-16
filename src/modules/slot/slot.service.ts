@@ -22,11 +22,28 @@ export class SlotService extends ResourceService<Slot, CreateSlotDto, UpdateSlot
     }
 
     async findByRestaurant(restaurantId: string) {
-        return await this.slotModel
+        const slots = await this.slotModel
             .find({ restaurant: new Types.ObjectId(restaurantId) })
             .sort({ time: 1 })
             .lean()
             .exec();
+
+        return this.deduplicateSlots(slots);
+    }
+
+    private deduplicateSlots(slots: any[]) {
+        if (!slots || slots.length === 0) return [];
+
+        const slotMap = new Map<string, any>();
+
+        for (const slot of slots) {
+            const existingSlot = slotMap.get(slot.time);
+            if (!existingSlot || (slot.discount || 0) > (existingSlot.discount || 0)) {
+                slotMap.set(slot.time, slot);
+            }
+        }
+
+        return Array.from(slotMap.values()).sort((a, b) => a.time.localeCompare(b.time));
     }
 
     async findByRestaurantWithFilters(
@@ -108,15 +125,17 @@ export class SlotService extends ResourceService<Slot, CreateSlotDto, UpdateSlot
             );
 
             // Her slot için availableTables hesapla
-            return slots.map((slot) => ({
+            const processedSlots = slots.map((slot) => ({
                 ...slot,
                 reservedTables: countMap.get(slot._id.toString()) || 0,
                 availableTables:
                     slot.tableQuota - (countMap.get(slot._id.toString()) || 0),
             }));
+
+            return this.deduplicateSlots(processedSlots);
         }
 
-        return slots;
+        return this.deduplicateSlots(slots);
     }
 
     private async validateOwnership(
