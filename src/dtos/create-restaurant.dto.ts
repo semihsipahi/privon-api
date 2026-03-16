@@ -37,21 +37,33 @@ export class LocationDto {
   coordinates?: number[];
 }
 
+export class WorkingPeriodDto {
+  @ApiPropertyOptional({ description: 'Açılış saati', example: '12:00' })
+  @IsString({ message: 'Açılış saati metin formatında olmalıdır (ör: 12:00)' })
+  @IsOptional()
+  openingTime?: string;
+
+  @ApiPropertyOptional({ description: 'Kapanış saati', example: '16:00' })
+  @IsString({ message: 'Kapanış saati metin formatında olmalıdır (ör: 16:00)' })
+  @IsOptional()
+  closingTime?: string;
+}
+
 export class WorkingHoursDto {
   @ApiPropertyOptional({ description: 'Gün ismi', example: 'Pazartesi' })
   @IsString({ message: 'Gün ismi metin formatında olmalıdır' })
   @IsOptional()
   dayName?: string;
 
-  @ApiPropertyOptional({ description: 'Açılış saati', example: '09:00' })
-  @IsString({ message: 'Açılış saati metin formatında olmalıdır (ör: 09:00)' })
+  @ApiPropertyOptional({
+    description: 'Çalışma periyotları',
+    type: [WorkingPeriodDto],
+  })
+  @IsArray({ message: 'Periyotlar bir liste olmalıdır' })
+  @ValidateNested({ each: true, message: 'Periyot listesi geçersiz formatta' })
+  @Type(() => WorkingPeriodDto)
   @IsOptional()
-  openingTime?: string;
-
-  @ApiPropertyOptional({ description: 'Kapanış saati', example: '22:00' })
-  @IsString({ message: 'Kapanış saati metin formatında olmalıdır (ör: 22:00)' })
-  @IsOptional()
-  closingTime?: string;
+  periods?: WorkingPeriodDto[];
 
   @ApiPropertyOptional({ description: 'Kapalı mı?', default: false })
   @IsBoolean({ message: 'Kapalı durumu true veya false olmalıdır' })

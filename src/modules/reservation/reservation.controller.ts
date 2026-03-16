@@ -100,6 +100,18 @@ export class ReservationController {
         return await this.reservationService.getCompletedReservationsReport(query);
     }
 
+    @Get('user-summary/:userId')
+    @Roles(Role.SuperAdmin)
+    @ApiOperation({
+        summary: 'Kullanıcı rezervasyon özeti (SuperAdmin)',
+        description: 'Belirli bir kullanıcının tüm rezervasyon geçmişini ve finansal istatistiklerini (toplam harcama, tasarruf vb.) döner.',
+    })
+    @ApiQuery({ name: '_start', required: false, description: 'Geçmiş için başlangıç index' })
+    @ApiQuery({ name: '_end', required: false, description: 'Geçmiş için bitiş index' })
+    async getUserSummary(@Param('userId') userId: string, @Query() query: any) {
+        return await this.reservationService.getUserReservationSummary(userId, query);
+    }
+
     @Put(':id/status')
     @Roles(Role.SuperAdmin, Role.RestaurantOwner)
     @ApiOperation({ summary: 'Rezervasyon durumu güncelle' })

@@ -20,15 +20,21 @@ export class Location {
 }
 
 @Schema({ _id: false })
-export class WorkingHours {
-  @Prop()
-  dayName: string;
-
+export class WorkingPeriod {
   @Prop()
   openingTime: string;
 
   @Prop()
   closingTime: string;
+}
+
+@Schema({ _id: false })
+export class WorkingHours {
+  @Prop()
+  dayName: string;
+
+  @Prop({ type: [WorkingPeriod], default: [] })
+  periods: WorkingPeriod[];
 
   @Prop({ default: false })
   isClosed: boolean;

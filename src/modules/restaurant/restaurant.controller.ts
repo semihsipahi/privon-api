@@ -104,6 +104,19 @@ export class RestaurantController {
     return await this.restaurantService.getCategoryStats();
   }
 
+  @Get(':id/summary')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({
+    summary: 'İşletme özet bilgilerini getir (Süper Admin)',
+    description: 'İşletmenin temel bilgileri, cirosu, rezervasyon sayıları ve geçmişini döner.',
+  })
+  @ApiQuery({ name: '_start', required: false, description: 'Geçmiş için başlangıç index' })
+  @ApiQuery({ name: '_end', required: false, description: 'Geçmiş için bitiş index' })
+  async getSummary(@Param('id') id: string, @Query() query: any) {
+    return await this.restaurantService.getRestaurantSummary(id, query);
+  }
+
   @Get('public/:id')
   @Public()
   @UseGuards(OptionalJwtAuthGuard)

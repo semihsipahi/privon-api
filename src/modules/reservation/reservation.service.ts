@@ -762,6 +762,78 @@ export class ReservationService extends ResourceService<
         return { data, total };
     }
 
+    /**
+     * SuperAdmin için belirli bir kullanıcının rezervasyon geçmişi ve harcama istatistiklerini döner.
+     */
+    async getUserReservationSummary(userId: string, query: any = {}) {
+        const customerId = new Types.ObjectId(userId);
+        const _start = Number(query._start) || 0;
+        const _end = Number(query._end) || 20;
+        const limit = _end - _start;
+
+        // Mevcut ayın başlangıcını bul (UTC+3 dikkate alınarak orjinal kodda Date kullanılıyor)
+        const now = new Date();
+        const currentMonth = now.toISOString().slice(0, 7); // "YYYY-MM"
+
+        const [reservations, stats, totalHistory] = await Promise.all([
+            // Rezervasyon geçmişi (paginated)
+            this.reservationModel.find({ customer: customerId })
+                .populate('restaurant', 'name')
+                .populate('slot', 'time discount')
+                .sort({ date: -1, createdAt: -1 })
+                .skip(_start)
+                .limit(limit)
+                .lean(),
+
+            // Finansal istatistikler (Aggregation)
+            this.reservationModel.aggregate([
+                { $match: { customer: customerId, status: ReservationStatus.COMPLETED } },
+                {
+                    $group: {
+                        _id: null,
+                        totalSpent: { $sum: '$finalAmount' },
+                        totalSaved: { $sum: '$savedAmount' },
+                        monthlySpent: {
+                            $sum: {
+                                $cond: [
+                                    { $regexMatch: { input: '$date', regex: `^${currentMonth}` } },
+                                    '$finalAmount',
+                                    0
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]),
+
+            // Toplam geçmiş sayısı
+            this.reservationModel.countDocuments({ customer: customerId })
+        ]);
+
+        const financialStats = stats[0] || { totalSpent: 0, totalSaved: 0, monthlySpent: 0 };
+
+        return {
+            stats: {
+                totalSpent: financialStats.totalSpent || 0,
+                totalSaved: financialStats.totalSaved || 0,
+                monthlySpent: financialStats.monthlySpent || 0,
+            },
+            history: {
+                data: reservations.map((res: any) => ({
+                    id: res._id,
+                    date: res.date,
+                    restaurantName: res.restaurant?.name || 'Bilinmiyor',
+                    status: res.status,
+                    finalAmount: res.finalAmount || 0,
+                    savedAmount: res.savedAmount || 0,
+                    personCount: res.personCount,
+                    time: res.slot?.time || '',
+                })),
+                total: totalHistory
+            }
+        };
+    }
+
     private async sendRestaurantNotification(reservationId: string, type: 'NEW' | 'CANCEL') {
         try {
             const reservation = await this.reservationModel

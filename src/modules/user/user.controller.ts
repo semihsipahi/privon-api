@@ -158,4 +158,27 @@ export class UserController {
   async delete(@Param('id') id: string) {
     return await this.userService.delete(id);
   }
+
+  @Put(':id/ban')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({
+    summary: 'Kullanıcıyı bloke et (SuperAdmin)',
+    description: 'Kullanıcıyı belirtilen süre veya tarihe kadar bloke eder (ör: 1w, 1m, permanent veya ISO tarih).',
+  })
+  @ApiQuery({ name: 'duration', required: true, description: 'Süre veya tarih (ör: 1w, 1m, permanent veya 2024-12-31)' })
+  async ban(@Param('id') id: string, @Query('duration') duration: string) {
+    return await this.userService.banUser(id, duration);
+  }
+
+  @Put(':id/unban')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({
+    summary: 'Kullanıcı blokesini kaldır (SuperAdmin)',
+    description: 'Kullanıcının blokesini kaldırır ve no-show geçmişini sıfırlar.',
+  })
+  async unban(@Param('id') id: string) {
+    return await this.userService.unbanUser(id);
+  }
 }

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../../models/user.schema';
 import { Restaurant } from '../../models/restaurant.schema';
@@ -334,18 +334,65 @@ export class UserService extends ResourceService<
   }
 
   async addTransaction(userId: string, transaction: Record<string, any>) {
-    return this.userModel.findByIdAndUpdate(
-      userId,
-      {
-        $push: {
-          transactions: {
-            ...transaction,
-            createdAt: new Date(),
-          },
+    return this.userModel.findByIdAndUpdate(userId, {
+      $push: {
+        transactions: {
+          ...transaction,
+          createdAt: new Date(),
         },
       },
-      { new: true },
-    );
+    }, {
+      new: true,
+    });
+  }
+
+  async banUser(userId: string, duration: string) {
+    let banExpiresAt: Date | null = null;
+    const now = new Date();
+
+    if (duration === '1w') {
+      banExpiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    } else if (duration === '1m') {
+      banExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    } else if (duration === 'permanent') {
+      // 100 years from now as permanent
+      banExpiresAt = new Date(now.getTime() + 100 * 365 * 24 * 60 * 60 * 1000);
+    } else {
+      // Try to parse as Date
+      const customDate = new Date(duration);
+      if (!isNaN(customDate.getTime())) {
+        banExpiresAt = customDate;
+      } else {
+        throw new BadRequestException('Geçersiz süre veya tarih formatı');
+      }
+    }
+
+    const user = await this.userModel.findByIdAndUpdate(userId, {
+      reservationBanExpiresAt: banExpiresAt,
+    }, {
+      new: true,
+    });
+
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    return user;
+  }
+
+  async unbanUser(userId: string) {
+    const user = await this.userModel.findByIdAndUpdate(userId, {
+      reservationBanExpiresAt: null,
+      noShowDates: [], // No-show geçmişini sıfırla
+    }, {
+      new: true,
+    });
+
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    return user;
   }
 
   private async sendRoleUpdateEmail(email: string, fullName: string): Promise<void> {

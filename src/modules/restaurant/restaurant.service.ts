@@ -9,6 +9,7 @@ import { CreateRestaurantDto } from 'src/dtos/create-restaurant.dto';
 import { UpdateRestaurantDto } from 'src/dtos/update-restaurant.dto';
 import { ResourceService } from 'src/services/resource.service';
 import { calculateDistance } from 'src/utils/distance-calculation.util';
+import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
 
 export interface PublicRestaurantDetailsResponse {
   restaurant: any;
@@ -299,6 +300,7 @@ export class RestaurantService extends ResourceService<
             },
           }
           : null,
+        workingHours: 1,
         slots: {
           $map: {
             input: slotsProjection,
@@ -508,5 +510,119 @@ export class RestaurantService extends ResourceService<
       },
       { $sort: { count: -1 } },
     ]);
+  }
+
+  /**
+   * SuperAdmin için işletme detay özeti, finansal istatistikler ve rezervasyon geçmişi.
+   */
+  async getRestaurantSummary(restaurantId: string, query: any = {}) {
+    const restaurantObjectId = new Types.ObjectId(restaurantId);
+    const _start = Number(query._start) || 0;
+    const _end = Number(query._end) || 20;
+    const limit = _end - _start;
+
+    // Mevcut ayın başlangıcını bul (UTC+3)
+    const now = new Date();
+    const currentMonthStr = now.toISOString().slice(0, 7); // "YYYY-MM"
+
+    const [restaurant, stats, latestReservations, totalHistory] = await Promise.all([
+      // İşletme temel bilgileri
+      this.restaurantModel.findById(restaurantId)
+        .populate('owner', 'fullName email phoneNumber')
+        .populate('categories', 'name')
+        .lean(),
+
+      // Finansal ve rezervasyon istatistikleri
+      this.reservationModel.aggregate([
+        { $match: { restaurant: restaurantObjectId, status: { $ne: ReservationStatus.REJECTED } } },
+        {
+          $group: {
+            _id: null,
+            totalReservations: { $sum: 1 },
+            totalTurnover: { 
+              $sum: { $cond: [{ $eq: ['$status', ReservationStatus.COMPLETED] }, '$finalAmount', 0] }
+            },
+            monthlyReservations: {
+              $sum: {
+                $cond: [
+                  { $regexMatch: { input: '$date', regex: `^${currentMonthStr}` } },
+                  1,
+                  0
+                ]
+              }
+            },
+            monthlyTurnover: {
+              $sum: {
+                $cond: [
+                  { 
+                    $and: [
+                      { $regexMatch: { input: '$date', regex: `^${currentMonthStr}` } },
+                      { $eq: ['$status', ReservationStatus.COMPLETED] }
+                    ]
+                  },
+                  '$finalAmount',
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ]),
+
+      // Son rezervasyonlar (paginated)
+      this.reservationModel.find({ restaurant: restaurantObjectId })
+        .populate('customer', 'fullName phoneNumber')
+        .populate('slot', 'time discount')
+        .sort({ date: -1, createdAt: -1 })
+        .skip(_start)
+        .limit(limit)
+        .lean(),
+
+      // Toplam geçmiş sayısı
+      this.reservationModel.countDocuments({ restaurant: restaurantObjectId })
+    ]);
+
+    if (!restaurant) {
+      throw new NotFoundException('İşletme bulunamadı');
+    }
+
+    const aggregatedStats = stats[0] || { 
+      totalReservations: 0, 
+      totalTurnover: 0, 
+      monthlyReservations: 0, 
+      monthlyTurnover: 0 
+    };
+
+    return {
+      restaurant: {
+        id: restaurant._id,
+        name: restaurant.name,
+        owner: restaurant.owner,
+        phone: restaurant.phone,
+        email: restaurant.email,
+        categories: restaurant.categories,
+        images: restaurant.images,
+        rating: restaurant.rating,
+        reviewCount: restaurant.reviewCount,
+      },
+      stats: {
+        totalReservations: aggregatedStats.totalReservations,
+        totalTurnover: aggregatedStats.totalTurnover,
+        monthlyReservations: aggregatedStats.monthlyReservations,
+        monthlyTurnover: aggregatedStats.monthlyTurnover,
+      },
+      history: {
+        data: latestReservations.map((res: any) => ({
+          id: res._id,
+          date: res.date,
+          customerName: res.customer?.fullName || 'Bilinmiyor',
+          status: res.status,
+          finalAmount: res.finalAmount || 0,
+          personCount: res.personCount,
+          time: res.slot?.time || '',
+        })),
+        total: totalHistory
+      }
+    };
   }
 }
