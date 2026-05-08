@@ -51,7 +51,7 @@ export class UploadController {
   @Roles(Role.SuperAdmin, Role.RestaurantOwner, Role.User)
   @Post('single')
   async uploadSingle(@Req() req: FastifyRequest) {
-    const data = await req.file();
+    const data = await (req as any).file();
 
     if (!data) {
       throw new BadRequestException('Dosya bulunamadı');

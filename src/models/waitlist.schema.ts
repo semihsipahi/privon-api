@@ -4,7 +4,10 @@ import { Document } from 'mongoose';
 @Schema({ timestamps: true })
 export class Waitlist extends Document {
     @Prop({ required: true })
-    fullName: string;
+    firstName: string;
+
+    @Prop({ required: true })
+    lastName: string;
 
     @Prop({ required: true })
     email: string;
@@ -12,14 +15,32 @@ export class Waitlist extends Document {
     @Prop({ required: true })
     phoneNumber: string;
 
-    @Prop()
-    referralMember?: string;
-
-    @Prop()
-    gastronomyReference?: string;
-
     @Prop({ required: true })
     city: string;
+
+    @Prop()
+    hospitalityStandards?: string;
+
+    @Prop()
+    privateClubMemberships?: string;
+
+    @Prop()
+    frequentCities?: string;
+
+    @Prop()
+    hospitalityValues?: string;
+
+    @Prop()
+    introducedBy?: string;
+
+    @Prop({ required: true })
+    agreedToTerms: boolean;
+
+    @Prop({ required: true })
+    agreedToPrivacy: boolean;
+
+    @Prop({ default: false })
+    consentToCommunications?: boolean;
 }
 
 export const WaitlistSchema = SchemaFactory.createForClass(Waitlist);

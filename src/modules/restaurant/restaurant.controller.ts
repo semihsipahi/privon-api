@@ -127,7 +127,7 @@ export class RestaurantController {
     @Param('id') id: string,
     @Query() locationQuery: LocationQueryDto,
     @Req() req: any,
-  ) {
+  ): Promise<any> {
     return await this.restaurantService.getPublicRestaurantDetails(
       id,
       locationQuery.userLat,

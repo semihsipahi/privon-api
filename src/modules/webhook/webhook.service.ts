@@ -19,10 +19,12 @@ export class WebhookService {
 
     async handleRevenueCatWebhook(payload: RevenueCatWebhookDto) {
         const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';
+
         if (isBetaMode) {
             this.logger.log('Beta modu aktif - webhook işlenmedi');
             return { message: 'Beta modu - webhook atlandı' };
         }
+
         const { event } = payload;
         const userId = event.app_user_id;
         this.logger.log(`Received RevenueCat webhook event: ${event.type} for user: ${userId}`);

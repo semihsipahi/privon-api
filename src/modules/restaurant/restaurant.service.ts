@@ -56,7 +56,7 @@ export class RestaurantService extends ResourceService<
     userLat?: number,
     userLon?: number,
     userId?: string,
-  ) {
+  ): Promise<any> {
     const restaurant = await this.restaurantModel
       .findById(id)
       .populate('categories', 'name')
