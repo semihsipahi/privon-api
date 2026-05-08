@@ -9,7 +9,6 @@ import {
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import multipart from '@fastify/multipart';
 
@@ -31,30 +30,6 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
   });
-
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      hidePoweredBy: true,
-      hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true,
-      },
-      noSniff: true,
-      frameguard: { action: 'deny' },
-      referrerPolicy: {
-        policy: 'strict-origin-when-cross-origin',
-      },
-      xssFilter: true,
-      dnsPrefetchControl: { allow: false },
-      crossOriginEmbedderPolicy: false,
-      crossOriginOpenerPolicy: { policy: 'same-origin' },
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-      originAgentCluster: true,
-      permittedCrossDomainPolicies: false,
-    }),
-  );
 
   app.useGlobalPipes(
     new ValidationPipe({
