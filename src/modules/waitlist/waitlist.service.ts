@@ -84,7 +84,15 @@ export class WaitlistService extends ResourceService<
   }
 
   async findByPhone(phoneNumber: string): Promise<Waitlist | null> {
-    return this.waitlistModel.findOne({ phoneNumber: normalizePhone(phoneNumber) });
+    const normalized = normalizePhone(phoneNumber);
+    return this.waitlistModel.findOne({
+      $or: [
+        { phoneNumber: normalized },
+        { phoneNumber: `+90${normalized}` },
+        { phoneNumber: `90${normalized}` },
+        { phoneNumber: `0${normalized}` },
+      ],
+    });
   }
 
   async sendMail(dto: { email: string; code: string }) {
