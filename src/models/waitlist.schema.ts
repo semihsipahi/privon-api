@@ -9,14 +9,17 @@ export class Waitlist extends Document {
     @Prop({ required: true })
     lastName: string;
 
-    @Prop({ required: true })
+    @Prop({ required: true, unique: true })
     email: string;
 
-    @Prop({ required: true })
+    @Prop({ required: true, unique: true })
     phoneNumber: string;
 
-    @Prop({ required: true })
-    city: string;
+    @Prop()
+    city?: string;
+
+    @Prop()
+    birthDate?: string;
 
     @Prop()
     hospitalityStandards?: string;

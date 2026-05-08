@@ -11,6 +11,7 @@ import {
   ForgotPasswordDto,
   VerifyResetCodeDto,
   ChangeUserStatusDto,
+  CheckPhoneDto,
 } from 'src/dtos';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -21,6 +22,13 @@ import { Role } from 'src/common/enums/role.enum';
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) { }
+
+  @Public()
+  @Post('check-phone')
+  @ApiOperation({ summary: 'Telefon numarasını kontrol et — yeni mi, mevcut üye mi, banlı mı?' })
+  checkPhone(@Body() checkPhoneDto: CheckPhoneDto) {
+    return this.authService.checkPhone(checkPhoneDto.phoneNumber);
+  }
 
   @Public()
   @Post('register')

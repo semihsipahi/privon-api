@@ -74,9 +74,15 @@ export class UserService extends ResourceService<
       throw new UnauthorizedException('Kullanıcı bulunamadı.');
     }
 
+    const displayName = user.fullName ||
+      [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+      null;
+
     const response: any = {
       id: user._id,
-      fullName: user.fullName,
+      fullName: displayName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       phoneNumber: user.phoneNumber,
       role: user.role,

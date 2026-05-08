@@ -31,3 +31,4 @@ export * from './create-referral-code.dto';
 export * from './update-referral-code.dto';
 export * from './create-section.dto';
 export * from './update-section.dto';
+export * from './check-phone.dto';

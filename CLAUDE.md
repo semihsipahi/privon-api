@@ -70,6 +70,32 @@ utils/          Pure utilities (distance calculation)
 | `mail` | Email delivery via NodeMailer with templates |
 | `webhook` | RevenueCat subscription webhooks |
 
+### Privon Mobile App — Authentication Architecture
+
+This API serves an **invite-only** mobile app. Authentication flow:
+
+**`POST /auth/check-phone`** `@Public()` — First step of onboarding. Queries phone number across 3 collections:
+- `users` → if found: `{status:"existing", accessToken}` (direct login)
+- `waitlist` → if found: `{status:"waitlist", firstName, lastName, email, birthDate}`
+- Neither → `{status:"new"}`
+- Banned → `{status:"banned"}`
+
+**`POST /auth/register`** `@Public()` — Registration with invite code. No OTP/SMS; invite code is validated, user is created, JWT returned immediately. Required fields: `phoneNumber`, `inviteCode`, `firstName`, `lastName`, `email`, `birthDate`, `acceptedMarketing?`
+
+**Invite Code (ReferralCode) Lifecycle:**
+- Created by admin in the admin panel (`/admin/referral-codes`)
+- Sent to waitlist members via admin panel (`POST /waitlist/send-mail`)
+- On use: `validateCode` → `markCodeUsed` runs, `usedCount` increments, becomes `inactive` when quota is reached
+- `registeredWithCode` is saved on the user document
+
+**User model — new fields:** `firstName`, `lastName`, `birthDate`, `acceptedMarketing`. Pre-save hook: `fullName = firstName + " " + lastName`
+
+**`getMe()` response** now includes `firstName`, `lastName`, and `fullName` (derived from either).
+
+**`WaitlistService.findByPhone()`** — called by check-phone to look up a waitlist entry by phone number.
+
+---
+
 ### Authentication & Authorization
 
 **JWT Strategy** (`src/common/strategy/jwt.strategy.ts`): extracts `sub` from token, verifies user is `Active` in the DB, returns `{userId, email, role, restaurantId}`.

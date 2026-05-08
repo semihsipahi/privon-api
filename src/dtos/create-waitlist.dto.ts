@@ -5,6 +5,7 @@ import {
     IsOptional,
     IsEmail,
     IsBoolean,
+    IsDateString,
     Equals,
 } from 'class-validator';
 
@@ -29,10 +30,15 @@ export class CreateWaitlistDto {
     @IsNotEmpty()
     phoneNumber: string;
 
-    @ApiProperty({ description: 'Şehir', example: 'Istanbul' })
+    @ApiPropertyOptional({ description: 'Şehir', example: 'Istanbul' })
     @IsString()
-    @IsNotEmpty()
-    city: string;
+    @IsOptional()
+    city?: string;
+
+    @ApiPropertyOptional({ description: 'Doğum tarihi (YYYY-MM-DD)', example: '1990-05-15' })
+    @IsDateString({}, { message: 'Geçerli bir tarih giriniz (YYYY-MM-DD).' })
+    @IsOptional()
+    birthDate?: string;
 
     @ApiPropertyOptional({
         description:

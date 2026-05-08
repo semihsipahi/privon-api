@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateWaitlistDto } from 'src/dtos/create-waitlist.dto';
@@ -24,10 +24,17 @@ export class WaitlistService extends ResourceService<
 
   async createWaitlist(dto: CreateWaitlistDto): Promise<Waitlist> {
     this.logger.log(`Yeni waitlist başvurusu alınıyor: ${JSON.stringify(dto)}`);
+
+    const existing = await this.waitlistModel.findOne({
+      $or: [{ email: dto.email }, { phoneNumber: dto.phoneNumber }],
+    });
+    if (existing) {
+      throw new ConflictException('Bu e-posta veya telefon numarası zaten kayıtlı.');
+    }
+
     let waitlistEntry: Waitlist;
 
     try {
-      // Kaydı oluştur (super.create kullanarak ResourceService üzerinden geçiyoruz)
       waitlistEntry = await super.create(dto);
       this.logger.log(
         `Waitlist kaydı başarıyla oluşturuldu: ${waitlistEntry._id}`,
@@ -72,6 +79,10 @@ export class WaitlistService extends ResourceService<
     }
 
     return waitlistEntry;
+  }
+
+  async findByPhone(phoneNumber: string): Promise<Waitlist | null> {
+    return this.waitlistModel.findOne({ phoneNumber });
   }
 
   async sendMail(dto: { email: string; code: string }) {

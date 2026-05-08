@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { UserService } from 'src/modules/user/user.service';
 import { ReferralCodeService } from 'src/modules/referral-code/referral-code.service';
+import { WaitlistService } from 'src/modules/waitlist/waitlist.service';
 import * as bcrypt from 'bcrypt';
 import { User } from 'src/models/user.schema';
 import { Restaurant } from 'src/models/restaurant.schema';
@@ -34,10 +35,45 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
     private readonly referralCodeService: ReferralCodeService,
+    private readonly waitlistService: WaitlistService,
     private templateService: TemplateService,
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Restaurant.name) private readonly restaurantModel: Model<Restaurant>,
   ) { }
+
+  async checkPhone(
+    phoneNumber: string,
+  ): Promise<{
+    status: 'new' | 'existing' | 'waitlist' | 'banned';
+    accessToken?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    birthDate?: string;
+  }> {
+    const user = await this.userModel.findOne({ phoneNumber });
+
+    if (!user) {
+      const waitlistEntry = await this.waitlistService.findByPhone(phoneNumber);
+      if (waitlistEntry) {
+        return {
+          status: 'waitlist',
+          firstName: waitlistEntry.firstName,
+          lastName: waitlistEntry.lastName,
+          email: waitlistEntry.email,
+          birthDate: waitlistEntry.birthDate,
+        };
+      }
+      return { status: 'new' };
+    }
+
+    if (user.status === UserStatus.Banned) {
+      return { status: 'banned' };
+    }
+
+    const accessToken = await this.generateToken(user);
+    return { status: 'existing', accessToken };
+  }
 
   async validateUser(phoneNumber: string, password: string): Promise<User> {
     const user = await this.userService.findByPhoneNumber(phoneNumber);
@@ -135,73 +171,65 @@ export class AuthService {
   async register(
     registerDto: RegisterDto,
     ipAddress?: string,
-  ): Promise<{ token: string; message: string; isPhoneVerified: boolean }> {
-    const { phoneNumber, referralCode } = registerDto;
+  ): Promise<{ accessToken: string; message: string }> {
+    const {
+      phoneNumber,
+      inviteCode,
+      firstName,
+      lastName,
+      email,
+      birthDate,
+      acceptedMarketing,
+    } = registerDto;
 
-    // 1. Davet kodunu doğrula
-    const { referralCode: codeDoc, referrerUserId } =
-      await this.referralCodeService.validateCode(referralCode);
-
-    let user = await this.userModel.findOne({ phoneNumber });
-
-    if (user && user.password) {
+    const existingUser = await this.userModel.findOne({ phoneNumber });
+    if (existingUser) {
       throw new CustomException('Bu telefon numarası zaten kayıtlı.', 400);
     }
 
+    const { referralCode: codeDoc, referrerUserId } =
+      await this.referralCodeService.validateCode(inviteCode);
+
     const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';
 
-    if (!user) {
-      user = new this.userModel({
-        phoneNumber,
-        isPhoneVerified: false,
-        role: Role.TrialUser,
-        subscriptionExpiresAt: isBetaMode
-          ? null
-          : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-        ipAddress,
-        registeredWithCode: codeDoc._id,
-        referredBy: referrerUserId || undefined,
-        transactions: [
-          {
-            type: 'registration',
-            description: isBetaMode
-              ? 'Kullanıcı kaydı oluşturuldu - Beta Dönemi'
-              : 'Kullanıcı kaydı oluşturuldu - Deneme Süresi Başladı',
-            referralCode: referralCode,
-            createdAt: new Date(),
-            ip: ipAddress,
-          },
-        ],
-      });
-    }
+    const user = new this.userModel({
+      phoneNumber,
+      firstName,
+      lastName,
+      email,
+      birthDate,
+      acceptedMarketing: acceptedMarketing ?? false,
+      isPhoneVerified: true,
+      role: Role.TrialUser,
+      subscriptionExpiresAt: isBetaMode
+        ? null
+        : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      ipAddress,
+      registeredWithCode: codeDoc._id,
+      referredBy: referrerUserId || undefined,
+      transactions: [
+        {
+          type: 'registration',
+          description: isBetaMode
+            ? 'Kullanıcı kaydı oluşturuldu - Beta Dönemi'
+            : 'Kullanıcı kaydı oluşturuldu - Deneme Süresi Başladı',
+          referralCode: inviteCode,
+          createdAt: new Date(),
+          ip: ipAddress,
+        },
+      ],
+    });
 
-    if (!user.isPhoneVerified) {
-      const verificationCode = this.generateVerificationCode();
-      const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 dakika
+    await user.save();
 
-      user.verificationCode = verificationCode;
-      user.codeExpiresAt = codeExpiresAt;
+    await this.referralCodeService.markCodeUsed(
+      codeDoc._id.toString(),
+      user._id.toString(),
+    );
 
-      await user.save();
+    const accessToken = await this.generateToken(user);
 
-      // Kullanıcı kaydedildikten sonra kodu kullanılmış olarak işaretle
-      await this.referralCodeService.markCodeUsed(
-        codeDoc._id.toString(),
-        user._id.toString(),
-      );
-
-      await this.sendSMS(phoneNumber, verificationCode);
-    }
-
-    const token = await this.generateToken(user);
-
-    return {
-      token,
-      message: user.isPhoneVerified
-        ? 'Kayıt başarılı. Lütfen şifrenizi belirleyin.'
-        : 'Kayıt başarılı. Telefonunuza gönderilen doğrulama kodunu giriniz.',
-      isPhoneVerified: user.isPhoneVerified,
-    };
+    return { accessToken, message: 'Kayıt başarılı. PRIVON\'a hoş geldiniz.' };
   }
 
   async verifyPhone(

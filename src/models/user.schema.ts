@@ -6,10 +6,22 @@ import { UserStatus } from 'src/common/enums/user-status.enum';
 @Schema({ timestamps: true })
 export class User extends Document {
   @Prop()
+  firstName: string;
+
+  @Prop()
+  lastName: string;
+
+  @Prop()
   fullName: string;
 
   @Prop()
   maskedName: string;
+
+  @Prop()
+  birthDate: string;
+
+  @Prop({ default: false })
+  acceptedMarketing: boolean;
 
   @Prop({ unique: true, sparse: true })
   email: string;
@@ -88,3 +100,10 @@ export class User extends Document {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+UserSchema.pre('save', function (next) {
+  if (this.firstName || this.lastName) {
+    this.fullName = `${this.firstName ?? ''} ${this.lastName ?? ''}`.trim();
+  }
+  next();
+});
