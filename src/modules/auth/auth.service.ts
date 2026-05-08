@@ -25,6 +25,7 @@ import {
 import { TemplateService } from 'src/services/template.service';
 import { Role } from 'src/common/enums/role.enum';
 import { UserStatus } from 'src/common/enums/user-status.enum';
+import { normalizePhone } from 'src/helpers/phone.helper';
 
 @Injectable()
 export class AuthService {
@@ -51,6 +52,7 @@ export class AuthService {
     email?: string;
     birthDate?: string;
   }> {
+    phoneNumber = normalizePhone(phoneNumber);
     const user = await this.userModel.findOne({ phoneNumber });
 
     if (!user) {
@@ -173,7 +175,6 @@ export class AuthService {
     ipAddress?: string,
   ): Promise<{ accessToken: string; message: string }> {
     const {
-      phoneNumber,
       inviteCode,
       firstName,
       lastName,
@@ -181,6 +182,7 @@ export class AuthService {
       birthDate,
       acceptedMarketing,
     } = registerDto;
+    const phoneNumber = normalizePhone(registerDto.phoneNumber);
 
     const existingUser = await this.userModel.findOne({ phoneNumber });
     if (existingUser) {
@@ -346,6 +348,7 @@ export class AuthService {
   }
 
   async forgotPassword(phoneNumber: string) {
+    phoneNumber = normalizePhone(phoneNumber);
     const user = await this.userModel.findOne({ phoneNumber });
 
     if (!user) {

@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { CreateUserDto, UpdateUserDto } from 'src/dtos';
 import { ResourceService } from 'src/services/resource.service';
 import { maskName } from 'src/helpers/mask-name.util';
+import { normalizePhone } from 'src/helpers/phone.helper';
 import { Role } from 'src/common/enums/role.enum';
 import { UserStatus } from 'src/common/enums/user-status.enum';
 import { MailService } from '../mail/mail.service';
@@ -59,7 +60,7 @@ export class UserService extends ResourceService<
   }
 
   async findByPhoneNumber(phoneNumber: string): Promise<User> {
-    return this.userModel.findOne({ phoneNumber }).exec();
+    return this.userModel.findOne({ phoneNumber: normalizePhone(phoneNumber) }).exec();
   }
 
   async getMe(userId: string) {

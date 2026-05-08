@@ -5,6 +5,7 @@ import { CreateWaitlistDto } from 'src/dtos/create-waitlist.dto';
 import { ResourceService } from 'src/services/resource.service';
 import { Waitlist } from '../../models/waitlist.schema';
 import { MailService } from '../mail/mail.service';
+import { normalizePhone } from 'src/helpers/phone.helper';
 
 @Injectable()
 export class WaitlistService extends ResourceService<
@@ -23,6 +24,7 @@ export class WaitlistService extends ResourceService<
   }
 
   async createWaitlist(dto: CreateWaitlistDto): Promise<Waitlist> {
+    dto.phoneNumber = normalizePhone(dto.phoneNumber);
     this.logger.log(`Yeni waitlist başvurusu alınıyor: ${JSON.stringify(dto)}`);
 
     const existing = await this.waitlistModel.findOne({
@@ -82,7 +84,7 @@ export class WaitlistService extends ResourceService<
   }
 
   async findByPhone(phoneNumber: string): Promise<Waitlist | null> {
-    return this.waitlistModel.findOne({ phoneNumber });
+    return this.waitlistModel.findOne({ phoneNumber: normalizePhone(phoneNumber) });
   }
 
   async sendMail(dto: { email: string; code: string }) {
