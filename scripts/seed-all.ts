@@ -308,9 +308,9 @@ async function seedAll() {
       {
         name: 'Gourmet Sushi',
         images: [
-          'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80',
-          'https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=800&q=80',
-          'https://images.unsplash.com/photo-1559410545-0bdcd187e0a6?w=800&q=80',
+          'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1617196034100-e1e6e4e3a86e?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [michelin._id],
         priceLevel: 3,
@@ -323,9 +323,9 @@ async function seedAll() {
       {
         name: 'Carbone',
         images: [
-          'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
-          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
-          'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=800&q=80',
+          'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [michelin._id],
         priceLevel: 3,
@@ -338,9 +338,9 @@ async function seedAll() {
       {
         name: 'La Maison',
         images: [
-          'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80',
-          'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=800&q=80',
-          'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
+          'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [michelin._id],
         priceLevel: 3,
@@ -353,9 +353,9 @@ async function seedAll() {
       {
         name: 'Ocean Prime',
         images: [
-          'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800&q=80',
-          'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=800&q=80',
-          'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
+          'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [michelin._id],
         priceLevel: 2,
@@ -368,9 +368,9 @@ async function seedAll() {
       {
         name: 'The Cellar',
         images: [
-          'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&q=80',
-          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-          'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=800&q=80',
+          'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [chef._id],
         priceLevel: 3,
@@ -383,9 +383,9 @@ async function seedAll() {
       {
         name: 'Zen Fusion',
         images: [
-          'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=800&q=80',
-          'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=800&q=80',
-          'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&q=80',
+          'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [chef._id],
         priceLevel: 2,
@@ -398,9 +398,9 @@ async function seedAll() {
       {
         name: 'Sweet Art',
         images: [
-          'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80',
-          'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=80',
-          'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?w=800&q=80',
+          'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [chef._id],
         priceLevel: 3,
@@ -413,9 +413,9 @@ async function seedAll() {
       {
         name: 'Ege Rüzgarı',
         images: [
-          'https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=800&q=80',
-          'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&q=80',
-          'https://images.unsplash.com/photo-1560717845-968823efbee1?w=800&q=80',
+          'https://images.unsplash.com/photo-1534080564583-6be75777b70a?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1560717845-968823efbee1?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [classics._id],
         priceLevel: 2,
@@ -428,9 +428,9 @@ async function seedAll() {
       {
         name: 'Royal Table',
         images: [
-          'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=800&q=80',
-          'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=800&q=80',
-          'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
+          'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [classics._id],
         priceLevel: 3,
@@ -443,9 +443,9 @@ async function seedAll() {
       {
         name: 'Sami & Susu',
         images: [
-          'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?w=800&q=80',
-          'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&q=80',
-          'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80',
+          'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80',
         ],
         categories: [classics._id],
         priceLevel: 2,

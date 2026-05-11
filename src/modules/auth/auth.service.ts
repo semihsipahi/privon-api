@@ -300,7 +300,8 @@ export class AuthService {
   }
 
   async login(phoneLoginDto: PhoneLoginDto): Promise<LoginResponseDto> {
-    const { phoneNumber, password } = phoneLoginDto;
+    const { password } = phoneLoginDto;
+    const phoneNumber = normalizePhone(phoneLoginDto.phoneNumber);
 
     const user = await this.validateUser(phoneNumber, password);
 
