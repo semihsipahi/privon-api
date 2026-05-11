@@ -73,8 +73,7 @@ export class AuthService {
       return { status: 'banned' };
     }
 
-    const accessToken = await this.generateToken(user);
-    return { status: 'existing', accessToken };
+    return { status: 'existing' };
   }
 
   async validateUser(phoneNumber: string, password: string): Promise<User> {
@@ -201,7 +200,7 @@ export class AuthService {
       email,
       birthDate,
       acceptedMarketing: acceptedMarketing ?? false,
-      isPhoneVerified: true,
+      isPhoneVerified: false,
       role: Role.TrialUser,
       subscriptionExpiresAt: isBetaMode
         ? null
@@ -222,6 +221,11 @@ export class AuthService {
       ],
     });
 
+    const verificationCode = this.generateVerificationCode();
+    const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.verificationCode = verificationCode;
+    user.codeExpiresAt = codeExpiresAt;
+
     await user.save();
 
     await this.referralCodeService.markCodeUsed(
@@ -229,9 +233,11 @@ export class AuthService {
       user._id.toString(),
     );
 
+    await this.sendSMS(phoneNumber, verificationCode);
+
     const accessToken = await this.generateToken(user);
 
-    return { accessToken, message: 'Kayıt başarılı. PRIVON\'a hoş geldiniz.' };
+    return { accessToken, message: 'Kayıt başarılı. Telefon doğrulaması için SMS gönderildi.' };
   }
 
   async verifyPhone(
