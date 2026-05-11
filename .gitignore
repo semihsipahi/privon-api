@@ -3,6 +3,12 @@
 /node_modules
 /build
 
+# Environment files — never commit real credentials
+.env
+.env.prod
+.env.local
+.env.*.local
+
 # Logs 
 logs
 *.log
