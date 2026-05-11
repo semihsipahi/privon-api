@@ -1,10 +1,13 @@
 import {
   Controller,
   Delete,
+  Get,
   Param,
   Post,
   Req,
+  Res,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -15,8 +18,9 @@ import {
 } from '@nestjs/swagger';
 import { Role } from 'src/common/enums/role.enum';
 import { Roles } from 'src/common/decorators/roles.decorator';
+import { Public } from 'src/common/decorators/public.decorator';
 import { UploadService } from './upload.service';
-import { FastifyRequest } from 'fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 
 @ApiTags('Dosya Yükleme')
 @Controller('upload')
@@ -66,6 +70,20 @@ export class UploadController {
     };
 
     return await this.uploadService.uploadFile(file as any);
+  }
+
+  @Public()
+  @Get('cdn/*')
+  async proxyFile(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
+    const path = (req.params as any)['*'];
+    if (!path) throw new NotFoundException();
+    const url = await this.uploadService.getInternalUrl(path);
+    const response = await fetch(url);
+    if (!response.ok) throw new NotFoundException();
+    const buffer = Buffer.from(await response.arrayBuffer());
+    reply.header('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+    reply.header('Cache-Control', 'public, max-age=31536000');
+    reply.send(buffer);
   }
 
   @ApiBearerAuth()

@@ -153,6 +153,10 @@ export class UploadService implements OnModuleInit {
     }
   }
 
+  getInternalUrl(path: string): string {
+    return `${this.endpoint}/${path}`;
+  }
+
   async deleteFile(urlList: string[]) {
     try {
       const params: DeleteObjectsRequest = {
