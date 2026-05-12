@@ -117,4 +117,29 @@ export class RestaurantListQueryDto {
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Tarih YYYY-MM-DD formatında olmalıdır' })
   date?: string;
+
+  @ApiPropertyOptional({
+    description: 'Mutfak türlerine göre filtrele (virgülle ayrılmış)',
+    example: 'italian,french',
+  })
+  @IsOptional()
+  @IsString()
+  cuisineTypes?: string;
+
+  @ApiPropertyOptional({
+    description: 'Atmosfer türlerine göre filtrele (virgülle ayrılmış)',
+    example: 'romantic,seaside',
+  })
+  @IsOptional()
+  @IsString()
+  atmosphereTypes?: string;
+
+  @ApiPropertyOptional({
+    description: 'Koleksiyon türlerine göre filtrele (virgülle ayrılmış)',
+    example: 'michelinGuide,chefRestaurant',
+  })
+  @IsOptional()
+  @IsString()
+  collectionTypes?: string;
+
 }

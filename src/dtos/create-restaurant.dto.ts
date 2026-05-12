@@ -26,6 +26,11 @@ export class LocationDto {
   @IsOptional()
   district?: string;
 
+  @ApiPropertyOptional({ description: 'Semt' })
+  @IsString({ message: 'Semt metin formatında olmalıdır' })
+  @IsOptional()
+  neighborhood?: string;
+
   @ApiPropertyOptional({
     description: 'GeoJSON koordinatları [longitude, latitude]',
     example: [28.9784, 41.0082],
@@ -91,7 +96,7 @@ export class CreateRestaurantDto {
   @IsOptional()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Fiyat seviyesi (1: Ucuz, 2: Orta, 3: Pahalı)' })
+  @ApiPropertyOptional({ description: 'Fiyat seviyesi (1: ₺, 2: ₺₺, 3: ₺₺₺, 4: ₺₺₺₺)' })
   @IsNumber({}, { message: 'Fiyat seviyesi sayı olmalıdır' })
   @IsOptional()
   priceLevel?: number;
@@ -114,10 +119,30 @@ export class CreateRestaurantDto {
   @IsOptional()
   location?: LocationDto;
 
+  @ApiPropertyOptional({ description: 'Restoran açıklaması (Türkçe)' })
+  @IsString({ message: 'Açıklama metin formatında olmalıdır' })
+  @IsOptional()
+  description?: string;
+
+  @ApiPropertyOptional({ description: 'Restoran açıklaması (İngilizce)' })
+  @IsString({ message: 'İngilizce açıklama metin formatında olmalıdır' })
+  @IsOptional()
+  descriptionEng?: string;
+
   @ApiPropertyOptional({ description: 'Website' })
   @IsString({ message: 'Website metin formatında olmalıdır' })
   @IsOptional()
   website?: string;
+
+  @ApiPropertyOptional({ description: 'Instagram profil URL' })
+  @IsString({ message: 'Instagram URL metin formatında olmalıdır' })
+  @IsOptional()
+  instagramUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Facebook profil URL' })
+  @IsString({ message: 'Facebook URL metin formatında olmalıdır' })
+  @IsOptional()
+  facebookUrl?: string;
 
   @ApiPropertyOptional({ description: 'Telefon' })
   @IsString({ message: 'Telefon metin formatında olmalıdır' })
@@ -160,4 +185,16 @@ export class CreateRestaurantDto {
   @IsString({ each: true, message: 'Her bir ödül metin olmalıdır' })
   @IsOptional()
   awards?: string[];
+
+  @ApiPropertyOptional({ description: 'Mutfak türleri (value listesi)', type: [String] })
+  @IsArray({ message: 'Mutfak türleri liste olmalıdır' })
+  @IsString({ each: true, message: 'Her mutfak türü metin olmalıdır' })
+  @IsOptional()
+  cuisineTypes?: string[];
+
+  @ApiPropertyOptional({ description: 'Atmosfer türleri (value listesi)', type: [String] })
+  @IsArray({ message: 'Atmosfer türleri liste olmalıdır' })
+  @IsString({ each: true, message: 'Her atmosfer türü metin olmalıdır' })
+  @IsOptional()
+  atmosphereTypes?: string[];
 }

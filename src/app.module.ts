@@ -25,6 +25,7 @@ import { ReferralCodeModule } from './modules/referral-code/referral-code.module
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { SectionModule } from './modules/section/section.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { FilterOptionModule } from './modules/filter-option/filter-option.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -71,6 +72,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     WaitlistModule,
     SectionModule,
     NotificationModule,
+    FilterOptionModule,
   ],
   controllers: [AppController],
   providers: [

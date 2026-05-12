@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
+import { CuisineType } from '../common/enums/cuisine-type.enum';
+import { AtmosphereType } from '../common/enums/atmosphere-type.enum';
 
 @Schema({ _id: false })
 export class Location {
@@ -17,6 +19,9 @@ export class Location {
 
   @Prop()
   district?: string; // ilçe
+
+  @Prop()
+  neighborhood?: string; // semt
 }
 
 @Schema({ _id: false })
@@ -77,7 +82,19 @@ export class Restaurant extends Document {
   location: Location;
 
   @Prop()
+  description?: string;
+
+  @Prop()
+  descriptionEng?: string;
+
+  @Prop()
   website?: string;
+
+  @Prop()
+  instagramUrl?: string;
+
+  @Prop()
+  facebookUrl?: string;
 
   @Prop({ unique: true })
   phone?: string;
@@ -96,6 +113,12 @@ export class Restaurant extends Document {
 
   @Prop({ type: [String], default: [] })
   awards: string[];
+
+  @Prop({ type: [String], default: [] })
+  cuisineTypes: string[];
+
+  @Prop({ type: [String], default: [] })
+  atmosphereTypes: string[];
 }
 
 export const RestaurantSchema = SchemaFactory.createForClass(Restaurant);

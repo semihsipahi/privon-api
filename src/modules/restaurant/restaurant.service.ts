@@ -107,6 +107,9 @@ export class RestaurantService extends ResourceService<
     _end?: number;
     date?: string;
     priceLevel?: number;
+    cuisineTypes?: string;
+    atmosphereTypes?: string;
+    collectionTypes?: string;
   }): Promise<PublicRestaurantsListResponse> {
     const {
       q,
@@ -120,6 +123,9 @@ export class RestaurantService extends ResourceService<
       _end = 10,
       date,
       priceLevel,
+      cuisineTypes,
+      atmosphereTypes,
+      collectionTypes,
     } = filters;
     const start = Number(_start);
     const end = Number(_end);
@@ -185,6 +191,17 @@ export class RestaurantService extends ResourceService<
 
     if (priceLevel) {
       matchStage.priceLevel = priceLevel;
+    }
+
+    if (cuisineTypes) {
+      matchStage.cuisineTypes = { $in: cuisineTypes.split(',').map((t) => t.trim()) };
+    }
+
+    if (atmosphereTypes) {
+      matchStage.atmosphereTypes = { $in: atmosphereTypes.split(',').map((t) => t.trim()) };
+    }
+    if (collectionTypes) {
+      matchStage.collectionTypes = { $in: collectionTypes.split(',').map((t) => t.trim()) };
     }
 
     if (Object.keys(matchStage).length > 0) {
@@ -301,6 +318,14 @@ export class RestaurantService extends ResourceService<
           }
           : null,
         workingHours: 1,
+        cuisineTypes: 1,
+        atmosphereTypes: 1,
+        collectionTypes: 1,
+        description: 1,
+        descriptionEng: 1,
+        website: 1,
+        instagramUrl: 1,
+        facebookUrl: 1,
         slots: {
           $map: {
             input: slotsProjection,
