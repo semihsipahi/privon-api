@@ -94,12 +94,11 @@ export class AuthService {
   }
 
   private async sendSMS(phoneNumber: string, code: string): Promise<void> {
-    const url = 'https://api.vatansms.net/api/v1/otp';
+    const url = 'https://api.toplusms.app/api/v1/otp';
     const body = {
-      api_id: process.env.SMSUSER,
-      api_key: process.env.SMSPASSWORD,
-      sender: process.env.SMS_HEADER || 'YemApp',
-      message_type: 'turkce',
+      api_key: process.env.SMS_API_KEY,
+      sender: process.env.SMS_HEADER || 'YEMAP TEKN',
+      message_type: 'normal',
       message: `Dogrulama Kodunuz: ${code}`,
       phones: [phoneNumber],
     };
@@ -115,10 +114,8 @@ export class AuthService {
 
       const data = await response.json();
 
-      if (!response.ok || (data.status && data.status !== 'success')) { // Adjust based on actual API response structure if needed
-        this.logger.error(`VatanSMS Error: ${JSON.stringify(data)}`);
-        // Don't throw error to block registration flow, but log it.
-        // Or throw if strictly required.
+      if (!response.ok || (data.status && data.status !== 'success')) {
+        this.logger.error(`SMS Error: ${JSON.stringify(data)}`);
       } else {
         this.logger.log(`SMS sent successfully to ${phoneNumber}`);
       }
