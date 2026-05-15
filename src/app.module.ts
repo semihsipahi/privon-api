@@ -26,6 +26,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { SectionModule } from './modules/section/section.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { FilterOptionModule } from './modules/filter-option/filter-option.module';
+import { RezervemModule } from './modules/rezervem/rezervem.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -73,6 +74,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     SectionModule,
     NotificationModule,
     FilterOptionModule,
+    RezervemModule,
   ],
   controllers: [AppController],
   providers: [

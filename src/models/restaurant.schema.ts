@@ -119,6 +119,9 @@ export class Restaurant extends Document {
 
   @Prop({ type: [String], default: [] })
   atmosphereTypes: string[];
+
+  @Prop({ sparse: true })
+  rezervemSlug?: string;
 }
 
 export const RestaurantSchema = SchemaFactory.createForClass(Restaurant);

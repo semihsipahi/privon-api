@@ -197,4 +197,9 @@ export class CreateRestaurantDto {
   @IsString({ each: true, message: 'Her atmosfer türü metin olmalıdır' })
   @IsOptional()
   atmosphereTypes?: string[];
+
+  @ApiPropertyOptional({ description: 'Rezervem partner API mekan slug (rezervasyon entegrasyonu için)' })
+  @IsString({ message: 'Rezervem slug metin formatında olmalıdır' })
+  @IsOptional()
+  rezervemSlug?: string;
 }
