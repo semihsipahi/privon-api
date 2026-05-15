@@ -230,11 +230,10 @@ export class AuthService {
       user._id.toString(),
     );
 
-    await this.sendSMS(phoneNumber, verificationCode);
-
+    // SMS burada gönderilmiyor — kullanıcı "KOD GÖNDER" butonuna basınca resend-code endpoint'i tetikler
     const accessToken = await this.generateToken(user);
 
-    return { accessToken, message: 'Kayıt başarılı. Telefon doğrulaması için SMS gönderildi.' };
+    return { accessToken, message: 'Kayıt başarılı.' };
   }
 
   async verifyPhone(
