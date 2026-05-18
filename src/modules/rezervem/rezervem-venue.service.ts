@@ -197,6 +197,13 @@ export class RezervemVenueService implements OnModuleInit {
         ),
       );
 
+      // 5) Kaldırılan kategorileri fallback'e taşı — bootstrap hatası nedeniyle
+      //    eski categoryKey değeri kalan dokümanları temizler.
+      await this.model.updateMany(
+        { categoryKey: { $nin: ['Michelin Guide', 'Chef Restaurants', 'City Classics'] } },
+        { $set: { categoryKey: fallback } },
+      );
+
       report.finishedAt = new Date();
       this.logger.log(
         `Sync done: ${report.succeeded} ok / ${report.failed} fail / ${report.venuesTotal} total ` +
