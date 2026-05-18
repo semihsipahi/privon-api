@@ -19,6 +19,26 @@ const SHIFT_PERIODS: Record<number, Array<{ openingTime: string; closingTime: st
 
 const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
+/**
+ * Rezervem shifts alanı iki farklı format dönebilir:
+ *   - Array  : [1, 2] (bazı endpointler)
+ *   - Object : { breakfast: false, lunch: true, dinner: true, bar: false }
+ * Her ikisini de 0=Kahvaltı, 1=Öğle, 2=Akşam, 3=Bar sayı dizisine normalize eder.
+ */
+function normalizeShifts(raw: any): number[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(Number).filter((n) => !isNaN(n));
+  if (typeof raw === 'object') {
+    const result: number[] = [];
+    if (raw.breakfast) result.push(0);
+    if (raw.lunch) result.push(1);
+    if (raw.dinner) result.push(2);
+    if (raw.bar) result.push(3);
+    return result;
+  }
+  return [];
+}
+
 function buildWorkingHoursFromShifts(areas: Array<{ shifts?: number[] }>): Array<{
   dayName: string;
   periods: Array<{ openingTime: string; closingTime: string }>;
@@ -237,7 +257,7 @@ export class RezervemVenueService implements OnModuleInit {
       summary: this.i18n(a.summary),
       minCapacity: a.minCapacity,
       maxCapacity: a.maxCapacity,
-      shifts: a.shifts,
+      shifts: normalizeShifts(a.shifts),
       photos: Array.isArray(a.photos) ? a.photos : [],
       coverPhoto: a.coverPhoto || '',
       hasTastingMenu: !!a.hasTastingMenu,

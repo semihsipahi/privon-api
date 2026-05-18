@@ -41,9 +41,11 @@ export interface MappingResult {
 // etiketleri yakalamanın tek güvenli yolu manuel override. Prod'da slug'lar
 // öğrenildikçe genişletilir.
 const SLUG_OVERRIDES: Record<string, string> = {
-  // 'mikla-istanbul': 'Michelin Guide',
-  // 'neolokal': 'Michelin Guide',
-  // 'turk-fatih-tutak': 'Michelin Guide',
+  'yeni-lokanta': 'Michelin Guide',
+  'mikla-istanbul': 'Michelin Guide',
+  'neolokal': 'Michelin Guide',
+  'turk-fatih-tutak': 'Michelin Guide',
+  'genji-gokturk': 'Chef Restaurants', // Göktürk = İstanbul ilçesi, Türk mutfağı değil
 };
 
 // ── Katman 2: Heuristic kurallar ─────────────────────────────────────
