@@ -336,6 +336,7 @@ export class RezervemVenueService implements OnModuleInit {
           bookingFlow: boot.bookingFlow ?? undefined,
           areas: normalizedAreas,
           tags: normalizedTags,
+          workingHours: Array.isArray(venueInfo.workingHours) ? venueInfo.workingHours : buildWorkingHoursFromShifts(normalizedAreas),
           categoryKey: mapping.categoryKey,
           categoryScore: mapping.score,
           badges,
@@ -495,9 +496,11 @@ export class RezervemVenueService implements OnModuleInit {
       atmosphereTypes: [],
       workingHours: (dto.workingHours && dto.workingHours.length > 0)
         ? dto.workingHours
-        : buildWorkingHoursFromShifts(
-            (venue.areas ?? []).map((a: any) => ({ shifts: normalizeShifts(a.shifts) })),
-          ),
+        : ((venue as any).workingHours?.length > 0)
+          ? (venue as any).workingHours
+          : buildWorkingHoursFromShifts(
+              (venue.areas ?? []).map((a: any) => ({ shifts: normalizeShifts(a.shifts) })),
+            ),
       rezervemSlug: venue.slug,
     };
 

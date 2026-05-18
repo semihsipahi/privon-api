@@ -59,6 +59,13 @@ export class RezervemVenue extends Document {
   @Prop({ type: [Object], default: [] })
   tags: Array<{ id: number; title: string; summary?: string }>;
 
+  @Prop({ type: [Object], default: [] })
+  workingHours: Array<{
+    dayName: string;
+    periods: Array<{ openingTime: string; closingTime: string }>;
+    isClosed: boolean;
+  }>;
+
   // Bizim taraf — kategori eşleme
   @Prop({ index: true })
   categoryKey: string; // e.g. "Michelin Guide" — matches RestaurantCategory.name
