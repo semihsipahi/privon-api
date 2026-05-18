@@ -76,18 +76,22 @@ export class RezervemVenueService implements OnModuleInit {
 
     try {
       // 1) Liste çek (sayfa sayfa)
-      const allSlugs: string[] = [];
+      // List response'undaki name'i de yakala — bootstrap'ta displayName boş
+      // gelirse kullanırız (test ortamı şu an böyle davranıyor).
+      const listEntries: { slug: string; name: string }[] = [];
       let page = 1;
       const pageSize = 100;
       while (true) {
         const list = await this.http.getVenues(page, pageSize);
         for (const v of list.items) {
-          if (v.isActive) allSlugs.push(v.slug);
+          if (v.isActive) listEntries.push({ slug: v.slug, name: v.name });
         }
         if (list.items.length < pageSize) break;
         page += 1;
         if (page > 50) break; // safety net
       }
+      const allSlugs = listEntries.map((e) => e.slug);
+      const nameBySlug = new Map(listEntries.map((e) => [e.slug, e.name]));
       report.venuesTotal = allSlugs.length;
       this.logger.log(`Fetched ${allSlugs.length} active venues from Rezervem`);
 
@@ -100,9 +104,10 @@ export class RezervemVenueService implements OnModuleInit {
         while (queue.length) {
           const slug = queue.shift();
           if (!slug) break;
+          const listName = nameBySlug.get(slug) ?? slug;
           try {
             const boot = await this.http.getBootstrap(slug);
-            await this.upsertFromBootstrap(slug, boot, fallback);
+            await this.upsertFromBootstrap(slug, listName, boot, fallback);
             report.succeeded += 1;
           } catch (err: any) {
             report.failed += 1;
@@ -136,49 +141,107 @@ export class RezervemVenueService implements OnModuleInit {
     }
   }
 
+  /**
+   * Rezervem i18n alanları string yerine { tr, en } objesi olarak dönüyor.
+   * Bu helper TR'yi öncelikli, EN'i fallback olarak alır; zaten string ise
+   * olduğu gibi döner.
+   */
+  private i18n(value: any): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') return value.tr || value.en || '';
+    return '';
+  }
+
+  /** Rezervem address: { fullAddress: { tr, en } } | string */
+  private resolveAddress(value: any): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      if (value.fullAddress) return this.i18n(value.fullAddress);
+      return this.i18n(value);
+    }
+    return '';
+  }
+
+  /** Rezervem contact: { phone, email, website } | string */
+  private resolveContactPhone(value: any): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') return value.phone || value.email || value.website || '';
+    return '';
+  }
+
   private async upsertFromBootstrap(
     slug: string,
+    listName: string,
     boot: RezervemBootstrapResponse,
     fallback: string,
   ): Promise<void> {
-    const venueInfo = boot.venue ?? ({} as any);
-    const areas = boot.areas ?? [];
-    const tags = boot.tags ?? [];
+    const venueInfo: any = boot.venue ?? {};
+    const areas = (boot.areas ?? []) as any[];
+    const tags = (boot.tags ?? []) as any[];
+
+    // İsim önceliği: bootstrap.displayName (i18n) > /v1/venues.name > slug
+    const displayNameStr = this.i18n(venueInfo.displayName);
+    const resolvedName: string = displayNameStr || listName || slug;
+
+    // Tag'leri i18n'den arındırılmış {title, summary} listesine düşür
+    const normalizedTags = tags.map((t) => ({
+      id: t.id,
+      title: this.i18n(t.title),
+      summary: this.i18n(t.summary),
+    }));
+
+    // Area'ları normalize et
+    const normalizedAreas = areas.map((a) => ({
+      id: a.id,
+      title: this.i18n(a.title),
+      summary: this.i18n(a.summary),
+      minCapacity: a.minCapacity,
+      maxCapacity: a.maxCapacity,
+      shifts: a.shifts,
+      photos: Array.isArray(a.photos) ? a.photos : [],
+      coverPhoto: a.coverPhoto || '',
+      hasTastingMenu: !!a.hasTastingMenu,
+    }));
 
     const mapping = mapVenueToCategory(
       {
         slug,
-        name: venueInfo.displayName || slug,
-        displayName: venueInfo.displayName,
-        tags: tags.map((t) => ({ title: t.title, summary: t.summary })),
-        hasTastingMenu: areas.some((a) => a.hasTastingMenu),
-        areaTitles: areas.map((a) => a.title),
+        name: resolvedName,
+        displayName: displayNameStr,
+        tags: normalizedTags.map((t) => ({ title: t.title, summary: t.summary })),
+        hasTastingMenu: normalizedAreas.some((a) => a.hasTastingMenu),
+        areaTitles: normalizedAreas.map((a) => a.title),
       },
       fallback,
     );
 
     const badges = deriveBadges({
       slug,
-      name: venueInfo.displayName || slug,
-      displayName: venueInfo.displayName,
-      tags: tags.map((t) => ({ title: t.title })),
-      hasTastingMenu: areas.some((a) => a.hasTastingMenu),
-      areaTitles: areas.map((a) => a.title),
+      name: resolvedName,
+      displayName: displayNameStr,
+      tags: normalizedTags.map((t) => ({ title: t.title })),
+      hasTastingMenu: normalizedAreas.some((a) => a.hasTastingMenu),
+      areaTitles: normalizedAreas.map((a) => a.title),
     });
 
     // Cover photo: ilk salonun coverPhoto'su, yoksa ilk photo, yoksa logoUrl
     const coverPhoto =
-      areas.find((a) => !!a.coverPhoto)?.coverPhoto ||
-      areas.flatMap((a) => a.photos ?? [])[0] ||
+      normalizedAreas.find((a) => !!a.coverPhoto)?.coverPhoto ||
+      normalizedAreas.flatMap((a) => a.photos)[0] ||
       venueInfo.logoUrl ||
       '';
 
     const photos = Array.from(
-      new Set([
-        coverPhoto,
-        ...areas.flatMap((a) => a.photos ?? []),
-        ...(venueInfo.logoUrl ? [venueInfo.logoUrl] : []),
-      ].filter(Boolean)),
+      new Set(
+        [
+          coverPhoto,
+          ...normalizedAreas.flatMap((a) => a.photos),
+          ...(venueInfo.logoUrl ? [venueInfo.logoUrl] : []),
+        ].filter(Boolean),
+      ),
     );
 
     await this.model.updateOne(
@@ -186,24 +249,24 @@ export class RezervemVenueService implements OnModuleInit {
       {
         $set: {
           slug,
-          name: venueInfo.displayName || slug,
-          displayName: venueInfo.displayName,
-          logoUrl: venueInfo.logoUrl,
+          name: resolvedName,
+          displayName: displayNameStr,
+          logoUrl: venueInfo.logoUrl || '',
           coverPhoto,
           photos,
-          address: venueInfo.address,
-          contact: venueInfo.contact,
+          address: this.resolveAddress(venueInfo.address),
+          contact: this.resolveContactPhone(venueInfo.contact),
           timezone: venueInfo.timezone,
-          currency: venueInfo.currency,
+          currency: (venueInfo.currency || '').trim(),
           supportedLanguages: venueInfo.supportedLanguages ?? [],
           pax: boot.pax ?? undefined,
           bookingFlow: boot.bookingFlow ?? undefined,
-          areas,
-          tags,
+          areas: normalizedAreas,
+          tags: normalizedTags,
           categoryKey: mapping.categoryKey,
           categoryScore: mapping.score,
           badges,
-          hasTastingMenu: areas.some((a) => a.hasTastingMenu),
+          hasTastingMenu: normalizedAreas.some((a) => a.hasTastingMenu),
           isActive: true,
           lastSyncedAt: new Date(),
           lastSyncError: null,

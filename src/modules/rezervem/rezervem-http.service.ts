@@ -16,34 +16,43 @@ export interface RezervemVenueListResponse {
   pageSize: number;
 }
 
+// Rezervem real payload: i18n field'lar { tr, en } objesi olabilir, string olabilir.
+type I18n = string | { tr?: string; en?: string } | null | undefined;
+
 export interface RezervemBootstrapResponse {
   venue: {
     slug: string;
-    displayName: string;
+    displayName?: I18n;
     logoUrl?: string;
-    theme?: string;
-    address?: string;
-    contact?: string;
+    theme?: any;
+    address?:
+      | { fullAddress?: I18n; [k: string]: any }
+      | string
+      | null;
+    contact?:
+      | { phone?: string; email?: string; website?: string }
+      | string
+      | null;
     timezone?: string;
     currency?: string;
     supportedLanguages?: string[];
-    workingHours?: string;
+    workingHours?: any;
   } | null;
   pax?: { min: number; max: number; step: number } | null;
   leadTimes?: { minDays: number; maxDays: number } | null;
   bookingFlow?: any;
   areas?: Array<{
     id: number;
-    title: string;
-    summary?: string;
+    title?: I18n;
+    summary?: I18n;
     minCapacity: number;
     maxCapacity: number;
-    shifts: number[];
-    photos: string[];
+    shifts?: any;
+    photos?: string[];
     coverPhoto?: string;
-    hasTastingMenu: boolean;
+    hasTastingMenu?: boolean;
   }> | null;
-  tags?: Array<{ id: number; title: string; summary?: string }> | null;
+  tags?: Array<{ id: number; title?: I18n; summary?: I18n }> | null;
 }
 
 @Injectable()
@@ -78,7 +87,26 @@ export class RezervemHttpService {
       throw new Error(`Rezervem API error: ${response.status} on ${path}`);
     }
 
-    return response.json() as Promise<T>;
+    return this.unwrap<T>(await response.json(), path);
+  }
+
+  /**
+   * Rezervem endpoint'leri tutarsız: bir kısmı doğrudan veri döndürür
+   * (örn. /v1/venues → {items, totalCount, ...}), bir kısmı {header, result}
+   * envelope'una sarar (örn. /v1/venues/{slug}/bootstrap). Bu helper:
+   *  - envelope varsa header.hasError'a bakar, hata varsa fırlatır
+   *  - result varsa onu, yoksa raw response'u döndürür
+   */
+  private unwrap<T>(raw: any, path: string): T {
+    if (raw && typeof raw === 'object' && 'header' in raw) {
+      const header = raw.header ?? {};
+      if (header.hasError === true || header.result === false) {
+        const msgs = Array.isArray(header.messages) ? header.messages.join(', ') : 'unknown';
+        throw new Error(`Rezervem API error on ${path}: ${msgs}`);
+      }
+      return (raw.result ?? raw) as T;
+    }
+    return raw as T;
   }
 
   private async post<T>(path: string, body: object): Promise<T> {
@@ -98,7 +126,7 @@ export class RezervemHttpService {
       throw new Error(`Rezervem API error: ${response.status} on ${path}`);
     }
 
-    return response.json() as Promise<T>;
+    return this.unwrap<T>(await response.json(), path);
   }
 
   // --- Venues ---

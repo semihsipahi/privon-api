@@ -4,12 +4,21 @@
  * Strateji — 3 katman (öncelik sırasıyla):
  *
  *   1) SLUG_OVERRIDES   → manuel override (kullanıcı kararı; en güçlü, skor 1000)
- *   2) HEURISTIC_RULES  → tags/name/cuisine içindeki anahtar kelimelerden skor topla
- *   3) FALLBACK_CATEGORY → eşleşme yoksa bu kategoriye düşür (env ile ezilebilir)
+ *   2) HEURISTIC_RULES  → tags/name/slug içindeki anahtar kelimelerden skor topla
+ *   3) FALLBACK         → eşleşme yoksa REZERVEM_FALLBACK_CATEGORY (env)
  *
- * Önemli: Burada kullanılan kategori adları, MongoDB'deki RestaurantCategory.name
- * değerleriyle BİREBİR aynı olmalıdır (case-sensitive). Aksi halde adapter, mekan
- * için bir Category dokümanı bulamaz ve _id atayamaz.
+ * ÖNEMLİ: Burada üretilen kategori adları, MongoDB'deki RestaurantCategory.name
+ * değerleriyle BİREBİR aynı olmalıdır (case-sensitive, Türkçe karakter dahil).
+ * Aksi halde adapter, mekan için bir Category dokümanı bulamaz ve mobil tarafta
+ * o kategori altında hiç restoran görünmez.
+ *
+ * DB'de şu an `visibleOnHomePage: true` olan 4 kategori:
+ *   - Türk Mutfağı
+ *   - Michelin Guide
+ *   - Chef Restaurants
+ *   - City Classics  (← fallback)
+ *
+ * Mapper SADECE bu 4 isme yazar; diğer kategori adları üretilmez.
  */
 
 export interface MappingInput {
@@ -28,70 +37,72 @@ export interface MappingResult {
 }
 
 // ── Katman 1: Slug override ──────────────────────────────────────────
-// Rezervem prod slug'larını öğrenince doldur. Boş bırakılması güvenlidir.
+// Test ortamında tags/displayName boş döndüğü için Michelin gibi kritik
+// etiketleri yakalamanın tek güvenli yolu manuel override. Prod'da slug'lar
+// öğrenildikçe genişletilir.
 const SLUG_OVERRIDES: Record<string, string> = {
   // 'mikla-istanbul': 'Michelin Guide',
   // 'neolokal': 'Michelin Guide',
+  // 'turk-fatih-tutak': 'Michelin Guide',
 };
 
 // ── Katman 2: Heuristic kurallar ─────────────────────────────────────
-// Her kural eşleştiğinde ilgili kategoriye skor ekler. Her eşleşme +score.
-// Birden fazla kategori eşleşirse en yüksek toplam skor kazanır.
+// Sadece DB'de mevcut olan kategorilere yazılır. Birden fazla kategori
+// eşleşirse en yüksek toplam skor kazanır.
 interface HeuristicRule {
-  keywords: string[]; // case-insensitive
+  keywords: string[]; // case-insensitive substring
   category: string;
   score: number;
 }
 
 const HEURISTIC_RULES: HeuristicRule[] = [
-  // Michelin Guide
-  { keywords: ['michelin', 'star', 'yıldız'], category: 'Michelin Guide', score: 150 },
+  // Michelin Guide — yıldız/michelin/star
+  { keywords: ['michelin', 'yıldız', 'star'], category: 'Michelin Guide', score: 200 },
 
-  // Chef Restaurants
-  { keywords: ['chef', 'şef', 'tasting menu', 'tadım menüsü', 'omakase'], category: 'Chef Restaurants', score: 90 },
+  // Chef Restaurants — şef/chef/tadım menüsü/omakase
+  {
+    keywords: ['chef', 'şef', 'tasting menu', 'tadım', 'tadim menüsü', 'omakase'],
+    category: 'Chef Restaurants',
+    score: 120,
+  },
 
-  // Fine Dining
-  { keywords: ['fine dining', 'gourmet', 'gastronomi'], category: 'Fine Dining', score: 70 },
-
-  // City Classics
-  { keywords: ['classic', 'klasik', 'iconic', 'efsane', 'köklü'], category: 'City Classics', score: 60 },
-
-  // Steakhouse
-  { keywords: ['steak', 'steakhouse', 'et', 'grill', 'mangal'], category: 'Steakhouse', score: 60 },
-
-  // Seafood
-  { keywords: ['seafood', 'fish', 'balık', 'deniz ürünleri', 'meyhane'], category: 'Seafood', score: 60 },
-
-  // Sushi & Japanese
-  { keywords: ['sushi', 'japon', 'japanese', 'ramen', 'izakaya'], category: 'Japanese', score: 80 },
-
-  // Italian
-  { keywords: ['italian', 'italyan', 'pizza', 'pasta', 'trattoria'], category: 'Italian', score: 60 },
-
-  // French
-  { keywords: ['french', 'fransız', 'bistro', 'brasserie'], category: 'French', score: 60 },
-
-  // Asian
-  { keywords: ['asian', 'asya', 'pan asian', 'thai', 'chinese', 'çin'], category: 'Asian', score: 50 },
-
-  // Turkish
-  { keywords: ['turkish', 'türk', 'anadolu', 'osmanlı', 'kebap', 'meze'], category: 'Turkish', score: 50 },
-
-  // Rooftop & Bar
-  { keywords: ['rooftop', 'sky', 'manzara', 'panorama', 'bar', 'lounge', 'cocktail'], category: 'Rooftop & Bar', score: 40 },
-
-  // Brunch / Cafe
-  { keywords: ['brunch', 'breakfast', 'kahvaltı', 'café', 'cafe'], category: 'Brunch & Cafe', score: 40 },
+  // Türk Mutfağı — kebap, meze, ocakbaşı, meyhane, et, balık-meyhane vs.
+  {
+    keywords: [
+      'türk',
+      'turk',
+      'turkish',
+      'kebap',
+      'kebab',
+      'meze',
+      'meyhane',
+      'ocakbaşı',
+      'ocakbasi',
+      'anadolu',
+      'osmanlı',
+      'osmanli',
+      'et kebap',
+      'et-kebap',
+      'mur-et',
+      'köfte',
+      'kofte',
+      'lokanta',
+    ],
+    category: 'Türk Mutfağı',
+    score: 90,
+  },
 ];
 
 // ── Katman 3: Fallback ───────────────────────────────────────────────
-// Hiçbir kural eşleşmezse buraya düşer. Env REZERVEM_FALLBACK_CATEGORY ile ezilir.
 export const DEFAULT_FALLBACK_CATEGORY = 'City Classics';
 
 // ── Mapper ───────────────────────────────────────────────────────────
 function tokenize(input: MappingInput): string {
+  // slug'ı da tokenize'a dahil et — test ortamında diğer alanlar boş gelebilir
+  // ve slug genelde anlamlı kelimeler içerir (karkas-et-kebap, nadide-meyhane).
   const parts: string[] = [
-    input.name,
+    input.slug.replace(/[-_]+/g, ' '),
+    input.name ?? '',
     input.displayName ?? '',
     ...(input.tags ?? []).map((t) => `${t.title} ${t.summary ?? ''}`),
     ...(input.areaTitles ?? []),
@@ -103,7 +114,7 @@ export function mapVenueToCategory(
   input: MappingInput,
   fallback: string = DEFAULT_FALLBACK_CATEGORY,
 ): MappingResult {
-  // 1) Slug override — kazanır
+  // 1) Slug override
   const overrideCategory = SLUG_OVERRIDES[input.slug];
   if (overrideCategory) {
     return {
@@ -113,7 +124,7 @@ export function mapVenueToCategory(
     };
   }
 
-  // 2) Heuristic — anahtar kelime taraması
+  // 2) Heuristic
   const haystack = tokenize(input);
   const tally: Record<string, { score: number; keywords: string[] }> = {};
 
@@ -127,10 +138,10 @@ export function mapVenueToCategory(
     }
   }
 
-  // hasTastingMenu özel boost — Chef Restaurants'a +40
+  // hasTastingMenu → Chef Restaurants'a güçlü boost
   if (input.hasTastingMenu) {
     if (!tally['Chef Restaurants']) tally['Chef Restaurants'] = { score: 0, keywords: [] };
-    tally['Chef Restaurants'].score += 40;
+    tally['Chef Restaurants'].score += 80;
     tally['Chef Restaurants'].keywords.push('__hasTastingMenu__');
   }
 
@@ -149,17 +160,17 @@ export function mapVenueToCategory(
 
 /**
  * Mekan badge'leri — kart üzerinde gösterilecek küçük etiketler.
- * Awards alanına dönüştürülür (mobile `restaurant.awards: string[]`).
+ * Mobil tarafında `restaurant.awards: string[]` olarak okunur.
  */
 export function deriveBadges(input: MappingInput): string[] {
   const badges: string[] = [];
   const text = tokenize(input);
 
   if (text.includes('michelin')) badges.push('Michelin');
-  if (text.includes('tasting menu') || text.includes('tadım menüsü') || input.hasTastingMenu) {
+  if (text.includes('tasting menu') || text.includes('tadım') || input.hasTastingMenu) {
     badges.push('Tasting Menu');
   }
-  if (text.includes('rooftop') || text.includes('manzara')) badges.push('Rooftop');
+  if (text.includes('omakase')) badges.push('Omakase');
   if (text.includes('chef') || text.includes('şef')) badges.push("Chef's Table");
 
   return Array.from(new Set(badges));
