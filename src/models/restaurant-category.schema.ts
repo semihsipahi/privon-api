@@ -10,6 +10,9 @@ export class RestaurantCategory extends Document {
     description: string;
 
     @Prop()
+    descriptionEn: string;
+
+    @Prop()
     visibleOnHomePage: boolean;
 
     @Prop()

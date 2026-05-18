@@ -7,10 +7,15 @@ export class CreateCategoryDto {
     @IsNotEmpty()
     name: string;
 
-    @ApiProperty({ description: 'Kategori açıklaması', example: 'Dünyanın en prestijli rehberi.', required: false })
+    @ApiProperty({ description: 'Kategori açıklaması (Türkçe)', example: 'Dünyanın en prestijli rehberi.', required: false })
     @IsString()
     @IsOptional()
     description?: string;
+
+    @ApiProperty({ description: 'Kategori açıklaması (İngilizce)', example: "The world's most prestigious guide.", required: false })
+    @IsString()
+    @IsOptional()
+    descriptionEn?: string;
 
     @ApiProperty({ description: 'Ana sayfada görünsün mü?', example: true, required: false })
     @IsBoolean()
