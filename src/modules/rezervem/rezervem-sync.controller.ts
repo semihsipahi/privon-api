@@ -2,11 +2,11 @@ import {
   Body,
   Controller,
   Get,
-  NotFoundException,
   Param,
   Post,
   Query,
   Request,
+  Res,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -15,8 +15,11 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { FastifyReply } from 'fastify';
+import { Public } from 'src/common/decorators/public.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'src/common/enums/role.enum';
+import { RezervemHttpService } from './rezervem-http.service';
 import { RezervemVenueService } from './rezervem-venue.service';
 import { ImportRezervemVenueDto } from 'src/dtos/import-rezervem-venue.dto';
 
@@ -24,7 +27,10 @@ import { ImportRezervemVenueDto } from 'src/dtos/import-rezervem-venue.dto';
 @ApiBearerAuth()
 @Controller('admin/rezervem')
 export class RezervemSyncController {
-  constructor(private readonly venueService: RezervemVenueService) {}
+  constructor(
+    private readonly venueService: RezervemVenueService,
+    private readonly http: RezervemHttpService,
+  ) {}
 
   // ── Sync & status ─────────────────────────────────────────────────
 
@@ -91,5 +97,50 @@ export class RezervemSyncController {
     @Request() req: any,
   ) {
     return this.venueService.importToRestaurant(slug, req.user.userId, dto);
+  }
+
+  // ── Image proxy ───────────────────────────────────────────────────
+
+  @Get('image')
+  @Public()
+  @ApiOperation({
+    summary: 'Rezervem CDN görseli proxy — tarayıcı <img> için auth header ekler',
+    description:
+      'Rezervem CDN URL\'sini alır, Bearer token + Referer ile sunucu tarafında çeker, ' +
+      'tarayıcıya aktarır. Sadece rezervem.com.tr domain\'lerine izin verilir.',
+  })
+  @ApiQuery({ name: 'url', required: true, type: String, description: 'Rezervem CDN URL (URL-encoded)' })
+  async proxyImage(
+    @Query('url') url: string,
+    @Res() reply: FastifyReply,
+  ) {
+    if (!url) {
+      reply.code(400).send('url parametresi zorunlu');
+      return;
+    }
+
+    try {
+      const { buffer, contentType } = await this.http.fetchImage(url);
+      reply.header('Content-Type', contentType);
+      reply.header('Cache-Control', 'public, max-age=86400');
+      reply.send(buffer);
+    } catch (err: any) {
+      reply.code(502).send({ error: err?.message ?? 'Image proxy failed' });
+    }
+  }
+
+  // ── Debug: canlı bootstrap ────────────────────────────────────────
+
+  @Get('venues/:slug/bootstrap-raw')
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({
+    summary: 'Rezervem API\'den canlı bootstrap çek (cache bypass)',
+    description:
+      'Rezervem Partner API\'sine doğrudan istek atar (MongoDB cache atlanır). ' +
+      'İmaj URL\'lerini ve gerçek veri yapısını debug etmek için kullanın.',
+  })
+  @ApiParam({ name: 'slug', description: 'Mekan slug\'u', example: 'neolokal' })
+  async rawBootstrap(@Param('slug') slug: string) {
+    return this.http.getBootstrap(slug);
   }
 }

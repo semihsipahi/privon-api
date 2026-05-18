@@ -9,6 +9,7 @@ import { RestaurantCategory } from '../../models/restaurant-category.schema';
 import { RezervemHttpService, RezervemBootstrapResponse } from './rezervem-http.service';
 import { mapVenueToCategory, deriveBadges, DEFAULT_FALLBACK_CATEGORY } from './rezervem-category-mapper';
 import { ImportRezervemVenueDto } from '../../dtos/import-rezervem-venue.dto';
+import { UploadService } from '../upload/upload.service';
 
 export interface SyncReport {
   startedAt: Date;
@@ -33,6 +34,7 @@ export class RezervemVenueService implements OnModuleInit {
     private readonly categoryModel: Model<RestaurantCategory>,
     private readonly http: RezervemHttpService,
     private readonly config: ConfigService,
+    private readonly uploadService: UploadService,
   ) {}
 
   async onModuleInit() {
@@ -386,6 +388,30 @@ export class RezervemVenueService implements OnModuleInit {
 
   // ── Admin: import ─────────────────────────────────────────────────
 
+  /**
+   * Rezervem CDN URL'lerini MinIO'ya kopyalar.
+   * Başarısız olan URL'ler sessizce atlanır (kısmi başarı kabul edilir).
+   */
+  private async mirrorImagesToMinio(cdnUrls: string[]): Promise<string[]> {
+    const results: string[] = [];
+    for (const url of cdnUrls) {
+      try {
+        const { buffer, contentType } = await this.http.fetchImage(url);
+        const ext = contentType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg';
+        const filename = `rezervem-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const minioUrl = await this.uploadService.uploadFile({
+          buffer,
+          originalname: filename,
+          mimetype: contentType,
+        } as any);
+        results.push(minioUrl);
+      } catch (err: any) {
+        this.logger.warn(`Image mirror failed for ${url}: ${err?.message}`);
+      }
+    }
+    return results;
+  }
+
   async importToRestaurant(
     slug: string,
     adminUserId: string,
@@ -404,10 +430,14 @@ export class RezervemVenueService implements OnModuleInit {
       if (category) categoryObjectIds.push((category as any)._id);
     }
 
+    // Rezervem CDN görsellerini MinIO'ya kopyala — mobil uygulama kendi sunucumuzdan okur
+    const cdnUrls = (venue.photos ?? []).filter(Boolean);
+    const images = cdnUrls.length > 0 ? await this.mirrorImagesToMinio(cdnUrls) : [];
+
     // Temel restaurant verisi — Rezervem'den otomatik doldurulan alanlar
     const restaurantBase: Record<string, any> = {
       name: venue.name,
-      images: (venue.photos ?? []).filter(Boolean),
+      images,
       categories: categoryObjectIds,
       priceLevel: dto.priceLevel,
       location: {
@@ -427,7 +457,7 @@ export class RezervemVenueService implements OnModuleInit {
     const existing = await this.restaurantModel.findOne({ rezervemSlug: slug }).lean();
 
     if (existing) {
-      // Güncelle — admin'in daha önce düzenlediği phone/email/menu alanlarına dokunma
+      // Güncelle — images'ı da yeniden mirror et (Rezervem kaynağı değişmiş olabilir)
       await this.restaurantModel.updateOne(
         { rezervemSlug: slug },
         { $set: restaurantBase },

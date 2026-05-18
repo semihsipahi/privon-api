@@ -129,6 +129,59 @@ export class RezervemHttpService {
     return this.unwrap<T>(await response.json(), path);
   }
 
+  // --- Image proxy ---
+
+  /**
+   * CDN görselini sunucu üzerinden çeker. Bearer token + Referer ekler.
+   * Admin paneli <img> tag'leri auth header gönderemez; bu endpoint ile
+   * tarayıcı doğrudan bizim API'mıza istek atar, biz CDN'e güvenli erişim sağlarız.
+   */
+  async fetchImage(url: string): Promise<{ buffer: Buffer; contentType: string }> {
+    const ALLOWED_HOSTS = [
+      'media.rezervem.com.tr',
+      'cdn.rezervem.com.tr',
+      'rezervem.com.tr',
+      'storage.rezervem.com.tr',
+      'images.rezervem.com.tr',
+      'rezervem-cdn.azureedge.net',
+      'rezervem-cdn.azurefd.net',
+    ];
+
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new Error('Geçersiz URL');
+    }
+
+    if (!ALLOWED_HOSTS.some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))) {
+      throw new Error(`İzin verilmeyen CDN host: ${parsed.hostname}`);
+    }
+
+    let token = '';
+    try {
+      token = await this.authService.getAccessToken();
+    } catch {
+      // Token alınamazsa auth header olmadan dene
+    }
+
+    const headers: Record<string, string> = {
+      Referer: 'https://rezervem.com.tr',
+      'User-Agent': 'Mozilla/5.0 (compatible; Privon/1.0)',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`CDN ${response.status} for ${url}`);
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    return { buffer, contentType };
+  }
+
   // --- Venues ---
 
   async getVenues(page = 1, pageSize = 100): Promise<RezervemVenueListResponse> {

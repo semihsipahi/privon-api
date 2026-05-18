@@ -10,10 +10,12 @@ import { RezervemSyncController } from './rezervem-sync.controller';
 import { RezervemVenue, RezervemVenueSchema } from '../../models/rezervem-venue.schema';
 import { Restaurant, RestaurantSchema } from '../../models/restaurant.schema';
 import { RestaurantCategory, RestaurantCategorySchema } from '../../models/restaurant-category.schema';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
   imports: [
     ConfigModule,
+    UploadModule,
     MongooseModule.forFeature([
       { name: RezervemVenue.name, schema: RezervemVenueSchema },
       { name: Restaurant.name, schema: RestaurantSchema },
