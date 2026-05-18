@@ -1,15 +1,19 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { ConfigService } from '@nestjs/config';
 import { Restaurant } from '../../models/restaurant.schema';
 import { Reservation } from '../../models/reservation.schema';
 import { Review } from '../../models/review.schema';
 import { User } from '../../models/user.schema';
+import { RestaurantCategory } from '../../models/restaurant-category.schema';
 import { CreateRestaurantDto } from 'src/dtos/create-restaurant.dto';
 import { UpdateRestaurantDto } from 'src/dtos/update-restaurant.dto';
 import { ResourceService } from 'src/services/resource.service';
 import { calculateDistance } from 'src/utils/distance-calculation.util';
 import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
+import { RezervemVenueService } from '../rezervem/rezervem-venue.service';
+import { mapRezervemToApiRestaurant } from '../rezervem/rezervem-restaurant.adapter';
 
 export interface PublicRestaurantDetailsResponse {
   restaurant: any;
@@ -37,8 +41,92 @@ export class RestaurantService extends ResourceService<
     private reviewModel: Model<Review>,
     @InjectModel('User')
     private userModel: Model<User>,
+    @InjectModel(RestaurantCategory.name)
+    private categoryModel: Model<RestaurantCategory>,
+    private readonly rezervemVenueService: RezervemVenueService,
+    private readonly configService: ConfigService,
   ) {
     super(restaurantModel);
+  }
+
+  // ── Source switch ─────────────────────────────────────────────────
+  // RESTAURANT_SOURCE=rezervem → /restaurant/public Rezervem cache'inden,
+  // RESTAURANT_SOURCE=db (veya undefined) → mevcut MongoDB akışı.
+  // İki kaynak HİÇBİR ZAMAN karışmaz — tek anahtar, tek davranış.
+  private get useRezervemSource(): boolean {
+    return this.configService.get<string>('RESTAURANT_SOURCE') === 'rezervem';
+  }
+
+  private async resolveCategoryById(
+    id: string,
+  ): Promise<{ _id: string; name: string } | null> {
+    if (!id || !Types.ObjectId.isValid(id)) return null;
+    const cat = await this.categoryModel.findById(id).select('name').lean();
+    return cat ? { _id: String((cat as any)._id), name: (cat as any).name } : null;
+  }
+
+  private async resolveCategoryByName(
+    name: string,
+  ): Promise<{ _id: string; name: string } | null> {
+    const cat = await this.categoryModel.findOne({ name }).select('name').lean();
+    return cat ? { _id: String((cat as any)._id), name: (cat as any).name } : null;
+  }
+
+  async getPublicRestaurantsListFromRezervem(filters: {
+    q?: string;
+    categories?: string;
+    _start?: number;
+    _end?: number;
+  }): Promise<PublicRestaurantsListResponse> {
+    const start = Number(filters._start ?? 0);
+    const end = Number(filters._end ?? 20);
+    const limit = Math.max(1, end - start);
+
+    // Kategori filtresi geldiyse: o kategorinin adını çöz, cache'te bu key ile ara
+    if (filters.categories) {
+      const firstId = filters.categories.split(',')[0]?.trim();
+      const category = await this.resolveCategoryById(firstId);
+      if (!category) return { data: [], total: 0 };
+
+      const [venues, total] = await Promise.all([
+        this.rezervemVenueService.findActiveByCategoryKey(category.name, limit, start),
+        this.rezervemVenueService.countActiveByCategoryKey(category.name),
+      ]);
+      return {
+        data: venues.map((v) => mapRezervemToApiRestaurant(v as any, category, true)),
+        total,
+      };
+    }
+
+    // Kategorisiz liste: aktif tüm venue'lar
+    const [venues, total] = await Promise.all([
+      this.rezervemVenueService.findActive(limit, start, filters.q),
+      this.rezervemVenueService.countActive(filters.q),
+    ]);
+
+    // Kategori bilgisini her venue için ayrıca çöz
+    const data = await Promise.all(
+      venues.map(async (v: any) => {
+        const cat = v.categoryKey ? await this.resolveCategoryByName(v.categoryKey) : null;
+        return mapRezervemToApiRestaurant(v, cat, true);
+      }),
+    );
+    return { data, total };
+  }
+
+  async getPublicRestaurantDetailsFromRezervem(slug: string): Promise<any> {
+    const venue = await this.rezervemVenueService.findBySlug(slug);
+    if (!venue) throw new NotFoundException('Restoran bulunamadı');
+    const category = venue.categoryKey
+      ? await this.resolveCategoryByName(venue.categoryKey)
+      : null;
+    return {
+      restaurant: {
+        ...mapRezervemToApiRestaurant(venue as any, category, false),
+        distance: null,
+        isFavorite: false,
+      },
+    };
   }
 
   async create(data: CreateRestaurantDto, session?: any) {
@@ -57,6 +145,9 @@ export class RestaurantService extends ResourceService<
     userLon?: number,
     userId?: string,
   ): Promise<any> {
+    if (this.useRezervemSource) {
+      return this.getPublicRestaurantDetailsFromRezervem(id);
+    }
     const restaurant = await this.restaurantModel
       .findById(id)
       .populate('categories', 'name')
@@ -111,6 +202,14 @@ export class RestaurantService extends ResourceService<
     atmosphereTypes?: string;
     collectionTypes?: string;
   }): Promise<PublicRestaurantsListResponse> {
+    if (this.useRezervemSource) {
+      return this.getPublicRestaurantsListFromRezervem({
+        q: filters.q,
+        categories: filters.categories,
+        _start: filters._start,
+        _end: filters._end,
+      });
+    }
     const {
       q,
       categories,

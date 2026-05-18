@@ -6,10 +6,18 @@ interface TokenCache {
   expiresAt: number;
 }
 
+interface TokenResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  scope?: string;
+}
+
 @Injectable()
 export class RezervemAuthService {
   private readonly logger = new Logger(RezervemAuthService.name);
   private tokenCache: TokenCache | null = null;
+  private inflight: Promise<string> | null = null;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -17,8 +25,12 @@ export class RezervemAuthService {
     if (this.tokenCache && Date.now() < this.tokenCache.expiresAt) {
       return this.tokenCache.accessToken;
     }
+    if (this.inflight) return this.inflight;
 
-    return this.fetchNewToken();
+    this.inflight = this.fetchNewToken().finally(() => {
+      this.inflight = null;
+    });
+    return this.inflight;
   }
 
   private async fetchNewToken(): Promise<string> {
@@ -26,16 +38,18 @@ export class RezervemAuthService {
     const clientId = this.configService.get<string>('REZERVEM_CLIENT_ID');
     const clientSecret = this.configService.get<string>('REZERVEM_CLIENT_SECRET');
 
-    const body = new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-    });
+    if (!baseUrl || !clientId || !clientSecret) {
+      throw new Error('Rezervem credentials missing (REZERVEM_BASE_URL/CLIENT_ID/CLIENT_SECRET)');
+    }
 
-    const response = await fetch(`${baseUrl}/auth/token`, {
+    const response = await fetch(`${baseUrl}/connect/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        GrantType: 'client_credentials',
+        ClientId: clientId,
+        ClientSecret: clientSecret,
+      }),
     });
 
     if (!response.ok) {
@@ -44,15 +58,14 @@ export class RezervemAuthService {
       throw new Error(`Rezervem auth failed: ${response.status}`);
     }
 
-    const data = await response.json() as { access_token: string; expires_in: number };
+    const data = (await response.json()) as TokenResponse;
 
-    // Cache with 60s buffer before actual expiry
     this.tokenCache = {
-      accessToken: data.access_token,
-      expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+      accessToken: data.accessToken,
+      expiresAt: Date.now() + (data.expiresIn - 60) * 1000,
     };
 
-    this.logger.log('Rezervem access token refreshed');
+    this.logger.log(`Rezervem access token refreshed (expires in ${data.expiresIn}s)`);
     return this.tokenCache.accessToken;
   }
 

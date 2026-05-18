@@ -9,6 +9,43 @@ import { getMockAvailableAreas } from './mock/availability-areas.mock';
 import { getMockHold } from './mock/hold.mock';
 import { getMockConfirm } from './mock/confirm.mock';
 
+export interface RezervemVenueListResponse {
+  items: { slug: string; name: string; isActive: boolean }[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface RezervemBootstrapResponse {
+  venue: {
+    slug: string;
+    displayName: string;
+    logoUrl?: string;
+    theme?: string;
+    address?: string;
+    contact?: string;
+    timezone?: string;
+    currency?: string;
+    supportedLanguages?: string[];
+    workingHours?: string;
+  } | null;
+  pax?: { min: number; max: number; step: number } | null;
+  leadTimes?: { minDays: number; maxDays: number } | null;
+  bookingFlow?: any;
+  areas?: Array<{
+    id: number;
+    title: string;
+    summary?: string;
+    minCapacity: number;
+    maxCapacity: number;
+    shifts: number[];
+    photos: string[];
+    coverPhoto?: string;
+    hasTastingMenu: boolean;
+  }> | null;
+  tags?: Array<{ id: number; title: string; summary?: string }> | null;
+}
+
 @Injectable()
 export class RezervemHttpService {
   private readonly logger = new Logger(RezervemHttpService.name);
@@ -38,7 +75,7 @@ export class RezervemHttpService {
     if (!response.ok) {
       const text = await response.text();
       this.logger.error(`GET ${path} failed: ${response.status} ${text}`);
-      throw new Error(`Rezervem API error: ${response.status}`);
+      throw new Error(`Rezervem API error: ${response.status} on ${path}`);
     }
 
     return response.json() as Promise<T>;
@@ -58,7 +95,7 @@ export class RezervemHttpService {
     if (!response.ok) {
       const text = await response.text();
       this.logger.error(`POST ${path} failed: ${response.status} ${text}`);
-      throw new Error(`Rezervem API error: ${response.status}`);
+      throw new Error(`Rezervem API error: ${response.status} on ${path}`);
     }
 
     return response.json() as Promise<T>;
@@ -66,24 +103,29 @@ export class RezervemHttpService {
 
   // --- Venues ---
 
-  async getVenues(): Promise<object> {
+  async getVenues(page = 1, pageSize = 100): Promise<RezervemVenueListResponse> {
     if (this.isMock) {
       this.logger.debug('[MOCK] getVenues');
-      return { venues: MOCK_VENUES };
+      const items = MOCK_VENUES.map((v: any) => ({
+        slug: v.slug,
+        name: v.name,
+        isActive: v.isActive ?? true,
+      }));
+      return { items, totalCount: items.length, page: 1, pageSize: items.length };
     }
-    return this.get('/v1/venues');
+    return this.get<RezervemVenueListResponse>(`/v1/venues?page=${page}&pageSize=${pageSize}`);
   }
 
   // --- Bootstrap ---
 
-  async getBootstrap(slug: string): Promise<object> {
+  async getBootstrap(slug: string): Promise<RezervemBootstrapResponse> {
     if (this.isMock) {
       this.logger.debug(`[MOCK] getBootstrap: ${slug}`);
       const data = getMockBootstrap(slug);
       if (!data) throw new Error(`Mock venue not found: ${slug}`);
-      return data;
+      return data as RezervemBootstrapResponse;
     }
-    return this.get(`/v1/venues/${slug}/bootstrap`);
+    return this.get<RezervemBootstrapResponse>(`/v1/venues/${slug}/bootstrap`);
   }
 
   // --- Availability: Dates ---
@@ -93,7 +135,7 @@ export class RezervemHttpService {
       this.logger.debug(`[MOCK] getAvailableDates: ${slug} pax=${pax}`);
       return getMockAvailableDates(slug, pax);
     }
-    return this.get(`/v1/venues/${slug}/availability/dates?pax=${pax}`);
+    return this.get(`/v1/venues/${slug}/availability/dates?partySize=${pax}`);
   }
 
   // --- Availability: Times ---
@@ -103,47 +145,76 @@ export class RezervemHttpService {
       this.logger.debug(`[MOCK] getAvailableTimes: ${slug} pax=${pax} date=${date}`);
       return getMockAvailableTimes(slug, pax, date);
     }
-    return this.get(`/v1/venues/${slug}/availability/times?pax=${pax}&date=${date}`);
+    return this.get(`/v1/venues/${slug}/availability/times?partySize=${pax}&date=${date}`);
   }
 
   // --- Availability: Areas ---
 
-  async getAvailableAreas(slug: string, pax: number, date: string, time: string): Promise<object> {
+  async getAvailableAreas(
+    slug: string,
+    pax: number,
+    date: string,
+    time: string,
+    shift: number,
+  ): Promise<object> {
     if (this.isMock) {
       this.logger.debug(`[MOCK] getAvailableAreas: ${slug} pax=${pax} date=${date} time=${time}`);
       return getMockAvailableAreas(slug, pax, date, time);
     }
-    return this.get(`/v1/venues/${slug}/availability/areas?pax=${pax}&date=${date}&time=${encodeURIComponent(time)}`);
+    const qs = `partySize=${pax}&date=${date}&time=${encodeURIComponent(time)}&shift=${shift}`;
+    return this.get(`/v1/venues/${slug}/availability/areas?${qs}`);
   }
 
-  // --- Hold ---
+  // --- Hold (Checkout) ---
 
   async holdSlot(params: {
     slug: string;
     pax: number;
     date: string;
     time: string;
-    areaId: string;
+    shift: number;
+    roomId?: number;
+    paymentMode?: 'immediate' | 'deferred';
   }): Promise<object> {
     if (this.isMock) {
       this.logger.debug(`[MOCK] holdSlot: ${JSON.stringify(params)}`);
-      return getMockHold(params);
+      return getMockHold({ ...params, areaId: String(params.roomId ?? '') });
     }
-    return this.post(`/v1/venues/${params.slug}/hold`, {
-      pax: params.pax,
+    return this.post(`/v1/venues/${params.slug}/checkout/hold`, {
       date: params.date,
       time: params.time,
-      areaId: params.areaId,
+      pax: params.pax,
+      shift: params.shift,
+      roomId: params.roomId,
+      paymentMode: params.paymentMode ?? 'immediate',
     });
   }
 
-  // --- Confirm ---
+  // --- Confirm (Checkout) ---
 
-  async confirmReservation(holdId: string, guestInfo: object): Promise<object> {
+  async confirmReservation(slug: string, sessionId: string, model: any): Promise<object> {
     if (this.isMock) {
-      this.logger.debug(`[MOCK] confirmReservation: holdId=${holdId}`);
-      return getMockConfirm(holdId, guestInfo);
+      this.logger.debug(`[MOCK] confirmReservation: sessionId=${sessionId}`);
+      return getMockConfirm(sessionId, model);
     }
-    return this.post(`/v1/holds/${holdId}/confirm`, { guestInfo });
+    return this.post(`/v1/venues/${slug}/checkout/confirm`, { sessionId, model });
+  }
+
+  // --- Finalize (Checkout) ---
+
+  async finalizeReservation(
+    slug: string,
+    sessionId: string,
+    paymentCompleted: boolean,
+    model: any,
+  ): Promise<object> {
+    if (this.isMock) {
+      return { sessionId, finalized: paymentCompleted };
+    }
+    return this.post(`/v1/venues/${slug}/checkout/finalize`, {
+      sessionId,
+      paymentCompleted,
+      model,
+    });
   }
 }

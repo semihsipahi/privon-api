@@ -1,0 +1,88 @@
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+
+@Schema({ timestamps: true, collection: 'rezervem_venues' })
+export class RezervemVenue extends Document {
+  @Prop({ required: true, unique: true, index: true })
+  slug: string;
+
+  @Prop({ required: true })
+  name: string;
+
+  @Prop()
+  displayName: string;
+
+  @Prop()
+  logoUrl: string;
+
+  @Prop()
+  coverPhoto: string;
+
+  @Prop({ type: [String], default: [] })
+  photos: string[];
+
+  @Prop()
+  address: string;
+
+  @Prop()
+  contact: string;
+
+  @Prop()
+  timezone: string;
+
+  @Prop()
+  currency: string;
+
+  @Prop({ type: [String], default: [] })
+  supportedLanguages: string[];
+
+  // Rezervem booking metadata
+  @Prop({ type: Object })
+  pax: { min: number; max: number; step: number };
+
+  @Prop({ type: Object })
+  bookingFlow: any;
+
+  @Prop({ type: [Object], default: [] })
+  areas: Array<{
+    id: number;
+    title: string;
+    summary?: string;
+    minCapacity: number;
+    maxCapacity: number;
+    shifts: number[];
+    photos: string[];
+    coverPhoto?: string;
+    hasTastingMenu: boolean;
+  }>;
+
+  @Prop({ type: [Object], default: [] })
+  tags: Array<{ id: number; title: string; summary?: string }>;
+
+  // Bizim taraf — kategori eşleme
+  @Prop({ index: true })
+  categoryKey: string; // e.g. "Michelin Guide" — matches RestaurantCategory.name
+
+  @Prop({ default: 100 })
+  categoryScore: number; // strength of the match (override=1000, heuristic up to 300)
+
+  @Prop({ default: true })
+  isActive: boolean;
+
+  @Prop({ type: [String], default: [] })
+  badges: string[]; // e.g. ['Michelin', 'Tasting Menu', 'New']
+
+  @Prop({ type: [String], default: [] })
+  cuisineTypes: string[];
+
+  @Prop()
+  hasTastingMenu: boolean;
+
+  @Prop()
+  lastSyncedAt: Date;
+
+  @Prop()
+  lastSyncError: string;
+}
+
+export const RezervemVenueSchema = SchemaFactory.createForClass(RezervemVenue);

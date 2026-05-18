@@ -44,30 +44,60 @@ export class BookingController {
   @ApiQuery({ name: 'pax', type: Number })
   @ApiQuery({ name: 'date', type: String })
   @ApiQuery({ name: 'time', type: String, description: 'HH:mm' })
+  @ApiQuery({ name: 'shift', type: Number, description: '0=Kahvaltı,1=Öğle,2=Akşam,3=Bar' })
   getAvailableAreas(
     @Param('slug') slug: string,
     @Query('pax') pax: string,
     @Query('date') date: string,
     @Query('time') time: string,
+    @Query('shift') shift: string,
   ) {
-    return this.bookingService.getAvailableAreas(slug, parseInt(pax, 10), date, time);
+    return this.bookingService.getAvailableAreas(
+      slug,
+      parseInt(pax, 10),
+      date,
+      time,
+      parseInt(shift, 10),
+    );
   }
 
   @Post('venues/:slug/hold')
-  @ApiOperation({ summary: 'Slot rezerve et (10 dakika TTL)' })
+  @ApiOperation({ summary: 'Slot rezerve et (Rezervem checkout/hold)' })
   holdSlot(
     @Param('slug') slug: string,
-    @Body() body: { pax: number; date: string; time: string; areaId: string },
+    @Body()
+    body: {
+      pax: number;
+      date: string;
+      time: string;
+      shift: number;
+      roomId?: number;
+      paymentMode?: 'immediate' | 'deferred';
+    },
   ) {
     return this.bookingService.holdSlot({ slug, ...body });
   }
 
-  @Post('holds/:holdId/confirm')
-  @ApiOperation({ summary: 'Hold edilen rezervasyonu onayla' })
+  @Post('venues/:slug/confirm')
+  @ApiOperation({ summary: 'Hold edilen rezervasyonu onayla (Rezervem checkout/confirm)' })
   confirmReservation(
-    @Param('holdId') holdId: string,
-    @Body() body: { guestInfo: object },
+    @Param('slug') slug: string,
+    @Body() body: { sessionId: string; model: any },
   ) {
-    return this.bookingService.confirmReservation(holdId, body.guestInfo);
+    return this.bookingService.confirmReservation(slug, body.sessionId, body.model);
+  }
+
+  @Post('venues/:slug/finalize')
+  @ApiOperation({ summary: 'Ödeme sonrası kesinleştir (Rezervem checkout/finalize)' })
+  finalizeReservation(
+    @Param('slug') slug: string,
+    @Body() body: { sessionId: string; paymentCompleted: boolean; model: any },
+  ) {
+    return this.bookingService.finalizeReservation(
+      slug,
+      body.sessionId,
+      body.paymentCompleted,
+      body.model,
+    );
   }
 }

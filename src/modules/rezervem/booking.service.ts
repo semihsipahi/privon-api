@@ -21,15 +21,27 @@ export class BookingService {
     return this.rezervemHttp.getAvailableTimes(slug, pax, date);
   }
 
-  getAvailableAreas(slug: string, pax: number, date: string, time: string) {
-    return this.rezervemHttp.getAvailableAreas(slug, pax, date, time);
+  getAvailableAreas(slug: string, pax: number, date: string, time: string, shift: number) {
+    return this.rezervemHttp.getAvailableAreas(slug, pax, date, time, shift);
   }
 
-  holdSlot(params: { slug: string; pax: number; date: string; time: string; areaId: string }) {
+  holdSlot(params: {
+    slug: string;
+    pax: number;
+    date: string;
+    time: string;
+    shift: number;
+    roomId?: number;
+    paymentMode?: 'immediate' | 'deferred';
+  }) {
     return this.rezervemHttp.holdSlot(params);
   }
 
-  confirmReservation(holdId: string, guestInfo: object) {
-    return this.rezervemHttp.confirmReservation(holdId, guestInfo);
+  confirmReservation(slug: string, sessionId: string, model: any) {
+    return this.rezervemHttp.confirmReservation(slug, sessionId, model);
+  }
+
+  finalizeReservation(slug: string, sessionId: string, paymentCompleted: boolean, model: any) {
+    return this.rezervemHttp.finalizeReservation(slug, sessionId, paymentCompleted, model);
   }
 }
