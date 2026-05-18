@@ -229,3 +229,36 @@ Required vars (see `.env`):
 - `REZERVEM_BASE_URL` — Rezervem Partner API base URL (`https://partnerapi.rezervem.com.tr`)
 - `REZERVEM_CLIENT_ID`, `REZERVEM_CLIENT_SECRET` — Rezervem OAuth credentials (set in Coolify for production)
 - `RESTAURANT_SOURCE` — `db` for standard mode (serves from MongoDB); `rezervem` to enable auto-sync on startup
+
+---
+
+## Rezervem Integration Architecture
+
+Privon uses **Rezervem** (a Turkish restaurant reservation platform) as its booking backend. Understanding this is critical before touching anything in `src/modules/rezervem/`.
+
+### How it works — end to end
+
+1. **Sync**: Admin triggers `POST /admin/rezervem/sync` → fetches all venues from Rezervem Partner API → writes to `rezervem_venues` MongoDB collection (cache).
+
+2. **Import**: Admin picks a venue from the list and clicks "Aktar" → `POST /admin/rezervem/venues/:slug/import` → creates a **Restaurant document** in our main `restaurants` collection. This restaurant is now visible in the mobile app with Privon's own UI/design.
+
+3. **Booking flow** (mobile app): When a user taps "Rezervasyon Yap" on an imported restaurant, the entire booking flow runs **through Rezervem's API**, not our own slot/reservation system:
+   - `GET /booking/venues/:slug/availability/dates?pax=N` → available dates
+   - `GET /booking/venues/:slug/availability/slots?date=...&pax=N` → time slots
+   - `POST /booking/venues/:slug/hold` → hold a slot
+   - `POST /booking/holds/:holdId/confirm` → confirm with guest info
+
+4. **Bootstrap**: `GET /booking/venues/:slug/bootstrap` returns pax options, areas, working hours. The API checks `rezervem_venues` cache first; falls back to live Rezervem API only if not cached.
+
+### Key rule
+- Restaurants imported from Rezervem have `rezervemSlug` set on the Restaurant document.
+- The mobile app uses `rezervemSlug` to route booking calls to Rezervem.
+- Our own `reservation` module is for non-Rezervem restaurants only.
+- **Never remove or rename `rezervemSlug`** on the Restaurant schema — it is the link between our DB and Rezervem's booking API.
+
+### Coolify deployment
+- Coolify watches `PRIVONco/privon-api` (origin remote). **Every push must go to both remotes:**
+  ```bash
+  git push origin main && git push personal main
+  ```
+- Coolify does **not** auto-deploy on push — deployment must be manually triggered from the Coolify dashboard after push.
