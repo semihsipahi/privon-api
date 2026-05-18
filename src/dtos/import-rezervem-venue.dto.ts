@@ -98,4 +98,19 @@ export class ImportRezervemVenueDto {
   @ValidateNested({ each: true })
   @Type(() => ImportWorkingHoursDto)
   workingHours?: ImportWorkingHoursDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  neighborhood?: string;
 }
