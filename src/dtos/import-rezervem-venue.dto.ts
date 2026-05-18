@@ -1,6 +1,27 @@
-import { IsArray, IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+
+class ImportWorkingPeriodDto {
+  @IsOptional() @IsString() openingTime?: string;
+  @IsOptional() @IsString() closingTime?: string;
+}
+
+class ImportWorkingHoursDto {
+  @IsOptional() @IsString() dayName?: string;
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ImportWorkingPeriodDto)
+  periods?: ImportWorkingPeriodDto[];
+  @IsOptional() @IsBoolean() isClosed?: boolean;
+}
 
 export class ImportRezervemVenueDto {
   @ApiProperty({ type: [String], example: ['64a1b2c3d4e5f6g7h8i9j0k1'] })
@@ -67,4 +88,14 @@ export class ImportRezervemVenueDto {
   @IsArray()
   @IsString({ each: true })
   cuisineTypes?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Çalışma saatleri — boş bırakılırsa salon vardiyalarından otomatik türetilir',
+    type: [ImportWorkingHoursDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImportWorkingHoursDto)
+  workingHours?: ImportWorkingHoursDto[];
 }

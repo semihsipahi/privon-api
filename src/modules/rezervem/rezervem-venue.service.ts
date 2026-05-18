@@ -10,6 +10,33 @@ import { RezervemHttpService, RezervemBootstrapResponse } from './rezervem-http.
 import { mapVenueToCategory, deriveBadges, DEFAULT_FALLBACK_CATEGORY } from './rezervem-category-mapper';
 import { ImportRezervemVenueDto } from '../../dtos/import-rezervem-venue.dto';
 
+const SHIFT_PERIODS: Record<number, Array<{ openingTime: string; closingTime: string }>> = {
+  0: [{ openingTime: '09:00', closingTime: '12:00' }], // Kahvaltı
+  1: [{ openingTime: '12:00', closingTime: '16:00' }], // Öğle
+  2: [{ openingTime: '18:00', closingTime: '23:00' }], // Akşam
+  3: [{ openingTime: '20:00', closingTime: '02:00' }], // Bar
+};
+
+const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+
+function buildWorkingHoursFromShifts(areas: Array<{ shifts?: number[] }>): Array<{
+  dayName: string;
+  periods: Array<{ openingTime: string; closingTime: string }>;
+  isClosed: boolean;
+}> {
+  const allShifts = new Set<number>();
+  for (const area of areas) {
+    for (const s of area.shifts ?? []) allShifts.add(Number(s));
+  }
+  if (allShifts.size === 0) return [];
+
+  const periods = Array.from(allShifts)
+    .sort()
+    .flatMap((s) => SHIFT_PERIODS[s] ?? []);
+
+  return DAY_NAMES.map((dayName) => ({ dayName, periods, isClosed: false }));
+}
+
 export interface SyncReport {
   startedAt: Date;
   finishedAt: Date;
@@ -424,7 +451,9 @@ export class RezervemVenueService implements OnModuleInit {
       awards: dto.awards ?? venue.badges ?? [],
       cuisineTypes: dto.cuisineTypes ?? (venue.tags ?? []).map((t) => t.title).filter(Boolean),
       atmosphereTypes: [],
-      workingHours: [],
+      workingHours: (dto.workingHours && dto.workingHours.length > 0)
+        ? dto.workingHours
+        : buildWorkingHoursFromShifts(venue.areas ?? []),
       rezervemSlug: venue.slug,
     };
 
