@@ -503,16 +503,15 @@ export class RezervemVenueService implements OnModuleInit {
     if (existing) {
       await this.restaurantModel.updateOne(
         { rezervemSlug: slug },
-        { $set: restaurantBase },
+        { $set: { ...restaurantBase, isActive: true } },
       );
       return { restaurantId: String((existing as any)._id), created: false };
     }
 
-    // Yeni oluştur — varsayılan olarak pasif, admin aktifleştirir
     const created = await this.restaurantModel.create({
       ...restaurantBase,
       owner: new Types.ObjectId(adminUserId),
-      isActive: false,
+      isActive: true,
       rating: 0,
       reviewCount: 0,
     });

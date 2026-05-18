@@ -276,7 +276,7 @@ export class RestaurantService extends ResourceService<
       pipeline.push(geoNearStage);
     }
 
-    const matchStage: any = {};
+    const matchStage: any = { isActive: true };
 
     // Arama sorgusu
     if (q && q.trim()) {
@@ -425,6 +425,7 @@ export class RestaurantService extends ResourceService<
         website: 1,
         instagramUrl: 1,
         facebookUrl: 1,
+        rezervemSlug: 1,
         slots: {
           $map: {
             input: slotsProjection,
