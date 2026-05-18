@@ -10,7 +10,7 @@ import { getMockHold } from './mock/hold.mock';
 import { getMockConfirm } from './mock/confirm.mock';
 
 export interface RezervemVenueListResponse {
-  items: { slug: string; name: string; isActive: boolean }[];
+  items: { slug: string; name: string; isActive: boolean; categoryKey?: string }[];
   totalCount: number;
   page: number;
   pageSize: number;

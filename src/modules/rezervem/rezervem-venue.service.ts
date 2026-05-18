@@ -112,13 +112,13 @@ export class RezervemVenueService implements OnModuleInit {
       // 1) Liste çek (sayfa sayfa)
       // List response'undaki name'i de yakala — bootstrap'ta displayName boş
       // gelirse kullanırız (test ortamı şu an böyle davranıyor).
-      const listEntries: { slug: string; name: string }[] = [];
+      const listEntries: { slug: string; name: string; categoryKey?: string }[] = [];
       let page = 1;
       const pageSize = 100;
       while (true) {
         const list = await this.http.getVenues(page, pageSize);
         for (const v of list.items) {
-          if (v.isActive) listEntries.push({ slug: v.slug, name: v.name });
+          if (v.isActive) listEntries.push({ slug: v.slug, name: v.name, categoryKey: v.categoryKey });
         }
         if (list.items.length < pageSize) break;
         page += 1;
@@ -126,6 +126,7 @@ export class RezervemVenueService implements OnModuleInit {
       }
       const allSlugs = listEntries.map((e) => e.slug);
       const nameBySlug = new Map(listEntries.map((e) => [e.slug, e.name]));
+      const categoryBySlug = new Map(listEntries.map((e) => [e.slug, e.categoryKey]));
       report.venuesTotal = allSlugs.length;
       this.logger.log(`Fetched ${allSlugs.length} active venues from Rezervem`);
 
@@ -141,7 +142,8 @@ export class RezervemVenueService implements OnModuleInit {
           const listName = nameBySlug.get(slug) ?? slug;
           try {
             const boot = await this.http.getBootstrap(slug);
-            await this.upsertFromBootstrap(slug, listName, boot, fallback);
+            const listCategoryKey = categoryBySlug.get(slug);
+            await this.upsertFromBootstrap(slug, listName, boot, fallback, listCategoryKey);
             report.succeeded += 1;
           } catch (err: any) {
             report.failed += 1;
@@ -211,6 +213,7 @@ export class RezervemVenueService implements OnModuleInit {
     listName: string,
     boot: RezervemBootstrapResponse,
     fallback: string,
+    listCategoryKey?: string,
   ): Promise<void> {
     const venueInfo: any = boot.venue ?? {};
     const areas = (boot.areas ?? []) as any[];
@@ -240,17 +243,22 @@ export class RezervemVenueService implements OnModuleInit {
       hasTastingMenu: !!a.hasTastingMenu,
     }));
 
-    const mapping = mapVenueToCategory(
-      {
-        slug,
-        name: resolvedName,
-        displayName: displayNameStr,
-        tags: normalizedTags.map((t) => ({ title: t.title, summary: t.summary })),
-        hasTastingMenu: normalizedAreas.some((a) => a.hasTastingMenu),
-        areaTitles: normalizedAreas.map((a) => a.title),
-      },
-      fallback,
-    );
+    // Rezervem'in kendi categoryKey'i (örn. "Michelin Guide") bizdeki kategori
+    // isimleriyle birebir örtüşüyorsa doğrudan kullan; yoksa keyword heuristic devreye girer.
+    const KNOWN_CATEGORIES = new Set(['Michelin Guide', 'Chef Restaurants', 'Türk Mutfağı', 'City Classics']);
+    const mapping = (listCategoryKey && KNOWN_CATEGORIES.has(listCategoryKey))
+      ? { categoryKey: listCategoryKey, score: 500, matchedKeywords: ['__rezervem_categoryKey__'] }
+      : mapVenueToCategory(
+          {
+            slug,
+            name: resolvedName,
+            displayName: displayNameStr,
+            tags: normalizedTags.map((t) => ({ title: t.title, summary: t.summary })),
+            hasTastingMenu: normalizedAreas.some((a) => a.hasTastingMenu),
+            areaTitles: normalizedAreas.map((a) => a.title),
+          },
+          fallback,
+        );
 
     const badges = deriveBadges({
       slug,
