@@ -8,12 +8,16 @@ import { BookingController } from './booking.controller';
 import { RezervemVenueService } from './rezervem-venue.service';
 import { RezervemSyncController } from './rezervem-sync.controller';
 import { RezervemVenue, RezervemVenueSchema } from '../../models/rezervem-venue.schema';
+import { Restaurant, RestaurantSchema } from '../../models/restaurant.schema';
+import { RestaurantCategory, RestaurantCategorySchema } from '../../models/restaurant-category.schema';
 
 @Module({
   imports: [
     ConfigModule,
     MongooseModule.forFeature([
       { name: RezervemVenue.name, schema: RezervemVenueSchema },
+      { name: Restaurant.name, schema: RestaurantSchema },
+      { name: RestaurantCategory.name, schema: RestaurantCategorySchema },
     ]),
   ],
   controllers: [BookingController, RezervemSyncController],

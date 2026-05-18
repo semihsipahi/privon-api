@@ -1,11 +1,14 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RezervemVenue } from '../../models/rezervem-venue.schema';
+import { Restaurant } from '../../models/restaurant.schema';
+import { RestaurantCategory } from '../../models/restaurant-category.schema';
 import { RezervemHttpService, RezervemBootstrapResponse } from './rezervem-http.service';
 import { mapVenueToCategory, deriveBadges, DEFAULT_FALLBACK_CATEGORY } from './rezervem-category-mapper';
+import { ImportRezervemVenueDto } from '../../dtos/import-rezervem-venue.dto';
 
 export interface SyncReport {
   startedAt: Date;
@@ -24,6 +27,10 @@ export class RezervemVenueService implements OnModuleInit {
   constructor(
     @InjectModel(RezervemVenue.name)
     private readonly model: Model<RezervemVenue>,
+    @InjectModel(Restaurant.name)
+    private readonly restaurantModel: Model<Restaurant>,
+    @InjectModel(RestaurantCategory.name)
+    private readonly categoryModel: Model<RestaurantCategory>,
     private readonly http: RezervemHttpService,
     private readonly config: ConfigService,
   ) {}
@@ -319,5 +326,123 @@ export class RezervemVenueService implements OnModuleInit {
       lastSyncedAt: (lastDoc as any)?.lastSyncedAt ?? null,
       syncing: this.syncing,
     };
+  }
+
+  // ── Admin: liste + detay ──────────────────────────────────────────
+
+  async listForAdmin(params: {
+    page: number;
+    pageSize: number;
+    q?: string;
+    categoryKey?: string;
+  }): Promise<{ data: any[]; total: number }> {
+    const filter: Record<string, any> = {};
+    if (params.q?.trim()) filter.name = { $regex: params.q.trim(), $options: 'i' };
+    if (params.categoryKey?.trim()) filter.categoryKey = params.categoryKey.trim();
+
+    const skip = (params.page - 1) * params.pageSize;
+    const [venues, total] = await Promise.all([
+      this.model
+        .find(filter)
+        .sort({ categoryScore: -1, name: 1 })
+        .skip(skip)
+        .limit(params.pageSize)
+        .lean(),
+      this.model.countDocuments(filter),
+    ]);
+
+    // İçe aktarılan mekanları işaretle — tek sorguda
+    const slugs = venues.map((v) => v.slug);
+    const importedSlugs = new Set(
+      await this.restaurantModel
+        .find({ rezervemSlug: { $in: slugs } })
+        .distinct('rezervemSlug'),
+    );
+
+    const data = venues.map((v) => ({
+      ...v,
+      isImported: importedSlugs.has(v.slug),
+    }));
+
+    return { data, total };
+  }
+
+  async getBySlugForAdmin(slug: string): Promise<any> {
+    const venue = await this.model.findOne({ slug }).lean();
+    if (!venue) throw new NotFoundException(`Venue bulunamadı: ${slug}`);
+
+    const restaurant = await this.restaurantModel
+      .findOne({ rezervemSlug: slug })
+      .select('_id isActive')
+      .lean();
+
+    return {
+      ...venue,
+      isImported: !!restaurant,
+      importedRestaurantId: restaurant ? String((restaurant as any)._id) : null,
+      importedIsActive: (restaurant as any)?.isActive ?? null,
+    };
+  }
+
+  // ── Admin: import ─────────────────────────────────────────────────
+
+  async importToRestaurant(
+    slug: string,
+    adminUserId: string,
+    dto: ImportRezervemVenueDto,
+  ): Promise<{ restaurantId: string; created: boolean }> {
+    const venue = await this.model.findOne({ slug }).lean();
+    if (!venue) throw new NotFoundException(`Venue cache'de bulunamadı: ${slug}`);
+
+    // Kategori ObjectId'lerini doğrula
+    const categoryObjectIds = dto.categoryIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+
+    if (categoryObjectIds.length === 0) {
+      const category = await this.categoryModel.findOne({ name: venue.categoryKey }).lean();
+      if (category) categoryObjectIds.push((category as any)._id);
+    }
+
+    // Temel restaurant verisi — Rezervem'den otomatik doldurulan alanlar
+    const restaurantBase: Record<string, any> = {
+      name: venue.name,
+      images: (venue.photos ?? []).filter(Boolean),
+      categories: categoryObjectIds,
+      priceLevel: dto.priceLevel,
+      location: {
+        type: 'Point',
+        coordinates: [0, 0],
+        address: venue.address ?? '',
+      },
+      description: dto.description ?? '',
+      descriptionEng: dto.descriptionEng ?? '',
+      awards: venue.badges ?? [],
+      cuisineTypes: (venue.tags ?? []).map((t) => t.title).filter(Boolean),
+      atmosphereTypes: [],
+      workingHours: [],
+      rezervemSlug: venue.slug,
+    };
+
+    const existing = await this.restaurantModel.findOne({ rezervemSlug: slug }).lean();
+
+    if (existing) {
+      // Güncelle — admin'in daha önce düzenlediği phone/email/menu alanlarına dokunma
+      await this.restaurantModel.updateOne(
+        { rezervemSlug: slug },
+        { $set: restaurantBase },
+      );
+      return { restaurantId: String((existing as any)._id), created: false };
+    }
+
+    // Yeni oluştur — varsayılan olarak pasif, admin aktifleştirir
+    const created = await this.restaurantModel.create({
+      ...restaurantBase,
+      owner: new Types.ObjectId(adminUserId),
+      isActive: false,
+      rating: 0,
+      reviewCount: 0,
+    });
+    return { restaurantId: String(created._id), created: true };
   }
 }

@@ -96,7 +96,7 @@ export class Restaurant extends Document {
   @Prop()
   facebookUrl?: string;
 
-  @Prop({ unique: true })
+  @Prop({ unique: true, sparse: true })
   phone?: string;
 
   @Prop()
