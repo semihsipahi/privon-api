@@ -26,12 +26,7 @@ export class LocationDto {
   @IsOptional()
   district?: string;
 
-  @ApiPropertyOptional({ description: 'Semt' })
-  @IsString({ message: 'Semt metin formatında olmalıdır' })
-  @IsOptional()
-  neighborhood?: string;
-
-  @ApiPropertyOptional({
+@ApiPropertyOptional({
     description: 'GeoJSON koordinatları [longitude, latitude]',
     example: [28.9784, 41.0082],
     type: [Number],

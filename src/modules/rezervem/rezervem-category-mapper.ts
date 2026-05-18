@@ -12,8 +12,7 @@
  * Aksi halde adapter, mekan için bir Category dokümanı bulamaz ve mobil tarafta
  * o kategori altında hiç restoran görünmez.
  *
- * DB'de şu an `visibleOnHomePage: true` olan 4 kategori:
- *   - Türk Mutfağı
+ * DB'de şu an `visibleOnHomePage: true` olan 3 kategori:
  *   - Michelin Guide
  *   - Chef Restaurants
  *   - City Classics  (← fallback)
@@ -68,31 +67,6 @@ const HEURISTIC_RULES: HeuristicRule[] = [
     score: 120,
   },
 
-  // Türk Mutfağı — kebap, meze, ocakbaşı, meyhane, et, balık-meyhane vs.
-  {
-    keywords: [
-      'türk',
-      'turk',
-      'turkish',
-      'kebap',
-      'kebab',
-      'meze',
-      'meyhane',
-      'ocakbaşı',
-      'ocakbasi',
-      'anadolu',
-      'osmanlı',
-      'osmanli',
-      'et kebap',
-      'et-kebap',
-      'mur-et',
-      'köfte',
-      'kofte',
-      'lokanta',
-    ],
-    category: 'Türk Mutfağı',
-    score: 90,
-  },
 ];
 
 // ── Katman 3: Fallback ───────────────────────────────────────────────

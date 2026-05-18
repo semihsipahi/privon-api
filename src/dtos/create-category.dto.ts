@@ -7,15 +7,10 @@ export class CreateCategoryDto {
     @IsNotEmpty()
     name: string;
 
-    @ApiProperty({ description: 'Kategori resmi', example: 'https://example.com/image.png', required: false })
+    @ApiProperty({ description: 'Kategori açıklaması', example: 'Dünyanın en prestijli rehberi.', required: false })
     @IsString()
     @IsOptional()
-    image?: string;
-
-    @ApiProperty({ description: 'Kategori rengi', example: '#FF5733', required: false })
-    @IsString()
-    @IsOptional()
-    color?: string;
+    description?: string;
 
     @ApiProperty({ description: 'Ana sayfada görünsün mü?', example: true, required: false })
     @IsBoolean()

@@ -7,10 +7,7 @@ export class RestaurantCategory extends Document {
     name: string;
 
     @Prop()
-    image: string;
-
-    @Prop()
-    color: string;
+    description: string;
 
     @Prop()
     visibleOnHomePage: boolean;

@@ -222,3 +222,10 @@ Required vars (see `.env`):
 - `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_REGION`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`
 - `BASE_URL_FRONT` — Frontend URL (used in email templates)
 - `PORT` — Server port (default 8080)
+
+### Rezervem Environment Variables
+
+- `USE_MOCK_REZERVEM` — **MUST be `false` in production.** Coolify manages this env var for production deployment. Local `.env` default is also `false`. Never set to `true` in production — it bypasses the real Rezervem Partner API and returns mock data for only 2 hardcoded slugs (`privon-bosphorus`, `privon-galata`).
+- `REZERVEM_BASE_URL` — Rezervem Partner API base URL (`https://partnerapi.rezervem.com.tr`)
+- `REZERVEM_CLIENT_ID`, `REZERVEM_CLIENT_SECRET` — Rezervem OAuth credentials (set in Coolify for production)
+- `RESTAURANT_SOURCE` — `db` for standard mode (serves from MongoDB); `rezervem` to enable auto-sync on startup

@@ -109,8 +109,4 @@ export class ImportRezervemVenueDto {
   @IsString()
   district?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  neighborhood?: string;
 }

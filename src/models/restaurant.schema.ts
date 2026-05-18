@@ -20,8 +20,6 @@ export class Location {
   @Prop()
   district?: string; // ilçe
 
-  @Prop()
-  neighborhood?: string; // semt
 }
 
 @Schema({ _id: false })

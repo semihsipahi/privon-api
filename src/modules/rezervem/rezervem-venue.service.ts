@@ -276,7 +276,7 @@ export class RezervemVenueService implements OnModuleInit {
 
     // Rezervem'in kendi categoryKey'i (örn. "Michelin Guide") bizdeki kategori
     // isimleriyle birebir örtüşüyorsa doğrudan kullan; yoksa keyword heuristic devreye girer.
-    const KNOWN_CATEGORIES = new Set(['Michelin Guide', 'Chef Restaurants', 'Türk Mutfağı', 'City Classics']);
+    const KNOWN_CATEGORIES = new Set(['Michelin Guide', 'Chef Restaurants', 'City Classics']);
     const mapping = (listCategoryKey && KNOWN_CATEGORIES.has(listCategoryKey))
       ? { categoryKey: listCategoryKey, score: 500, matchedKeywords: ['__rezervem_categoryKey__'] }
       : mapVenueToCategory(
@@ -483,8 +483,7 @@ export class RezervemVenueService implements OnModuleInit {
         address: venue.address ?? '',
         city: dto.city ?? '',
         district: dto.district ?? '',
-        neighborhood: dto.neighborhood ?? '',
-      },
+        },
       description: dto.description ?? '',
       descriptionEng: dto.descriptionEng ?? '',
       phone: dto.phone || venue.contact || undefined,
