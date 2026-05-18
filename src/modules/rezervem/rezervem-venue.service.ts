@@ -7,7 +7,7 @@ import { RezervemVenue } from '../../models/rezervem-venue.schema';
 import { Restaurant } from '../../models/restaurant.schema';
 import { RestaurantCategory } from '../../models/restaurant-category.schema';
 import { RezervemHttpService, RezervemBootstrapResponse } from './rezervem-http.service';
-import { mapVenueToCategory, deriveBadges, DEFAULT_FALLBACK_CATEGORY } from './rezervem-category-mapper';
+import { mapVenueToCategory, deriveBadges, DEFAULT_FALLBACK_CATEGORY, SLUG_OVERRIDES } from './rezervem-category-mapper';
 import { ImportRezervemVenueDto } from '../../dtos/import-rezervem-venue.dto';
 
 const SHIFT_PERIODS: Record<number, Array<{ openingTime: string; closingTime: string }>> = {
@@ -184,6 +184,17 @@ export class RezervemVenueService implements OnModuleInit {
       await this.model.updateMany(
         { slug: { $nin: allSlugs } },
         { $set: { isActive: false } },
+      );
+
+      // 4) Slug override'larını collection'daki tüm dökümanlara uygula —
+      //    venue Rezervem'de aktif olmasa bile kategori doğru kalmalı.
+      await Promise.all(
+        Object.entries(SLUG_OVERRIDES).map(([s, cat]) =>
+          this.model.updateOne(
+            { slug: s },
+            { $set: { categoryKey: cat, categoryScore: 1000 } },
+          ),
+        ),
       );
 
       report.finishedAt = new Date();
@@ -481,7 +492,9 @@ export class RezervemVenueService implements OnModuleInit {
       atmosphereTypes: [],
       workingHours: (dto.workingHours && dto.workingHours.length > 0)
         ? dto.workingHours
-        : buildWorkingHoursFromShifts(venue.areas ?? []),
+        : buildWorkingHoursFromShifts(
+            (venue.areas ?? []).map((a: any) => ({ shifts: normalizeShifts(a.shifts) })),
+          ),
       rezervemSlug: venue.slug,
     };
 

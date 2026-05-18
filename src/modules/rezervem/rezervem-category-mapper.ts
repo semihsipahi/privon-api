@@ -40,7 +40,7 @@ export interface MappingResult {
 // Test ortamında tags/displayName boş döndüğü için Michelin gibi kritik
 // etiketleri yakalamanın tek güvenli yolu manuel override. Prod'da slug'lar
 // öğrenildikçe genişletilir.
-const SLUG_OVERRIDES: Record<string, string> = {
+export const SLUG_OVERRIDES: Record<string, string> = {
   'yeni-lokanta': 'Michelin Guide',
   'mikla-istanbul': 'Michelin Guide',
   'neolokal': 'Michelin Guide',
