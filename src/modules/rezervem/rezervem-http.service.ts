@@ -254,21 +254,33 @@ export class RezervemHttpService {
     date: string;
     time: string;
     shift: number;
+    areaId?: string;
     roomId?: number;
     paymentMode?: 'immediate' | 'deferred';
   }): Promise<object> {
     if (this.isMock) {
       this.logger.debug(`[MOCK] holdSlot: ${JSON.stringify(params)}`);
-      return getMockHold({ ...params, areaId: String(params.roomId ?? '') });
+      const areaId = params.areaId ?? String(params.roomId ?? '');
+      return getMockHold({ ...params, areaId });
     }
     return this.post(`/v1/venues/${params.slug}/checkout/hold`, {
       date: params.date,
       time: params.time,
       pax: params.pax,
       shift: params.shift,
-      roomId: params.roomId,
+      roomId: params.roomId ?? (params.areaId ? parseInt(params.areaId, 10) || undefined : undefined),
       paymentMode: params.paymentMode ?? 'immediate',
     });
+  }
+
+  // --- Confirm Hold (Mobile-compatible) ---
+
+  async confirmHold(holdId: string, guestInfo: { firstName: string; lastName: string; phone: string; note?: string }): Promise<object> {
+    if (this.isMock) {
+      this.logger.debug(`[MOCK] confirmHold: holdId=${holdId}`);
+      return getMockConfirm(holdId, guestInfo);
+    }
+    return this.post(`/v1/checkout/holds/${holdId}/confirm`, guestInfo);
   }
 
   // --- Confirm (Checkout) ---
