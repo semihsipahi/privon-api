@@ -242,19 +242,67 @@ Privon uses **Rezervem** (a Turkish restaurant reservation platform) as its book
 
 2. **Import**: Admin picks a venue from the list and clicks "Aktar" → `POST /admin/rezervem/venues/:slug/import` → creates a **Restaurant document** in our main `restaurants` collection. This restaurant is now visible in the mobile app with Privon's own UI/design.
 
-3. **Booking flow** (mobile app): When a user taps "Rezervasyon Yap" on an imported restaurant, the entire booking flow runs **through Rezervem's API**, not our own slot/reservation system:
-   - `GET /booking/venues/:slug/availability/dates?pax=N` → available dates
-   - `GET /booking/venues/:slug/availability/slots?date=...&pax=N` → time slots
-   - `POST /booking/venues/:slug/hold` → hold a slot
-   - `POST /booking/holds/:holdId/confirm` → confirm with guest info
+3. **Booking flow** (mobile app): When a user taps "Rezervasyon Yap" on an imported restaurant, the entire booking flow runs **through Rezervem's API** (proxied by our backend), not our own slot/reservation system.
 
 4. **Bootstrap**: `GET /booking/venues/:slug/bootstrap` returns pax options, areas, working hours. The API checks `rezervem_venues` cache first; falls back to live Rezervem API only if not cached.
 
-### Key rule
+### Our API endpoints (mobile → our backend)
+
+| Step | Mobile calls | Backend proxies to |
+|---|---|---|
+| Bootstrap | `GET /booking/venues/:slug/bootstrap` | `GET /v1/venues/:slug/bootstrap` |
+| Dates | `GET /booking/venues/:slug/availability/dates?pax=N` | `GET /v1/venues/:slug/availability/dates?partySize=N` |
+| Times | `GET /booking/venues/:slug/availability/times?pax=N&date=D` | `GET /v1/venues/:slug/availability/times?partySize=N&date=D` |
+| Areas | `GET /booking/venues/:slug/availability/areas?pax=N&date=D&time=T` | `GET /v1/venues/:slug/availability/areas?partySize=N&date=D&time=T&shift=S` |
+| Hold | `POST /booking/venues/:slug/hold` | `POST /v1/venues/:slug/checkout/hold` |
+| Confirm | `POST /booking/holds/:holdId/confirm` | `POST /v1/venues/:slug/checkout/confirm?responseMode=v1` |
+
+### Response transformation (CRITICAL)
+
+The real Rezervem API returns different field names than the mobile contract. `rezervem-http.service.ts` transforms responses:
+
+- **Dates**: `{dates: [{date, status}], meta}` → `{availableDates: string[]}` (only AVAILABLE/LIMITED dates)
+- **Times**: `{shifts: [{shift, times: [{time, status}]}]}` → `{slots: [{time, available}]}`
+- **Areas**: `{areas: [{id, title, selectable, status}]}` → `{areas: [{id, name, available, ...}]}`
+- **Hold**: `{sessionId, expiresOn}` → `{holdId: "${slug}::${sessionId}", expiresAt, ttlSeconds, ...}`
+- **Confirm**: Rezervem response → `{reservationId, holdId, confirmationCode, ...}`
+
+### HoldId encoding
+
+Hold response encodes the Rezervem `sessionId` as `"${slug}::${sessionId}"` in the `holdId` field. When `POST /booking/holds/:holdId/confirm` arrives, the backend splits on `::` to recover both the slug and sessionId, then calls the proper Rezervem confirm endpoint. Never change this encoding without updating both `holdSlot` transform and `confirmHold`.
+
+### Shift parameter
+
+Rezervem areas endpoint requires a `shift` parameter (0=Breakfast, 1=Lunch, 2=Dinner, 3=Bar). The `booking.controller.ts` auto-infers shift from the selected time using `shiftFromTime()` when not explicitly provided.
+
+### Confirm body (Rezervem format)
+
+```json
+{
+  "sessionId": "uuid-from-hold",
+  "model": {
+    "client": {
+      "firstName": "...",
+      "lastName": "...",
+      "phoneNumberCountryCode": "90",
+      "phoneNumber": "5XXXXXXXXX",
+      "emailAddress": "..."
+    },
+    "femaleCount": 0,
+    "note": "...",
+    "hasCakeDelivery": false,
+    "hasFlowerDelivery": false,
+    "needInvoice": false
+  }
+}
+```
+
+### Key rules
 - Restaurants imported from Rezervem have `rezervemSlug` set on the Restaurant document.
 - The mobile app uses `rezervemSlug` to route booking calls to Rezervem.
 - Our own `reservation` module is for non-Rezervem restaurants only.
 - **Never remove or rename `rezervemSlug`** on the Restaurant schema — it is the link between our DB and Rezervem's booking API.
+- `USE_MOCK_REZERVEM=false` in production. Mocks only work for `privon-bosphorus` and `privon-galata` slugs.
 
 ### Coolify deployment
 - Coolify watches `PRIVONco/privon-api` (origin remote). **Every push must go to both remotes:**

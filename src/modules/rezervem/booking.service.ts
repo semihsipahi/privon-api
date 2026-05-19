@@ -78,7 +78,7 @@ export class BookingService {
     return this.rezervemHttp.holdSlot(params);
   }
 
-  confirmHold(holdId: string, guestInfo: { firstName: string; lastName: string; phone: string; note?: string }) {
+  confirmHold(holdId: string, guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string }) {
     return this.rezervemHttp.confirmHold(holdId, guestInfo);
   }
 

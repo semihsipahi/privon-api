@@ -116,10 +116,19 @@ export class BookingController {
   @ApiOperation({ summary: 'Hold edilen rezervasyonu onayla (mobile)' })
   confirmHold(
     @Param('holdId') holdId: string,
-    @Body() body: { guestInfo?: { firstName: string; lastName: string; phone: string; note?: string }; firstName?: string; lastName?: string; phone?: string; note?: string },
+    @Body() body: {
+      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string };
+      firstName?: string; lastName?: string; phone?: string; email?: string; note?: string;
+    },
   ) {
     this.logger.log(`confirmHold holdId=${holdId}`);
-    const guest = body.guestInfo ?? { firstName: body.firstName!, lastName: body.lastName!, phone: body.phone!, note: body.note };
+    const guest = body.guestInfo ?? {
+      firstName: body.firstName!,
+      lastName: body.lastName!,
+      phone: body.phone!,
+      email: body.email,
+      note: body.note,
+    };
     return this.bookingService.confirmHold(holdId, guest);
   }
 
