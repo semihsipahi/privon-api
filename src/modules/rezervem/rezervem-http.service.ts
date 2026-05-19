@@ -238,30 +238,49 @@ export class RezervemHttpService {
       for (const shift of raw.shifts) {
         for (const t of shift.times ?? []) {
           const available = t.status === 'AVAILABLE' || t.status === 'LIMITED';
-          slots.push({ time: t.time, available });
+          slots.push({ time: t.time ?? t.displayTime, available });
         }
       }
+      this.logger.log(`[Rezervem] transformTimes: ${slots.length} slots from ${raw.shifts.length} shifts`);
       return { slug, pax, date, slots };
     }
-    this.logger.warn(`[Rezervem] unexpected times response: ${JSON.stringify(raw)?.slice(0, 200)}`);
+    // Direct array of time slots
+    if (Array.isArray(raw)) {
+      const slots = raw.map((t: any) => ({
+        time: t.time ?? t.displayTime,
+        available: t.status === 'AVAILABLE' || t.status === 'LIMITED' || t.available === true,
+      }));
+      return { slug, pax, date, slots };
+    }
+    this.logger.warn(`[Rezervem] unexpected times response keys=${Object.keys(raw ?? {}).join(',')}: ${JSON.stringify(raw)?.slice(0, 300)}`);
     return { slug, pax, date, slots: [] };
   }
 
   private transformAreasResponse(raw: any, slug: string, pax: number, date: string, time: string): object {
     if (Array.isArray(raw?.areas) && raw.areas[0]?.name !== undefined) return raw;
-    if (Array.isArray(raw?.areas)) {
-      const areas = raw.areas.map((a: any) => ({
+
+    // Determine areas array from various possible Rezervem response structures
+    let areasArr: any[] | null = null;
+    if (Array.isArray(raw?.areas)) areasArr = raw.areas;
+    else if (Array.isArray(raw?.rooms)) areasArr = raw.rooms;
+    else if (Array.isArray(raw?.data)) areasArr = raw.data;
+    else if (Array.isArray(raw)) areasArr = raw;
+
+    if (areasArr !== null) {
+      this.logger.log(`[Rezervem] transformAreas: ${areasArr.length} areas raw keys=${Object.keys(areasArr[0] ?? {}).join(',')}`);
+      const areas = areasArr.map((a: any) => ({
         id: String(a.id),
-        name: this.i18n(a.title),
+        name: this.i18n(a.title ?? a.name),
         description: this.i18n(a.summary ?? a.description),
-        minPax: a.minCapacity ?? 1,
-        maxPax: a.maxCapacity ?? 10,
-        available: a.selectable !== false && a.status !== 'FULL' && a.status !== 'BLOCKED',
-        imageUrl: a.coverPhoto ?? (Array.isArray(a.photos) ? a.photos[0] : undefined),
+        minPax: a.minCapacity ?? a.minPax ?? 1,
+        maxPax: a.maxCapacity ?? a.maxPax ?? 10,
+        available: a.selectable !== false && a.available !== false && a.status !== 'FULL' && a.status !== 'BLOCKED',
+        imageUrl: a.coverPhoto ?? a.imageUrl ?? (Array.isArray(a.photos) ? a.photos[0] : undefined),
       }));
       return { slug, pax, date, time, areas };
     }
-    this.logger.warn(`[Rezervem] unexpected areas response: ${JSON.stringify(raw)?.slice(0, 200)}`);
+
+    this.logger.warn(`[Rezervem] unexpected areas response keys=${Object.keys(raw ?? {}).join(',')}: ${JSON.stringify(raw)?.slice(0, 300)}`);
     return { slug, pax, date, time, areas: [] };
   }
 
