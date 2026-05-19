@@ -20,7 +20,6 @@ export class BookingController {
   @ApiOperation({ summary: 'Mekan bootstrap verisi (rezervasyon akışı yapılandırması)' })
   async getBootstrap(@Param('slug') slug: string) {
     const raw: any = await this.bookingService.getBootstrap(slug);
-    // Mock already returns BookingBootstrap format (has paxOptions)
     if (Array.isArray(raw?.paxOptions)) return raw;
     // Real Rezervem format → map to BookingBootstrap
     return this.mapToBookingBootstrap(slug, raw);

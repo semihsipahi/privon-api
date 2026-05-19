@@ -1,13 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RezervemAuthService } from './rezervem-auth.service';
-import { MOCK_VENUES } from './mock/venues.mock';
-import { getMockBootstrap } from './mock/bootstrap.mock';
-import { getMockAvailableDates } from './mock/availability-dates.mock';
-import { getMockAvailableTimes } from './mock/availability-times.mock';
-import { getMockAvailableAreas } from './mock/availability-areas.mock';
-import { getMockHold } from './mock/hold.mock';
-import { getMockConfirm } from './mock/confirm.mock';
 
 export interface RezervemVenueListResponse {
   items: { slug: string; name: string; isActive: boolean; categoryKey?: string }[];
@@ -63,10 +56,6 @@ export class RezervemHttpService {
     private readonly configService: ConfigService,
     private readonly authService: RezervemAuthService,
   ) {}
-
-  private get isMock(): boolean {
-    return this.configService.get<string>('USE_MOCK_REZERVEM') === 'true';
-  }
 
   private get baseUrl(): string {
     return this.configService.get<string>('REZERVEM_BASE_URL');
@@ -185,27 +174,12 @@ export class RezervemHttpService {
   // --- Venues ---
 
   async getVenues(page = 1, pageSize = 100): Promise<RezervemVenueListResponse> {
-    if (this.isMock) {
-      this.logger.debug('[MOCK] getVenues');
-      const items = MOCK_VENUES.map((v: any) => ({
-        slug: v.slug,
-        name: v.name,
-        isActive: v.isActive ?? true,
-      }));
-      return { items, totalCount: items.length, page: 1, pageSize: items.length };
-    }
     return this.get<RezervemVenueListResponse>(`/v1/venues?page=${page}&pageSize=${pageSize}`);
   }
 
   // --- Bootstrap ---
 
   async getBootstrap(slug: string): Promise<RezervemBootstrapResponse> {
-    if (this.isMock) {
-      this.logger.debug(`[MOCK] getBootstrap: ${slug}`);
-      const data = getMockBootstrap(slug);
-      if (!data) throw new Error(`Mock venue not found: ${slug}`);
-      return data as RezervemBootstrapResponse;
-    }
     return this.get<RezervemBootstrapResponse>(`/v1/venues/${slug}/bootstrap`);
   }
 
@@ -262,12 +236,15 @@ export class RezervemHttpService {
     // Determine areas array from various possible Rezervem response structures
     let areasArr: any[] | null = null;
     if (Array.isArray(raw?.areas)) areasArr = raw.areas;
+    else if (raw?.areas === null) areasArr = []; // explicit null → no areas configured
     else if (Array.isArray(raw?.rooms)) areasArr = raw.rooms;
     else if (Array.isArray(raw?.data)) areasArr = raw.data;
     else if (Array.isArray(raw)) areasArr = raw;
 
     if (areasArr !== null) {
-      this.logger.log(`[Rezervem] transformAreas: ${areasArr.length} areas raw keys=${Object.keys(areasArr[0] ?? {}).join(',')}`);
+      if (areasArr.length > 0) {
+        this.logger.log(`[Rezervem] transformAreas: ${areasArr.length} areas raw keys=${Object.keys(areasArr[0] ?? {}).join(',')}`);
+      }
       const areas = areasArr.map((a: any) => ({
         id: String(a.id),
         name: this.i18n(a.title ?? a.name),
@@ -311,13 +288,27 @@ export class RezervemHttpService {
   }
 
   private transformConfirmResponse(raw: any, holdId: string): object {
-    if (raw?.confirmationCode && !raw?.sessionId) return raw;
+    // Already in mobile contract format (e.g., from a relay)
+    if (raw?.confirmationCode && !raw?.sessionId && !raw?.code) return raw;
+
+    // Scenario B/D: Rezervem returns PAYMENT_REQUIRED (online 3D-secure or provision)
+    if (typeof raw?.status === 'string' && raw.status === 'PAYMENT_REQUIRED') {
+      throw new Error('Bu mekan online ödeme gerektiriyor. Uygulama bu özelliği yakında destekleyecek. Lütfen tekrar deneyin.');
+    }
+
+    // Scenario C: Deferred payment — Rezervem returns FINANCIAL with a payment URL
+    if (typeof raw?.status === 'string' && raw.status === 'FINANCIAL') {
+      throw new Error('Bu mekan ertelenmiş ödeme gerektiriyor. Rezervasyon için lütfen restoran ile iletişime geçin.');
+    }
+
+    // Scenario A: Free / normal confirmation
+    // OpenAPI CheckoutConfirmResponse: field is `code` (not `confirmationCode`)
     return {
-      reservationId: raw?.reservationId ?? raw?.sessionId ?? holdId,
+      reservationId: raw?.id != null ? String(raw.id) : (raw?.reservationId ?? raw?.sessionId ?? holdId),
       holdId,
-      status: raw?.status ?? 'confirmed',
+      status: typeof raw?.status === 'number' ? 'confirmed' : (raw?.status ?? 'confirmed'),
       confirmedAt: raw?.confirmedAt ?? raw?.createdAt ?? new Date().toISOString(),
-      confirmationCode: raw?.confirmationCode ?? raw?.reservationCode ?? `PRV${Date.now().toString().slice(-6)}`,
+      confirmationCode: raw?.code ?? raw?.confirmationCode ?? raw?.reservationCode ?? `PRV${Date.now().toString().slice(-6)}`,
       message: raw?.message ?? 'Rezervasyonunuz başarıyla oluşturulmuştur.',
     };
   }
@@ -325,10 +316,6 @@ export class RezervemHttpService {
   // --- Availability: Dates ---
 
   async getAvailableDates(slug: string, pax: number): Promise<object> {
-    if (this.isMock) {
-      this.logger.debug(`[MOCK] getAvailableDates: ${slug} pax=${pax}`);
-      return getMockAvailableDates(slug, pax);
-    }
     const raw = await this.get(`/v1/venues/${slug}/availability/dates?partySize=${pax}`);
     return this.transformDatesResponse(raw, slug, pax);
   }
@@ -336,10 +323,6 @@ export class RezervemHttpService {
   // --- Availability: Times ---
 
   async getAvailableTimes(slug: string, pax: number, date: string): Promise<object> {
-    if (this.isMock) {
-      this.logger.debug(`[MOCK] getAvailableTimes: ${slug} pax=${pax} date=${date}`);
-      return getMockAvailableTimes(slug, pax, date);
-    }
     const raw = await this.get(`/v1/venues/${slug}/availability/times?partySize=${pax}&date=${date}`);
     return this.transformTimesResponse(raw, slug, pax, date);
   }
@@ -353,10 +336,6 @@ export class RezervemHttpService {
     time: string,
     shift: number,
   ): Promise<object> {
-    if (this.isMock) {
-      this.logger.debug(`[MOCK] getAvailableAreas: ${slug} pax=${pax} date=${date} time=${time}`);
-      return getMockAvailableAreas(slug, pax, date, time);
-    }
     const qs = `partySize=${pax}&date=${date}&time=${encodeURIComponent(time)}&shift=${shift}`;
     const raw = await this.get(`/v1/venues/${slug}/availability/areas?${qs}`);
     return this.transformAreasResponse(raw, slug, pax, date, time);
@@ -374,11 +353,6 @@ export class RezervemHttpService {
     roomId?: number;
     paymentMode?: 'immediate' | 'deferred';
   }): Promise<object> {
-    if (this.isMock) {
-      this.logger.debug(`[MOCK] holdSlot: ${JSON.stringify(params)}`);
-      const areaId = params.areaId ?? String(params.roomId ?? '');
-      return getMockHold({ ...params, areaId });
-    }
     const raw = await this.post(`/v1/venues/${params.slug}/checkout/hold`, {
       date: params.date,
       time: params.time,
@@ -391,17 +365,12 @@ export class RezervemHttpService {
   }
 
   // --- Confirm Hold (Mobile-compatible) ---
-  // holdId format: "${slug}::${sessionId}" (encoded during hold) or mock holdId
+  // holdId format: "${slug}::${sessionId}" (encoded during hold)
 
   async confirmHold(
     holdId: string,
     guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string },
   ): Promise<object> {
-    if (this.isMock) {
-      this.logger.debug(`[MOCK] confirmHold: holdId=${holdId}`);
-      return getMockConfirm(holdId, guestInfo);
-    }
-
     if (!holdId.includes('::')) {
       throw new Error('Geçersiz rezervasyon oturumu. Lütfen tekrar deneyin.');
     }
@@ -437,10 +406,6 @@ export class RezervemHttpService {
   // --- Confirm (Checkout) ---
 
   async confirmReservation(slug: string, sessionId: string, model: any): Promise<object> {
-    if (this.isMock) {
-      this.logger.debug(`[MOCK] confirmReservation: sessionId=${sessionId}`);
-      return getMockConfirm(sessionId, model);
-    }
     return this.post(`/v1/venues/${slug}/checkout/confirm?responseMode=v1`, { sessionId, model });
   }
 
@@ -452,9 +417,6 @@ export class RezervemHttpService {
     paymentCompleted: boolean,
     model: any,
   ): Promise<object> {
-    if (this.isMock) {
-      return { sessionId, finalized: paymentCompleted };
-    }
     return this.post(`/v1/venues/${slug}/checkout/finalize`, {
       sessionId,
       paymentCompleted,

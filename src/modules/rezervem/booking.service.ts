@@ -14,8 +14,7 @@ export class BookingService {
   /**
    * Bootstrap: önce rezervem_venues cache'ine bak.
    * Admin sync yaptıysa ve mekan cache'deyse, pax/bookingFlow bilgileri
-   * oradan alınır — mock slug listesi kısıtlaması aşılır.
-   * Cache'de yoksa mock/real API'ye düşer.
+   * oradan alınır. Cache'de yoksa canlı Rezervem API'ye düşer.
    */
   async getBootstrap(slug: string): Promise<object> {
     const cached = await this.venueService.findBySlug(slug);
