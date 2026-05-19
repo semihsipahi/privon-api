@@ -10,6 +10,7 @@ import { RezervemSyncController } from './rezervem-sync.controller';
 import { RezervemVenue, RezervemVenueSchema } from '../../models/rezervem-venue.schema';
 import { Restaurant, RestaurantSchema } from '../../models/restaurant.schema';
 import { RestaurantCategory, RestaurantCategorySchema } from '../../models/restaurant-category.schema';
+import { ReservationModule } from '../reservation/reservation.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { RestaurantCategory, RestaurantCategorySchema } from '../../models/resta
       { name: Restaurant.name, schema: RestaurantSchema },
       { name: RestaurantCategory.name, schema: RestaurantCategorySchema },
     ]),
+    ReservationModule,
   ],
   controllers: [BookingController, RezervemSyncController],
   providers: [

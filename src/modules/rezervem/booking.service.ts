@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { RezervemHttpService } from './rezervem-http.service';
 import { RezervemVenueService } from './rezervem-venue.service';
+import { ReservationService } from '../reservation/reservation.service';
+import { Restaurant } from '../../models/restaurant.schema';
 
 @Injectable()
 export class BookingService {
@@ -9,6 +13,8 @@ export class BookingService {
   constructor(
     private readonly rezervemHttp: RezervemHttpService,
     private readonly venueService: RezervemVenueService,
+    private readonly reservationService: ReservationService,
+    @InjectModel(Restaurant.name) private readonly restaurantModel: Model<Restaurant>,
   ) {}
 
   /**
@@ -45,6 +51,10 @@ export class BookingService {
       currency: venue.currency || 'TRY',
       holdTtlSeconds: 600,
       policies: {},
+      genderPolicy: venue.genderPolicy ?? false,
+      paymentPreview: venue.paymentPreview ?? null,
+      uiHints: venue.uiHints ?? {},
+      leadTimes: venue.leadTimes ?? null,
     };
   }
 
@@ -77,12 +87,33 @@ export class BookingService {
     return this.rezervemHttp.holdSlot(params);
   }
 
-  confirmHold(holdId: string, guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string }) {
+  confirmHold(holdId: string, guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number }) {
     return this.rezervemHttp.confirmHold(holdId, guestInfo);
   }
 
-  finalizeHold(holdId: string, paymentCompleted: boolean, guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string }) {
+  finalizeHold(holdId: string, paymentCompleted: boolean, guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number }) {
     return this.rezervemHttp.finalizeHold(holdId, paymentCompleted, guestInfo);
+  }
+
+  async saveRezervemReservation(userId: string, slug: string, data: {
+    pax: number;
+    date: string;
+    time: string;
+    areaName?: string;
+    note?: string;
+    confirmationCode?: string;
+    rezervemId?: string;
+  }) {
+    const restaurant = await this.restaurantModel.findOne({ rezervemSlug: slug }).select('_id').lean();
+    if (!restaurant) {
+      this.logger.warn(`saveRezervemReservation: restaurant not found for slug=${slug}`);
+      return null;
+    }
+    return this.reservationService.saveRezervemReservation(userId, {
+      restaurantId: restaurant._id.toString(),
+      rezervemSlug: slug,
+      ...data,
+    });
   }
 
   confirmReservation(slug: string, sessionId: string, model: any) {

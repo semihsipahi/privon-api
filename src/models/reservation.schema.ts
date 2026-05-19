@@ -4,8 +4,31 @@ import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
 
 @Schema({ timestamps: true })
 export class Reservation extends Document {
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Slot', required: true })
-    slot: MongooseSchema.Types.ObjectId;
+    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Slot', required: false })
+    slot?: MongooseSchema.Types.ObjectId;
+
+    // 'direct' = our own slot system; 'rezervem' = Rezervem Partner API
+    @Prop({ default: 'direct' })
+    source: string;
+
+    // Rezervem-specific fields (null for direct bookings)
+    @Prop()
+    time?: string;
+
+    @Prop()
+    confirmationCode?: string;
+
+    @Prop()
+    rezervemId?: string;
+
+    @Prop()
+    rezervemSlug?: string;
+
+    @Prop()
+    areaName?: string;
+
+    @Prop()
+    note?: string;
 
     @Prop({
         type: MongooseSchema.Types.ObjectId,

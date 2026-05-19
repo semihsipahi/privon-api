@@ -364,6 +364,33 @@ export class ReservationService extends ResourceService<
         return await reservation.save();
     }
 
+    async saveRezervemReservation(userId: string, data: {
+        restaurantId: string;
+        date: string;
+        time: string;
+        pax: number;
+        confirmationCode?: string;
+        rezervemId?: string;
+        rezervemSlug?: string;
+        areaName?: string;
+        note?: string;
+    }): Promise<Reservation> {
+        return this.reservationModel.create({
+            source: 'rezervem',
+            customer: new Types.ObjectId(userId),
+            restaurant: new Types.ObjectId(data.restaurantId),
+            date: data.date,
+            time: data.time,
+            personCount: data.pax,
+            confirmationCode: data.confirmationCode,
+            rezervemId: data.rezervemId,
+            rezervemSlug: data.rezervemSlug,
+            areaName: data.areaName,
+            note: data.note,
+            status: ReservationStatus.CONFIRMED,
+        } as any);
+    }
+
     async cancelReservation(id: string, user: AuthUser) {
         const reservation = await this.reservationModel.findById(id);
         if (!reservation) {
@@ -399,18 +426,23 @@ export class ReservationService extends ResourceService<
             (Date.now() - createdAt.getTime()) / (1000 * 60);
 
         // 12 Saat kuralı kontrolü
-        await reservation.populate('slot', 'time');
-        const slot = reservation.slot as any;
-
         let isMoreThan12HoursAway = false;
-        if (slot && slot.time) {
-            const reservationIsoString = `${reservation.date}T${slot.time}:00+03:00`;
-            const reservationDateTime = new Date(reservationIsoString);
-            const now = new Date();
-            const timeDiff = reservationDateTime.getTime() - now.getTime();
-            const hoursDiff = timeDiff / (1000 * 60 * 60);
-            if (hoursDiff >= 12) {
-                isMoreThan12HoursAway = true;
+        const isRezervem = (reservation as any).source === 'rezervem';
+
+        if (isRezervem) {
+            const reservationTime = (reservation as any).time as string | undefined;
+            if (reservationTime) {
+                const reservationIsoString = `${reservation.date}T${reservationTime}:00+03:00`;
+                const hoursDiff = (new Date(reservationIsoString).getTime() - Date.now()) / (1000 * 60 * 60);
+                if (hoursDiff >= 12) isMoreThan12HoursAway = true;
+            }
+        } else {
+            await reservation.populate('slot', 'time');
+            const slot = reservation.slot as any;
+            if (slot && slot.time) {
+                const reservationIsoString = `${reservation.date}T${slot.time}:00+03:00`;
+                const hoursDiff = (new Date(reservationIsoString).getTime() - Date.now()) / (1000 * 60 * 60);
+                if (hoursDiff >= 12) isMoreThan12HoursAway = true;
             }
         }
 
@@ -430,9 +462,6 @@ export class ReservationService extends ResourceService<
             status: DelayedNotificationJobStatus.PENDING,
         });
 
-        // Müşteriye anında iptal bildirimi
-        await this.sendCustomerNotification(id, 'CANCEL');
-
         // Müşteri için bekleyen Hatırlatma (24h veya 4h) bildirimlerini iptal et
         await this.delayedJobModel.updateMany(
             {
@@ -443,17 +472,23 @@ export class ReservationService extends ResourceService<
             { $set: { status: DelayedNotificationJobStatus.CANCELLED } }
         );
 
-        if (delayedJob) {
-            // 5 dakika dolmadan iptal edildi -> Restorana Yeni Rezervasyon gitmeyecek
+        if (!isRezervem) {
+            // Müşteriye anında iptal bildirimi
+            await this.sendCustomerNotification(id, 'CANCEL');
+
+            if (delayedJob) {
+                delayedJob.status = DelayedNotificationJobStatus.CANCELLED;
+                await delayedJob.save();
+            } else {
+                try {
+                    await this.sendRestaurantNotification(id, 'CANCEL');
+                } catch (err) {
+                    console.error('Error sending delayed cancellation notification:', err);
+                }
+            }
+        } else if (delayedJob) {
             delayedJob.status = DelayedNotificationJobStatus.CANCELLED;
             await delayedJob.save();
-        } else {
-            // 5 dakika dolduktan sonra iptal edildi -> Restorana İptal Bildirimi gitmeli
-            try {
-                await this.sendRestaurantNotification(id, 'CANCEL');
-            } catch (err) {
-                console.error('Error sending delayed cancellation notification:', err);
-            }
         }
 
         return result;

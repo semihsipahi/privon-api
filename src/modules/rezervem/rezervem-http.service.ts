@@ -196,17 +196,29 @@ export class RezervemHttpService {
   private transformDatesResponse(raw: any, slug: string, pax: number): object {
     if (Array.isArray(raw?.availableDates)) return raw;
     if (Array.isArray(raw?.dates)) {
-      const availableDates: string[] = raw.dates
-        .filter((d: any) => d.status === 'AVAILABLE' || d.status === 'LIMITED')
-        .map((d: any) => d.date);
-      return { slug, pax, availableDates };
+      const availableDates: string[] = [];
+      const lowStockDates: string[] = [];
+      for (const d of raw.dates) {
+        if (d.status === 'AVAILABLE' || d.status === 'LIMITED') availableDates.push(d.date);
+        if (d.status === 'LIMITED') lowStockDates.push(d.date);
+      }
+      const holidayDates: string[] = (raw.annotations ?? [])
+        .filter((a: any) => a.type === 'HOLIDAY')
+        .map((a: any) => a.date as string)
+        .filter(Boolean);
+      return { slug, pax, availableDates, lowStockDates, holidayDates };
     }
     this.logger.warn(`[Rezervem] unexpected dates response: ${JSON.stringify(raw)?.slice(0, 200)}`);
-    return { slug, pax, availableDates: [] };
+    return { slug, pax, availableDates: [], lowStockDates: [], holidayDates: [] };
   }
 
   private transformTimesResponse(raw: any, slug: string, pax: number, date: string): object {
     if (Array.isArray(raw?.slots)) return raw;
+    const alternativeDates: string[] = Array.isArray(raw?.alternativeDays)
+      ? raw.alternativeDays
+          .map((d: any) => (typeof d === 'string' ? d : (d?.date ?? null)))
+          .filter(Boolean)
+      : [];
     if (Array.isArray(raw?.shifts)) {
       const slots: { time: string; available: boolean }[] = [];
       for (const shift of raw.shifts) {
@@ -216,7 +228,7 @@ export class RezervemHttpService {
         }
       }
       this.logger.log(`[Rezervem] transformTimes: ${slots.length} slots from ${raw.shifts.length} shifts`);
-      return { slug, pax, date, slots };
+      return { slug, pax, date, slots, alternativeDates };
     }
     // Direct array of time slots
     if (Array.isArray(raw)) {
@@ -224,10 +236,10 @@ export class RezervemHttpService {
         time: t.time ?? t.displayTime,
         available: t.status === 'AVAILABLE' || t.status === 'LIMITED' || t.available === true,
       }));
-      return { slug, pax, date, slots };
+      return { slug, pax, date, slots, alternativeDates };
     }
     this.logger.warn(`[Rezervem] unexpected times response keys=${Object.keys(raw ?? {}).join(',')}: ${JSON.stringify(raw)?.slice(0, 300)}`);
-    return { slug, pax, date, slots: [] };
+    return { slug, pax, date, slots: [], alternativeDates };
   }
 
   private transformAreasResponse(raw: any, slug: string, pax: number, date: string, time: string): object {
@@ -261,6 +273,11 @@ export class RezervemHttpService {
     return { slug, pax, date, time, areas: [] };
   }
 
+  // Rezervem hold statuses that mean the slot is NOT available; mobile must NOT proceed to confirm
+  private static readonly HOLD_ERROR_STATUSES = new Set([
+    'FULL', 'BLOCKED', 'UNAVAILABLE', 'ROOM_NOT_FOUND', 'AREA_REQUIRED',
+  ]);
+
   private transformHoldResponse(
     raw: any,
     params: { slug: string; pax: number; date: string; time: string; areaId?: string },
@@ -270,6 +287,9 @@ export class RezervemHttpService {
     if (sessionId) {
       const holdId = `${params.slug}::${sessionId}`;
       const expiresAt: string = raw.expiresOn ?? new Date(Date.now() + 600_000).toISOString();
+      // Normalise status: pass through the Rezervem status (AVAILABLE, LIMITED, FULL, etc.)
+      // so the mobile layer can detect error conditions (FULL / BLOCKED / etc.)
+      const rezervemStatus: string = typeof raw.status === 'string' ? raw.status.toUpperCase() : 'AVAILABLE';
       return {
         holdId,
         slug: params.slug,
@@ -277,9 +297,26 @@ export class RezervemHttpService {
         date: params.date,
         time: params.time,
         areaId: params.areaId ?? String(raw.roomId ?? ''),
-        status: raw.status ?? 'held',
+        status: rezervemStatus,
         expiresAt,
         ttlSeconds: Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)),
+        paymentScenario: 'A',
+      };
+    }
+    // No sessionId — might be an error status response (e.g. FULL with no session)
+    const rawStatus: string = typeof raw?.status === 'string' ? raw.status.toUpperCase() : '';
+    if (RezervemHttpService.HOLD_ERROR_STATUSES.has(rawStatus)) {
+      this.logger.warn(`[Rezervem] hold returned error status: ${rawStatus}`);
+      return {
+        holdId: '',
+        slug: params.slug,
+        pax: params.pax,
+        date: params.date,
+        time: params.time,
+        areaId: params.areaId ?? '',
+        status: rawStatus,
+        expiresAt: '',
+        ttlSeconds: 0,
         paymentScenario: 'A',
       };
     }
@@ -413,7 +450,7 @@ export class RezervemHttpService {
 
   async confirmHold(
     holdId: string,
-    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string },
+    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number },
   ): Promise<object> {
     if (!holdId.includes('::')) {
       throw new Error('Geçersiz rezervasyon oturumu. Lütfen tekrar deneyin.');
@@ -435,7 +472,7 @@ export class RezervemHttpService {
         phoneNumber: phone,
         emailAddress: guestInfo.email ?? '',
       },
-      femaleCount: 0,
+      femaleCount: guestInfo.femaleCount ?? 0,
       note: guestInfo.note ?? '',
       hasCakeDelivery: false,
       hasFlowerDelivery: false,
@@ -460,7 +497,7 @@ export class RezervemHttpService {
   async finalizeHold(
     holdId: string,
     paymentCompleted: boolean,
-    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string },
+    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number },
   ): Promise<object> {
     if (!holdId.includes('::')) {
       throw new Error('Geçersiz rezervasyon oturumu. Lütfen tekrar deneyin.');
@@ -482,7 +519,7 @@ export class RezervemHttpService {
         phoneNumber: phone,
         emailAddress: guestInfo.email ?? '',
       },
-      femaleCount: 0,
+      femaleCount: guestInfo.femaleCount ?? 0,
       note: guestInfo.note ?? '',
       hasCakeDelivery: false,
       hasFlowerDelivery: false,

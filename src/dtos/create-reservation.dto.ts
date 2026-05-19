@@ -1,15 +1,17 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
     IsNumber,
     IsMongoId,
     IsDateString,
+    IsOptional,
     Min,
 } from 'class-validator';
 
 export class CreateReservationDto {
-    @ApiProperty({ description: 'Slot ID', example: '507f1f77bcf86cd799439011' })
+    @ApiPropertyOptional({ description: 'Slot ID (direct bookings only)', example: '507f1f77bcf86cd799439011' })
+    @IsOptional()
     @IsMongoId()
-    slot: string;
+    slot?: string;
 
     @ApiProperty({
         description: 'Rezervasyon tarihi (YYYY-MM-DD)',

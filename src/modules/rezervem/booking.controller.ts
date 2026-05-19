@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, Body, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, Logger, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BookingService } from './booking.service';
 
@@ -113,12 +113,14 @@ export class BookingController {
   // Mobile-compatible confirm endpoint: POST /booking/holds/:holdId/confirm
   @Post('holds/:holdId/confirm')
   @ApiOperation({ summary: 'Hold edilen rezervasyonu onayla (mobile)' })
-  confirmHold(
+  async confirmHold(
     @Param('holdId') holdId: string,
     @Body() body: {
-      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string };
-      firstName?: string; lastName?: string; phone?: string; email?: string; note?: string;
+      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number };
+      firstName?: string; lastName?: string; phone?: string; email?: string; note?: string; femaleCount?: number;
+      bookingMeta?: { pax: number; date: string; time: string; areaName?: string };
     },
+    @Request() req: any,
   ) {
     this.logger.log(`confirmHold holdId=${holdId}`);
     const guest = body.guestInfo ?? {
@@ -127,21 +129,43 @@ export class BookingController {
       phone: body.phone!,
       email: body.email,
       note: body.note,
+      femaleCount: body.femaleCount,
     };
-    return this.bookingService.confirmHold(holdId, guest);
+    const result = await this.bookingService.confirmHold(holdId, guest);
+
+    if (body.bookingMeta && req.user?.userId) {
+      const slug = holdId.split('::')[0];
+      try {
+        await this.bookingService.saveRezervemReservation(req.user.userId, slug, {
+          pax: body.bookingMeta.pax,
+          date: body.bookingMeta.date,
+          time: body.bookingMeta.time,
+          areaName: body.bookingMeta.areaName,
+          note: guest.note,
+          confirmationCode: (result as any).confirmationCode,
+          rezervemId: (result as any).reservationId,
+        });
+      } catch (err) {
+        this.logger.error(`saveRezervemReservation failed: ${err?.message}`);
+      }
+    }
+
+    return result;
   }
 
   // Mobile-compatible finalize endpoint: POST /booking/holds/:holdId/finalize
   // Called after 3D-Secure / Provision payment completes in WebView (Scenario B/D)
   @Post('holds/:holdId/finalize')
   @ApiOperation({ summary: 'Ödeme sonrası rezervasyonu tamamla (mobile)' })
-  finalizeHold(
+  async finalizeHold(
     @Param('holdId') holdId: string,
     @Body() body: {
       paymentCompleted: boolean;
-      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string };
-      firstName?: string; lastName?: string; phone?: string; email?: string; note?: string;
+      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number };
+      firstName?: string; lastName?: string; phone?: string; email?: string; note?: string; femaleCount?: number;
+      bookingMeta?: { pax: number; date: string; time: string; areaName?: string };
     },
+    @Request() req: any,
   ) {
     this.logger.log(`finalizeHold holdId=${holdId} paymentCompleted=${body.paymentCompleted}`);
     const guest = body.guestInfo ?? {
@@ -150,8 +174,28 @@ export class BookingController {
       phone: body.phone!,
       email: body.email,
       note: body.note,
+      femaleCount: body.femaleCount,
     };
-    return this.bookingService.finalizeHold(holdId, body.paymentCompleted, guest);
+    const result = await this.bookingService.finalizeHold(holdId, body.paymentCompleted, guest);
+
+    if (body.paymentCompleted && body.bookingMeta && req.user?.userId) {
+      const slug = holdId.split('::')[0];
+      try {
+        await this.bookingService.saveRezervemReservation(req.user.userId, slug, {
+          pax: body.bookingMeta.pax,
+          date: body.bookingMeta.date,
+          time: body.bookingMeta.time,
+          areaName: body.bookingMeta.areaName,
+          note: guest.note,
+          confirmationCode: (result as any).confirmationCode,
+          rezervemId: (result as any).reservationId,
+        });
+      } catch (err) {
+        this.logger.error(`saveRezervemReservation (finalize) failed: ${err?.message}`);
+      }
+    }
+
+    return result;
   }
 
   @Post('venues/:slug/confirm')
