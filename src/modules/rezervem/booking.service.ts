@@ -81,6 +81,10 @@ export class BookingService {
     return this.rezervemHttp.confirmHold(holdId, guestInfo);
   }
 
+  finalizeHold(holdId: string, paymentCompleted: boolean, guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string }) {
+    return this.rezervemHttp.finalizeHold(holdId, paymentCompleted, guestInfo);
+  }
+
   confirmReservation(slug: string, sessionId: string, model: any) {
     return this.rezervemHttp.confirmReservation(slug, sessionId, model);
   }

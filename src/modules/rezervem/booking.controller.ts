@@ -131,6 +131,29 @@ export class BookingController {
     return this.bookingService.confirmHold(holdId, guest);
   }
 
+  // Mobile-compatible finalize endpoint: POST /booking/holds/:holdId/finalize
+  // Called after 3D-Secure / Provision payment completes in WebView (Scenario B/D)
+  @Post('holds/:holdId/finalize')
+  @ApiOperation({ summary: 'Ödeme sonrası rezervasyonu tamamla (mobile)' })
+  finalizeHold(
+    @Param('holdId') holdId: string,
+    @Body() body: {
+      paymentCompleted: boolean;
+      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string };
+      firstName?: string; lastName?: string; phone?: string; email?: string; note?: string;
+    },
+  ) {
+    this.logger.log(`finalizeHold holdId=${holdId} paymentCompleted=${body.paymentCompleted}`);
+    const guest = body.guestInfo ?? {
+      firstName: body.firstName!,
+      lastName: body.lastName!,
+      phone: body.phone!,
+      email: body.email,
+      note: body.note,
+    };
+    return this.bookingService.finalizeHold(holdId, body.paymentCompleted, guest);
+  }
+
   @Post('venues/:slug/confirm')
   @ApiOperation({ summary: 'Hold edilen rezervasyonu onayla (Rezervem checkout/confirm)' })
   confirmReservation(

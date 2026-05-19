@@ -291,17 +291,47 @@ export class RezervemHttpService {
     // Already in mobile contract format (e.g., from a relay)
     if (raw?.confirmationCode && !raw?.sessionId && !raw?.code) return raw;
 
-    // Scenario B/D: Rezervem returns PAYMENT_REQUIRED (online 3D-secure or provision)
+    // Scenario B/D: 3D-Secure or Provision — payment required before finalization
     if (typeof raw?.status === 'string' && raw.status === 'PAYMENT_REQUIRED') {
-      throw new Error('Bu mekan online ödeme gerektiriyor. Uygulama bu özelliği yakında destekleyecek. Lütfen tekrar deneyin.');
+      const sepIdx = holdId.indexOf('::');
+      const slug = sepIdx >= 0 ? holdId.slice(0, sepIdx) : holdId;
+      const sessionId = sepIdx >= 0 ? holdId.slice(sepIdx + 2) : (raw?.sessionId ?? '');
+      const pi = raw?.paymentInfo ?? {};
+      const paymentUrl =
+        pi.url ?? pi.paymentUrl ?? pi.redirectUrl ?? pi.checkoutUrl ??
+        raw?.paymentUrl ?? raw?.url ?? '';
+      return {
+        reservationId: raw?.sessionId ?? holdId,
+        holdId,
+        status: 'payment_required',
+        confirmedAt: new Date().toISOString(),
+        confirmationCode: '',
+        message: 'Ödeme gerekli',
+        paymentRequired: true,
+        paymentUrl,
+        paymentSessionId: sessionId,
+        paymentSlug: slug,
+        paymentType: raw?.paymentType ?? '',
+        paymentExpiresAt: raw?.expiresOn ?? '',
+        paymentInfo: raw?.paymentInfo ?? null,
+      };
     }
 
-    // Scenario C: Deferred payment — Rezervem returns FINANCIAL with a payment URL
+    // Scenario C: Deferred — reservation created, payment via SMS/email link (no WebView)
     if (typeof raw?.status === 'string' && raw.status === 'FINANCIAL') {
-      throw new Error('Bu mekan ertelenmiş ödeme gerektiriyor. Rezervasyon için lütfen restoran ile iletişime geçin.');
+      return {
+        reservationId: raw?.id != null ? String(raw.id) : (raw?.sessionId ?? holdId),
+        holdId,
+        status: 'financial',
+        confirmedAt: raw?.confirmedAt ?? new Date().toISOString(),
+        confirmationCode: raw?.code ?? raw?.confirmationCode ?? '',
+        message: raw?.message ?? 'Rezervasyonunuz oluşturuldu. Ödeme bağlantısı SMS ile gönderildi.',
+        paymentRequired: false,
+        paymentUrl: raw?.url ?? '',
+      };
     }
 
-    // Scenario A: Free / normal confirmation
+    // Scenario A: Free / normal — reservation confirmed immediately
     // OpenAPI CheckoutConfirmResponse: field is `code` (not `confirmationCode`)
     return {
       reservationId: raw?.id != null ? String(raw.id) : (raw?.reservationId ?? raw?.sessionId ?? holdId),
@@ -310,6 +340,20 @@ export class RezervemHttpService {
       confirmedAt: raw?.confirmedAt ?? raw?.createdAt ?? new Date().toISOString(),
       confirmationCode: raw?.code ?? raw?.confirmationCode ?? raw?.reservationCode ?? `PRV${Date.now().toString().slice(-6)}`,
       message: raw?.message ?? 'Rezervasyonunuz başarıyla oluşturulmuştur.',
+      paymentRequired: false,
+    };
+  }
+
+  private transformFinalizeResponse(raw: any, holdId: string): object {
+    // Same shape as a successful confirm (Scenario A)
+    return {
+      reservationId: raw?.id != null ? String(raw.id) : (raw?.reservationId ?? holdId),
+      holdId,
+      status: raw?.status != null ? (typeof raw.status === 'number' ? 'confirmed' : raw.status) : 'confirmed',
+      confirmedAt: raw?.confirmedAt ?? raw?.createdAt ?? new Date().toISOString(),
+      confirmationCode: raw?.code ?? raw?.confirmationCode ?? raw?.reservationCode ?? `PRV${Date.now().toString().slice(-6)}`,
+      message: raw?.message ?? 'Rezervasyonunuz onaylandı.',
+      paymentRequired: false,
     };
   }
 
@@ -407,6 +451,51 @@ export class RezervemHttpService {
 
   async confirmReservation(slug: string, sessionId: string, model: any): Promise<object> {
     return this.post(`/v1/venues/${slug}/checkout/confirm?responseMode=v1`, { sessionId, model });
+  }
+
+  // --- Finalize Hold (Mobile-compatible) ---
+  // holdId format: "${slug}::${sessionId}" — same encoding as confirmHold
+  // Called after 3D-Secure or Provision payment completes in WebView (Scenario B/D)
+
+  async finalizeHold(
+    holdId: string,
+    paymentCompleted: boolean,
+    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string },
+  ): Promise<object> {
+    if (!holdId.includes('::')) {
+      throw new Error('Geçersiz rezervasyon oturumu. Lütfen tekrar deneyin.');
+    }
+    const sepIdx = holdId.indexOf('::');
+    const slug = holdId.slice(0, sepIdx);
+    const sessionId = holdId.slice(sepIdx + 2);
+
+    let phone = (guestInfo.phone ?? '').replace(/\s/g, '');
+    if (phone.startsWith('+90')) phone = phone.slice(3);
+    else if (phone.startsWith('90') && phone.length === 12) phone = phone.slice(2);
+    if (phone.startsWith('0')) phone = phone.slice(1);
+
+    const model = {
+      client: {
+        firstName: guestInfo.firstName,
+        lastName: guestInfo.lastName,
+        phoneNumberCountryCode: '90',
+        phoneNumber: phone,
+        emailAddress: guestInfo.email ?? '',
+      },
+      femaleCount: 0,
+      note: guestInfo.note ?? '',
+      hasCakeDelivery: false,
+      hasFlowerDelivery: false,
+      needInvoice: false,
+    };
+
+    this.logger.log(`[Rezervem] finalizeHold slug=${slug} sessionId=${sessionId} paymentCompleted=${paymentCompleted}`);
+    const raw = await this.post(`/v1/venues/${slug}/checkout/finalize`, {
+      sessionId,
+      paymentCompleted,
+      model,
+    });
+    return this.transformFinalizeResponse(raw, holdId);
   }
 
   // --- Finalize (Checkout) ---
