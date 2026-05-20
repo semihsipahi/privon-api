@@ -63,20 +63,50 @@ export class RezervemHttpService {
 
   private async get<T>(path: string): Promise<T> {
     const token = await this.authService.getAccessToken();
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const url = `${this.baseUrl}${path}`;
+    const t0 = Date.now();
+
+    this.logger.log(
+      `\n┌──────────────────────────────────────────────────────────\n` +
+      `│ ➡  REZERVEM  GET\n` +
+      `│ URL : ${url}\n` +
+      `│ Auth: Bearer [MASKED]\n` +
+      `└──────────────────────────────────────────────────────────`,
+    );
+
+    const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
 
+    const ms = Date.now() - t0;
+    const rawText = await response.text();
+    let rawJson: any;
+    try { rawJson = JSON.parse(rawText); } catch { rawJson = rawText; }
+
     if (!response.ok) {
-      const text = await response.text();
-      this.logger.error(`GET ${path} failed: ${response.status} ${text}`);
+      this.logger.error(
+        `\n┌──────────────────────────────────────────────────────────\n` +
+        `│ ❌  REZERVEM  GET → ${response.status} (${ms}ms)\n` +
+        `│ URL : ${url}\n` +
+        `│ Body: ${rawText.slice(0, 1000)}\n` +
+        `└──────────────────────────────────────────────────────────`,
+      );
       throw new Error(`Rezervem API error: ${response.status} on ${path}`);
     }
 
-    return this.unwrap<T>(await response.json(), path);
+    this.logger.log(
+      `\n┌──────────────────────────────────────────────────────────\n` +
+      `│ ✅  REZERVEM  GET → ${response.status} (${ms}ms)\n` +
+      `│ URL : ${url}\n` +
+      `│ RAW RESPONSE:\n` +
+      `${JSON.stringify(rawJson, null, 2).split('\n').map(l => `│   ${l}`).join('\n')}\n` +
+      `└──────────────────────────────────────────────────────────`,
+    );
+
+    return this.unwrap<T>(rawJson, path);
   }
 
   /**
@@ -100,7 +130,20 @@ export class RezervemHttpService {
 
   private async post<T>(path: string, body: object): Promise<T> {
     const token = await this.authService.getAccessToken();
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const url = `${this.baseUrl}${path}`;
+    const t0 = Date.now();
+
+    this.logger.log(
+      `\n┌──────────────────────────────────────────────────────────\n` +
+      `│ ➡  REZERVEM  POST\n` +
+      `│ URL : ${url}\n` +
+      `│ Auth: Bearer [MASKED]\n` +
+      `│ REQUEST BODY:\n` +
+      `${JSON.stringify(body, null, 2).split('\n').map(l => `│   ${l}`).join('\n')}\n` +
+      `└──────────────────────────────────────────────────────────`,
+    );
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -109,13 +152,37 @@ export class RezervemHttpService {
       body: JSON.stringify(body),
     });
 
+    const ms = Date.now() - t0;
+    const rawText = await response.text();
+    let rawJson: any;
+    try { rawJson = JSON.parse(rawText); } catch { rawJson = rawText; }
+
     if (!response.ok) {
-      const text = await response.text();
-      this.logger.error(`POST ${path} failed: ${response.status} ${text}`);
+      this.logger.error(
+        `\n┌──────────────────────────────────────────────────────────\n` +
+        `│ ❌  REZERVEM  POST → ${response.status} (${ms}ms)\n` +
+        `│ URL : ${url}\n` +
+        `│ REQUEST BODY:\n` +
+        `${JSON.stringify(body, null, 2).split('\n').map(l => `│   ${l}`).join('\n')}\n` +
+        `│ ERROR RESPONSE:\n` +
+        `│   ${rawText.slice(0, 1000)}\n` +
+        `└──────────────────────────────────────────────────────────`,
+      );
       throw new Error(`Rezervem API error: ${response.status} on ${path}`);
     }
 
-    return this.unwrap<T>(await response.json(), path);
+    this.logger.log(
+      `\n┌──────────────────────────────────────────────────────────\n` +
+      `│ ✅  REZERVEM  POST → ${response.status} (${ms}ms)\n` +
+      `│ URL : ${url}\n` +
+      `│ REQUEST BODY:\n` +
+      `${JSON.stringify(body, null, 2).split('\n').map(l => `│   ${l}`).join('\n')}\n` +
+      `│ RAW RESPONSE:\n` +
+      `${JSON.stringify(rawJson, null, 2).split('\n').map(l => `│   ${l}`).join('\n')}\n` +
+      `└──────────────────────────────────────────────────────────`,
+    );
+
+    return this.unwrap<T>(rawJson, path);
   }
 
   // --- Image proxy ---
