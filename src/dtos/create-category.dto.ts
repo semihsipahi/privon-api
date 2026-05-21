@@ -2,10 +2,15 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateCategoryDto {
-    @ApiProperty({ description: 'Kategori adı', example: 'İtalyan' })
+    @ApiProperty({ description: 'Kategori adı (Türkçe)', example: 'İtalyan' })
     @IsString()
     @IsNotEmpty()
     name: string;
+
+    @ApiProperty({ description: 'Kategori adı (İngilizce)', example: 'Italian', required: false })
+    @IsString()
+    @IsOptional()
+    nameEn?: string;
 
     @ApiProperty({ description: 'Kategori açıklaması (Türkçe)', example: 'Dünyanın en prestijli rehberi.', required: false })
     @IsString()

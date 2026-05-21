@@ -7,6 +7,9 @@ export class RestaurantCategory extends Document {
     name: string;
 
     @Prop()
+    nameEn: string;
+
+    @Prop()
     description: string;
 
     @Prop()
