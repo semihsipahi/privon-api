@@ -133,7 +133,7 @@ export class BookingController {
     };
     const result = await this.bookingService.confirmHold(holdId, guest);
 
-    if (body.bookingMeta && req.user?.userId) {
+    if (body.bookingMeta && req.user?.userId && (result as any).status !== 'payment_required') {
       const slug = holdId.split('::')[0];
       try {
         await this.bookingService.saveRezervemReservation(req.user.userId, slug, {

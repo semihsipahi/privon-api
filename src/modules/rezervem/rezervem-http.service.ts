@@ -34,6 +34,14 @@ export interface RezervemBootstrapResponse {
   pax?: { min: number; max: number; step: number } | null;
   leadTimes?: { minDays: number; maxDays: number } | null;
   bookingFlow?: any;
+  genderPolicy?: boolean;
+  paymentPreview?: any;
+  uiHints?: any;
+  policies?: {
+    cancellationPolicy?: any;
+    dressCode?: any;
+    childrenPolicy?: any;
+  } | null;
   areas?: Array<{
     id: number;
     title?: I18n;
@@ -267,7 +275,7 @@ export class RezervemHttpService {
       const lowStockDates: string[] = [];
       for (const d of raw.dates) {
         if (d.status === 'AVAILABLE' || d.status === 'LIMITED') availableDates.push(d.date);
-        if (d.status === 'LIMITED') lowStockDates.push(d.date);
+        if (d.status === 'LIMITED' || d.capacityHint?.lowStock === true) lowStockDates.push(d.date);
       }
       const holidayDates: string[] = (raw.annotations ?? [])
         .filter((a: any) => a.type === 'HOLIDAY')
@@ -395,48 +403,25 @@ export class RezervemHttpService {
     // Already in mobile contract format (e.g., from a relay)
     if (raw?.confirmationCode && !raw?.sessionId && !raw?.code) return raw;
 
-    // Scenario B/D: 3D-Secure or Provision — payment required before finalization
+    // Scenario D: Provision (Ön Blokaj) — per spec, PAYMENT_REQUIRED response has
+    // {status, sessionId, expiresOn, paymentType, paymentInfo}. PaymentInfo schema
+    // has no URL field. Mobile shows error; reservation is NOT saved.
     if (typeof raw?.status === 'string' && raw.status === 'PAYMENT_REQUIRED') {
       const sepIdx = holdId.indexOf('::');
       const slug = sepIdx >= 0 ? holdId.slice(0, sepIdx) : holdId;
       const sessionId = sepIdx >= 0 ? holdId.slice(sepIdx + 2) : (raw?.sessionId ?? '');
       const pi = raw?.paymentInfo ?? {};
-      const paymentUrl =
-        pi.url ?? pi.paymentUrl ?? pi.redirectUrl ?? pi.checkoutUrl ??
-        raw?.paymentUrl ?? raw?.url ?? '';
       const paymentTypeName = pi.typeName ?? (raw?.paymentType === 1 ? 'Pre Authorization' : raw?.paymentType === 2 ? '3D Secure' : `type=${raw?.paymentType}`);
-      const scenario = paymentUrl ? 'B (3D Secure)' : 'D (Provision / Ön Blokaj)';
       this.logger.warn(
         `\n╔══════════════════════════════════════════════════════════════\n` +
-        `║  [Rezervem] PAYMENT_REQUIRED — Senaryo ${scenario}\n` +
+        `║  [Rezervem] PAYMENT_REQUIRED — Senaryo D (Provision / Ön Blokaj)\n` +
         `╠══════════════════════════════════════════════════════════════\n` +
-        `║  GÖNDERİLEN İSTEK\n` +
         `║    Endpoint : POST /v1/venues/${slug}/checkout/confirm\n` +
         `║    sessionId: ${sessionId}\n` +
-        `╠══════════════════════════════════════════════════════════════\n` +
-        `║  REZERVEM'DEN GELEN YANIT (ham)\n` +
-        `║    status      : ${raw?.status}\n` +
         `║    paymentType : ${raw?.paymentType} (${paymentTypeName})\n` +
         `║    expiresOn   : ${raw?.expiresOn ?? '—'}\n` +
-        `║    paymentUrl  : ${paymentUrl || 'YOK'}\n` +
         `║    paymentInfo : ${JSON.stringify(pi)}\n` +
-        `╠══════════════════════════════════════════════════════════════\n` +
-        `║  REZERVEM DOKÜMANI (checkout/confirm — 4 Ödeme Senaryosu)\n` +
-        `║    "Senaryo D — Provision (Ön Blokaj):\n` +
-        `║     Yanıt: {status:'PAYMENT_REQUIRED', sessionId, expiresOn,\n` +
-        `║             paymentType, paymentInfo}\n` +
-        `║     → Kredi kartına ön blokaj konur. Finalize gerekir.\n` +
-        `║     Finalize dokümanı: 'Bu endpoint ödeme yapmaz. Ödeme/\n` +
-        `║     provizyon işlemi harici olarak (3D Secure gateway, banka\n` +
-        `║     API vb.) tamamlandıktan sonra Finalize çağrılır.'\n` +
-        `║     Finalize hata: 'Ödeme işlemi bulunamadı: paymentCompleted=\n` +
-        `║     true ama ödeme kaydı yok'"\n` +
-        `╠══════════════════════════════════════════════════════════════\n` +
-        (paymentUrl
-          ? `║  SONUÇ: Ödeme URL mevcut → WebView açılacak\n`
-          : `║  SONUÇ: Ödeme URL YOK → Finalize çağrılamaz.\n` +
-            `║         Rezervem bu mekan için ödeme gateway URL'si\n` +
-            `║         döndürmedi. Mekan yapılandırması kontrol edilmeli.\n`) +
+        `║  SONUÇ: Partner API ödeme URL dönmez (spec gereği). Hata gösterilecek.\n` +
         `╚══════════════════════════════════════════════════════════════`
       );
       return {
@@ -445,9 +430,9 @@ export class RezervemHttpService {
         status: 'payment_required',
         confirmedAt: new Date().toISOString(),
         confirmationCode: '',
-        message: raw?.message ?? (paymentUrl ? 'Ödeme gerekli.' : 'Bu restoran için ön ödeme gerekli ancak ödeme sayfası alınamadı.'),
+        message: raw?.message ?? 'Bu restoran için ön ödeme gerekmektedir. Rezervasyon tamamlanamadı.',
         paymentRequired: true,
-        paymentUrl,
+        paymentUrl: '',
         paymentSessionId: sessionId,
         paymentSlug: slug,
         paymentType: raw?.paymentType ?? '',

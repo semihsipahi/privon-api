@@ -50,7 +50,7 @@ export class BookingService {
       maxPax: max,
       currency: venue.currency || 'TRY',
       holdTtlSeconds: 600,
-      policies: {},
+      policies: venue.policies ?? {},
       genderPolicy: venue.genderPolicy ?? false,
       paymentPreview: venue.paymentPreview ?? null,
       uiHints: venue.uiHints ?? {},

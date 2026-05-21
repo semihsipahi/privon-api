@@ -324,6 +324,12 @@ export class RezervemVenueService implements OnModuleInit {
       ),
     );
 
+    // Derive areaRequired from bookingFlow.steps (step named 'area' means area selection is required)
+    const flowSteps: any[] = boot.bookingFlow?.steps ?? [];
+    const areaRequired = flowSteps.some((s: any) =>
+      typeof s === 'string' ? s === 'area' : s?.type === 'area',
+    );
+
     await this.model.updateOne(
       { slug },
       {
@@ -340,7 +346,12 @@ export class RezervemVenueService implements OnModuleInit {
           currency: (venueInfo.currency || '').trim(),
           supportedLanguages: venueInfo.supportedLanguages ?? [],
           pax: boot.pax ?? undefined,
-          bookingFlow: boot.bookingFlow ?? undefined,
+          bookingFlow: boot.bookingFlow ? { ...boot.bookingFlow, areaRequired } : undefined,
+          leadTimes: boot.leadTimes ?? undefined,
+          genderPolicy: boot.genderPolicy ?? undefined,
+          paymentPreview: boot.paymentPreview ?? undefined,
+          uiHints: boot.uiHints ?? undefined,
+          policies: boot.policies ?? undefined,
           areas: normalizedAreas,
           tags: normalizedTags,
           workingHours: Array.isArray(venueInfo.workingHours) ? venueInfo.workingHours : buildWorkingHoursFromShifts(normalizedAreas),
