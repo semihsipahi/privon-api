@@ -403,26 +403,14 @@ export class RezervemHttpService {
     // Already in mobile contract format (e.g., from a relay)
     if (raw?.confirmationCode && !raw?.sessionId && !raw?.code) return raw;
 
-    // Scenario D: Provision (Ön Blokaj) — per spec, PAYMENT_REQUIRED response has
-    // {status, sessionId, expiresOn, paymentType, paymentInfo}. PaymentInfo schema
-    // has no URL field. Mobile shows error; reservation is NOT saved.
     if (typeof raw?.status === 'string' && raw.status === 'PAYMENT_REQUIRED') {
       const sepIdx = holdId.indexOf('::');
       const slug = sepIdx >= 0 ? holdId.slice(0, sepIdx) : holdId;
       const sessionId = sepIdx >= 0 ? holdId.slice(sepIdx + 2) : (raw?.sessionId ?? '');
-      const pi = raw?.paymentInfo ?? {};
-      const paymentTypeName = pi.typeName ?? (raw?.paymentType === 1 ? 'Pre Authorization' : raw?.paymentType === 2 ? '3D Secure' : `type=${raw?.paymentType}`);
       this.logger.warn(
-        `\n╔══════════════════════════════════════════════════════════════\n` +
-        `║  [Rezervem] PAYMENT_REQUIRED — Senaryo D (Provision / Ön Blokaj)\n` +
-        `╠══════════════════════════════════════════════════════════════\n` +
-        `║    Endpoint : POST /v1/venues/${slug}/checkout/confirm\n` +
-        `║    sessionId: ${sessionId}\n` +
-        `║    paymentType : ${raw?.paymentType} (${paymentTypeName})\n` +
-        `║    expiresOn   : ${raw?.expiresOn ?? '—'}\n` +
-        `║    paymentInfo : ${JSON.stringify(pi)}\n` +
-        `║  SONUÇ: Partner API ödeme URL dönmez (spec gereği). Hata gösterilecek.\n` +
-        `╚══════════════════════════════════════════════════════════════`
+        `[Rezervem] confirm PAYMENT_REQUIRED slug=${slug} sessionId=${sessionId} ` +
+        `paymentType=${raw?.paymentType} expiresOn=${raw?.expiresOn ?? '-'} ` +
+        `paymentInfo=${JSON.stringify(raw?.paymentInfo ?? {})}`,
       );
       return {
         reservationId: raw?.sessionId ?? holdId,

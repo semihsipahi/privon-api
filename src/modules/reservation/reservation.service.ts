@@ -364,6 +364,18 @@ export class ReservationService extends ResourceService<
         return await reservation.save();
     }
 
+    async deletePhantomRezervem(): Promise<{ deleted: number }> {
+        const result = await this.reservationModel.deleteMany({
+            source: 'rezervem',
+            $or: [
+                { confirmationCode: '' },
+                { confirmationCode: null },
+                { confirmationCode: { $exists: false } },
+            ],
+        });
+        return { deleted: result.deletedCount };
+    }
+
     async saveRezervemReservation(userId: string, data: {
         restaurantId: string;
         date: string;

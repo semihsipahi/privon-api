@@ -150,6 +150,13 @@ export class ReservationController {
         return await this.reservationService.cancelReservation(id, req.user);
     }
 
+    @Delete('admin/phantom-rezervem')
+    @Roles(Role.SuperAdmin)
+    @ApiOperation({ summary: 'Phantom Rezervem kayıtlarını sil (onay kodu olmayan)' })
+    async deletePhantomRezervem() {
+        return await this.reservationService.deletePhantomRezervem();
+    }
+
     @Post('bulk-cancel')
     @Roles(Role.SuperAdmin, Role.RestaurantOwner)
     @ApiOperation({
