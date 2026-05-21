@@ -11,9 +11,14 @@ export class CreateFilterOptionDto {
   @IsString({ message: 'Value metin formatında olmalıdır' })
   value: string;
 
-  @ApiProperty({ description: 'Ekranda gösterilecek ad', example: 'İtalyan' })
+  @ApiProperty({ description: 'Ekranda gösterilecek ad (Türkçe)', example: 'İtalyan' })
   @IsString({ message: 'Label metin formatında olmalıdır' })
   label: string;
+
+  @ApiPropertyOptional({ description: 'Ekranda gösterilecek ad (İngilizce)', example: 'Italian' })
+  @IsString({ message: 'LabelEn metin formatında olmalıdır' })
+  @IsOptional()
+  labelEn?: string;
 
   @ApiPropertyOptional({ description: 'Aktif mi?', default: true })
   @IsBoolean({ message: 'isActive boolean olmalıdır' })

@@ -14,6 +14,9 @@ export class FilterOption extends Document {
   @Prop({ required: true })
   label: string; // Ekranda gösterilecek: 'İtalyan', 'Romantik' vb.
 
+  @Prop()
+  labelEn: string; // English display name: 'Italian', 'Romantic'
+
   @Prop({ default: true })
   isActive: boolean;
 

@@ -6,10 +6,10 @@ import {
 import { Type } from 'class-transformer';
 
 export class TastingMenuCourseDto {
-  @ApiProperty({ example: 'Amuse-Bouche' })
+  @ApiProperty({ example: 'Amuse-Bouche', required: false })
   @IsString()
-  @IsNotEmpty()
-  name: string;
+  @IsOptional()
+  name?: string;
 
   @ApiProperty({ example: 'Tarhana, yanık yoğurt, isli tereyağı', required: false })
   @IsString()
@@ -23,10 +23,10 @@ export class CreateTastingMenuDto {
   @IsNotEmpty()
   restaurantId: string;
 
-  @ApiProperty({ example: 'Anadolu\'nun Derinlikleri' })
+  @ApiProperty({ example: 'Anadolu\'nun Derinlikleri', required: false })
   @IsString()
-  @IsNotEmpty()
-  title: string;
+  @IsOptional()
+  title?: string;
 
   @ApiProperty({ example: 'Depths of Anatolia', required: false })
   @IsString()
