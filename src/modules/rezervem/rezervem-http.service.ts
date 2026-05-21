@@ -404,13 +404,48 @@ export class RezervemHttpService {
       const paymentUrl =
         pi.url ?? pi.paymentUrl ?? pi.redirectUrl ?? pi.checkoutUrl ??
         raw?.paymentUrl ?? raw?.url ?? '';
+      const paymentTypeName = pi.typeName ?? (raw?.paymentType === 1 ? 'Pre Authorization' : raw?.paymentType === 2 ? '3D Secure' : `type=${raw?.paymentType}`);
+      const scenario = paymentUrl ? 'B (3D Secure)' : 'D (Provision / Ön Blokaj)';
+      this.logger.warn(
+        `\n╔══════════════════════════════════════════════════════════════\n` +
+        `║  [Rezervem] PAYMENT_REQUIRED — Senaryo ${scenario}\n` +
+        `╠══════════════════════════════════════════════════════════════\n` +
+        `║  GÖNDERİLEN İSTEK\n` +
+        `║    Endpoint : POST /v1/venues/${slug}/checkout/confirm\n` +
+        `║    sessionId: ${sessionId}\n` +
+        `╠══════════════════════════════════════════════════════════════\n` +
+        `║  REZERVEM'DEN GELEN YANIT (ham)\n` +
+        `║    status      : ${raw?.status}\n` +
+        `║    paymentType : ${raw?.paymentType} (${paymentTypeName})\n` +
+        `║    expiresOn   : ${raw?.expiresOn ?? '—'}\n` +
+        `║    paymentUrl  : ${paymentUrl || 'YOK'}\n` +
+        `║    paymentInfo : ${JSON.stringify(pi)}\n` +
+        `╠══════════════════════════════════════════════════════════════\n` +
+        `║  REZERVEM DOKÜMANI (checkout/confirm — 4 Ödeme Senaryosu)\n` +
+        `║    "Senaryo D — Provision (Ön Blokaj):\n` +
+        `║     Yanıt: {status:'PAYMENT_REQUIRED', sessionId, expiresOn,\n` +
+        `║             paymentType, paymentInfo}\n` +
+        `║     → Kredi kartına ön blokaj konur. Finalize gerekir.\n` +
+        `║     Finalize dokümanı: 'Bu endpoint ödeme yapmaz. Ödeme/\n` +
+        `║     provizyon işlemi harici olarak (3D Secure gateway, banka\n` +
+        `║     API vb.) tamamlandıktan sonra Finalize çağrılır.'\n` +
+        `║     Finalize hata: 'Ödeme işlemi bulunamadı: paymentCompleted=\n` +
+        `║     true ama ödeme kaydı yok'"\n` +
+        `╠══════════════════════════════════════════════════════════════\n` +
+        (paymentUrl
+          ? `║  SONUÇ: Ödeme URL mevcut → WebView açılacak\n`
+          : `║  SONUÇ: Ödeme URL YOK → Finalize çağrılamaz.\n` +
+            `║         Rezervem bu mekan için ödeme gateway URL'si\n` +
+            `║         döndürmedi. Mekan yapılandırması kontrol edilmeli.\n`) +
+        `╚══════════════════════════════════════════════════════════════`
+      );
       return {
         reservationId: raw?.sessionId ?? holdId,
         holdId,
         status: 'payment_required',
         confirmedAt: new Date().toISOString(),
         confirmationCode: '',
-        message: 'Ödeme gerekli',
+        message: raw?.message ?? (paymentUrl ? 'Ödeme gerekli.' : 'Bu restoran için ön ödeme gerekli ancak ödeme sayfası alınamadı.'),
         paymentRequired: true,
         paymentUrl,
         paymentSessionId: sessionId,
@@ -526,6 +561,11 @@ export class RezervemHttpService {
     const slug = holdId.slice(0, sepIdx);
     const sessionId = holdId.slice(sepIdx + 2);
 
+    const firstName = (guestInfo.firstName ?? '').trim();
+    const lastName = (guestInfo.lastName ?? '').trim();
+    if (firstName.length < 2) throw new Error('Ad en az 2 karakter olmalıdır.');
+    if (lastName.length < 2) throw new Error('Soyad en az 2 karakter olmalıdır.');
+
     let phone = (guestInfo.phone ?? '').replace(/\s/g, '');
     if (phone.startsWith('+90')) phone = phone.slice(3);
     else if (phone.startsWith('90') && phone.length === 12) phone = phone.slice(2);
@@ -533,8 +573,8 @@ export class RezervemHttpService {
 
     const model = {
       client: {
-        firstName: guestInfo.firstName,
-        lastName: guestInfo.lastName,
+        firstName,
+        lastName,
         phoneNumberCountryCode: '90',
         phoneNumber: phone,
         emailAddress: guestInfo.email ?? '',
