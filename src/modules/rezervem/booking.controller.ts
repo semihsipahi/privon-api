@@ -19,10 +19,11 @@ export class BookingController {
   @Get('venues/:slug/bootstrap')
   @ApiOperation({ summary: 'Mekan bootstrap verisi (rezervasyon akışı yapılandırması)' })
   async getBootstrap(@Param('slug') slug: string) {
+    this.logger.log(`[FLOW] ① BOOTSTRAP slug=${slug}`);
     const raw: any = await this.bookingService.getBootstrap(slug);
-    if (Array.isArray(raw?.paxOptions)) return raw;
-    // Real Rezervem format → map to BookingBootstrap
-    return this.mapToBookingBootstrap(slug, raw);
+    const result = Array.isArray(raw?.paxOptions) ? raw : this.mapToBookingBootstrap(slug, raw);
+    this.logger.log(`[FLOW] ① BOOTSTRAP slug=${slug} → paxOptions=${JSON.stringify((result as any).paxOptions)} flow=${JSON.stringify((result as any).bookingFlow?.steps ?? [])}`);
+    return result;
   }
 
   private mapToBookingBootstrap(slug: string, raw: any): object {
@@ -54,22 +55,30 @@ export class BookingController {
   @Get('venues/:slug/availability/dates')
   @ApiOperation({ summary: 'Müsait tarihleri listele' })
   @ApiQuery({ name: 'pax', type: Number, description: 'Kişi sayısı' })
-  getAvailableDates(@Param('slug') slug: string, @Query('pax') pax: string) {
-    this.logger.log(`getAvailableDates slug=${slug} pax=${pax}`);
-    return this.bookingService.getAvailableDates(slug, parseInt(pax, 10));
+  async getAvailableDates(@Param('slug') slug: string, @Query('pax') pax: string) {
+    this.logger.log(`[FLOW] ② DATES  slug=${slug} pax=${pax}`);
+    const result: any = await this.bookingService.getAvailableDates(slug, parseInt(pax, 10));
+    const available = result?.availableDates?.length ?? 0;
+    const lowStock = result?.lowStockDates?.length ?? 0;
+    this.logger.log(`[FLOW] ② DATES  slug=${slug} pax=${pax} → available=${available} lowStock=${lowStock}`);
+    return result;
   }
 
   @Get('venues/:slug/availability/times')
   @ApiOperation({ summary: 'Seçilen tarih için müsait saatleri listele' })
   @ApiQuery({ name: 'pax', type: Number })
   @ApiQuery({ name: 'date', type: String, description: 'YYYY-MM-DD' })
-  getAvailableTimes(
+  async getAvailableTimes(
     @Param('slug') slug: string,
     @Query('pax') pax: string,
     @Query('date') date: string,
   ) {
-    this.logger.log(`getAvailableTimes slug=${slug} pax=${pax} date=${date}`);
-    return this.bookingService.getAvailableTimes(slug, parseInt(pax, 10), date);
+    this.logger.log(`[FLOW] ③ TIMES  slug=${slug} pax=${pax} date=${date}`);
+    const result: any = await this.bookingService.getAvailableTimes(slug, parseInt(pax, 10), date);
+    const total = result?.slots?.length ?? 0;
+    const avail = result?.slots?.filter((s: any) => s.available)?.length ?? 0;
+    this.logger.log(`[FLOW] ③ TIMES  slug=${slug} date=${date} → slots=${total} available=${avail}`);
+    return result;
   }
 
   @Get('venues/:slug/availability/areas')
@@ -78,21 +87,25 @@ export class BookingController {
   @ApiQuery({ name: 'date', type: String })
   @ApiQuery({ name: 'time', type: String, description: 'HH:mm' })
   @ApiQuery({ name: 'shift', required: false, type: Number, description: '0=Kahvaltı,1=Öğle,2=Akşam,3=Bar' })
-  getAvailableAreas(
+  async getAvailableAreas(
     @Param('slug') slug: string,
     @Query('pax') pax: string,
     @Query('date') date: string,
     @Query('time') time: string,
     @Query('shift') shift: string,
   ) {
-    this.logger.log(`getAvailableAreas slug=${slug} pax=${pax} date=${date} time=${time}`);
+    this.logger.log(`[FLOW] ④ AREAS  slug=${slug} pax=${pax} date=${date} time=${time}`);
     const shiftNum = shift ? parseInt(shift, 10) : this.shiftFromTime(time);
-    return this.bookingService.getAvailableAreas(slug, parseInt(pax, 10), date, time, shiftNum);
+    const result: any = await this.bookingService.getAvailableAreas(slug, parseInt(pax, 10), date, time, shiftNum);
+    const areas = result?.areas ?? [];
+    const names = areas.map((a: any) => a.name ?? a.id).join(', ') || '(none)';
+    this.logger.log(`[FLOW] ④ AREAS  slug=${slug} date=${date} time=${time} → count=${areas.length} areas=[${names}]`);
+    return result;
   }
 
   @Post('venues/:slug/hold')
   @ApiOperation({ summary: 'Slot rezerve et' })
-  holdSlot(
+  async holdSlot(
     @Param('slug') slug: string,
     @Body()
     body: {
@@ -105,9 +118,11 @@ export class BookingController {
       paymentMode?: 'immediate' | 'deferred';
     },
   ) {
-    this.logger.log(`holdSlot slug=${slug} body=${JSON.stringify(body)}`);
+    this.logger.log(`[FLOW] ⑤ HOLD   slug=${slug} pax=${body.pax} date=${body.date} time=${body.time} area=${body.areaId ?? '-'} paymentMode=${body.paymentMode ?? 'immediate'}`);
     const shift = body.shift ?? this.shiftFromTime(body.time);
-    return this.bookingService.holdSlot({ slug, ...body, shift });
+    const result: any = await this.bookingService.holdSlot({ slug, ...body, shift });
+    this.logger.log(`[FLOW] ⑤ HOLD   slug=${slug} → holdId=${result?.holdId ?? 'NONE'} status=${result?.status ?? '?'} expiresAt=${result?.expiresAt ?? '-'}`);
+    return result;
   }
 
   // Mobile-compatible confirm endpoint: POST /booking/holds/:holdId/confirm
@@ -122,7 +137,8 @@ export class BookingController {
     },
     @Request() req: any,
   ) {
-    this.logger.log(`confirmHold holdId=${holdId}`);
+    const slug = holdId.split('::')[0];
+    this.logger.log(`[FLOW] ⑥ CONFIRM slug=${slug} holdId=${holdId} user=${req.user?.userId ?? 'anon'}`);
     const guest = body.guestInfo ?? {
       firstName: body.firstName!,
       lastName: body.lastName!,
@@ -132,9 +148,10 @@ export class BookingController {
       femaleCount: body.femaleCount,
     };
     const result = await this.bookingService.confirmHold(holdId, guest);
+    const r = result as any;
+    this.logger.log(`[FLOW] ⑥ CONFIRM slug=${slug} → status=${r.status} code=${r.confirmationCode || '-'} paymentRequired=${r.paymentRequired ?? false} paymentType=${r.paymentType || '-'}`);
 
-    if (body.bookingMeta && req.user?.userId && (result as any).status !== 'payment_required') {
-      const slug = holdId.split('::')[0];
+    if (body.bookingMeta && req.user?.userId && r.status !== 'payment_required') {
       try {
         await this.bookingService.saveRezervemReservation(req.user.userId, slug, {
           pax: body.bookingMeta.pax,
@@ -142,11 +159,12 @@ export class BookingController {
           time: body.bookingMeta.time,
           areaName: body.bookingMeta.areaName,
           note: guest.note,
-          confirmationCode: (result as any).confirmationCode,
-          rezervemId: (result as any).reservationId,
+          confirmationCode: r.confirmationCode,
+          rezervemId: r.reservationId,
         });
+        this.logger.log(`[FLOW] ⑥ CONFIRM slug=${slug} → reservation saved to DB code=${r.confirmationCode}`);
       } catch (err) {
-        this.logger.error(`saveRezervemReservation failed: ${err?.message}`);
+        this.logger.error(`[FLOW] ⑥ CONFIRM slug=${slug} → DB save failed: ${err?.message}`);
       }
     }
 
@@ -167,7 +185,8 @@ export class BookingController {
     },
     @Request() req: any,
   ) {
-    this.logger.log(`finalizeHold holdId=${holdId} paymentCompleted=${body.paymentCompleted}`);
+    const slugFin = holdId.split('::')[0];
+    this.logger.log(`[FLOW] ⑦ FINALIZE slug=${slugFin} holdId=${holdId} paymentCompleted=${body.paymentCompleted} user=${req.user?.userId ?? 'anon'}`);
     const guest = body.guestInfo ?? {
       firstName: body.firstName!,
       lastName: body.lastName!,
@@ -177,21 +196,23 @@ export class BookingController {
       femaleCount: body.femaleCount,
     };
     const result = await this.bookingService.finalizeHold(holdId, body.paymentCompleted, guest);
+    const rf = result as any;
+    this.logger.log(`[FLOW] ⑦ FINALIZE slug=${slugFin} → status=${rf.status} code=${rf.confirmationCode || '-'}`);
 
     if (body.paymentCompleted && body.bookingMeta && req.user?.userId) {
-      const slug = holdId.split('::')[0];
       try {
-        await this.bookingService.saveRezervemReservation(req.user.userId, slug, {
+        await this.bookingService.saveRezervemReservation(req.user.userId, slugFin, {
           pax: body.bookingMeta.pax,
           date: body.bookingMeta.date,
           time: body.bookingMeta.time,
           areaName: body.bookingMeta.areaName,
           note: guest.note,
-          confirmationCode: (result as any).confirmationCode,
-          rezervemId: (result as any).reservationId,
+          confirmationCode: rf.confirmationCode,
+          rezervemId: rf.reservationId,
         });
+        this.logger.log(`[FLOW] ⑦ FINALIZE slug=${slugFin} → reservation saved to DB code=${rf.confirmationCode}`);
       } catch (err) {
-        this.logger.error(`saveRezervemReservation (finalize) failed: ${err?.message}`);
+        this.logger.error(`[FLOW] ⑦ FINALIZE slug=${slugFin} → DB save failed: ${err?.message}`);
       }
     }
 
