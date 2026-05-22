@@ -1,0 +1,934 @@
+{
+  "info": {
+    "name": "Privon API",
+    "_postman_id": "privon-api-v2",
+    "description": "Privon API collection. Recommended run order: 1. Login → 2. Login SuperAdmin → 3. Sync Venues → 4. List Venues (slug saved) → 5. Bootstrap → 6-9. Availability → 10. Hold → 11. Confirm",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",          "value": "https://api.privon.com",  "type": "string" },
+    { "key": "token",            "value": "",                         "type": "string" },
+    { "key": "superAdminToken",  "value": "",                         "type": "string" },
+    { "key": "slug",             "value": "",                         "type": "string" },
+    { "key": "holdId",           "value": "",                         "type": "string" },
+    { "key": "restaurantId",     "value": "",                         "type": "string" },
+    { "key": "userId",           "value": "",                         "type": "string" },
+    { "key": "reservationId",    "value": "",                         "type": "string" }
+  ],
+
+  "item": [
+
+    {
+      "name": "Auth",
+      "item": [
+
+        {
+          "name": "Login — User",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "if (r.accessToken) {",
+              "  pm.collectionVariables.set('token', r.accessToken);",
+              "  console.log('[Auth] token saved, role:', r.role);",
+              "}",
+              "pm.test('200 + accessToken', () => {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(r.accessToken).to.be.a('string');",
+              "});"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"5551234567\",\n  \"password\": \"yourpassword\"\n}" }
+          }
+        },
+
+        {
+          "name": "Login — SuperAdmin",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "if (r.accessToken) {",
+              "  pm.collectionVariables.set('superAdminToken', r.accessToken);",
+              "  console.log('[Auth] superAdminToken saved');",
+              "}",
+              "pm.test('200 + accessToken', () => {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(r.accessToken).to.be.a('string');",
+              "});"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"5550000000\",\n  \"password\": \"adminpassword\"\n}" }
+          }
+        },
+
+        {
+          "name": "Check Phone",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/check-phone",
+            "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"5551234567\"\n}" }
+          }
+        },
+
+        {
+          "name": "Register",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "if (r.accessToken) {",
+              "  pm.collectionVariables.set('token', r.accessToken);",
+              "  console.log('[Auth] temp token saved for verify-phone flow');",
+              "}"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"5559876543\",\n  \"inviteCode\": \"INVITE123\",\n  \"firstName\": \"Ahmet\",\n  \"lastName\": \"Yilmaz\",\n  \"email\": \"ahmet@example.com\",\n  \"birthDate\": \"1990-05-15\",\n  \"acceptedMarketing\": true\n}" }
+          }
+        },
+
+        {
+          "name": "Verify Phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/auth/verify-phone",
+            "body": { "mode": "raw", "raw": "{\n  \"verificationCode\": \"123456\"\n}" }
+          }
+        },
+
+        {
+          "name": "Set Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/auth/set-password",
+            "body": { "mode": "raw", "raw": "{\n  \"password\": \"newpassword123\"\n}" }
+          }
+        },
+
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"5551234567\"\n}" }
+          }
+        },
+
+        {
+          "name": "Verify Reset Code",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "if (r.resetToken) pm.environment.set('resetToken', r.resetToken);"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/verify-reset-code",
+            "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"5551234567\",\n  \"verificationCode\": \"654321\"\n}" }
+          }
+        },
+
+        {
+          "name": "Reset Password",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "if (r.accessToken) {",
+              "  pm.collectionVariables.set('token', r.accessToken);",
+              "  console.log('[Auth] token refreshed after reset');",
+              "}"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/reset-password",
+            "body": { "mode": "raw", "raw": "{\n  \"resetToken\": \"PASTE_RESET_TOKEN_HERE\",\n  \"newPassword\": \"newpassword123\"\n}" }
+          }
+        },
+
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/auth/change-password",
+            "body": { "mode": "raw", "raw": "{\n  \"oldPassword\": \"oldpassword123\",\n  \"newPassword\": \"newpassword456\"\n}" }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "User",
+      "item": [
+
+        {
+          "name": "Get Me",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "if (r._id) {",
+              "  pm.collectionVariables.set('userId', r._id);",
+              "  console.log('[User] userId saved:', r._id);",
+              "}",
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/user/me"
+          }
+        },
+
+        {
+          "name": "Update Me",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/user/me",
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Ahmet\",\n  \"lastName\": \"Yilmaz\",\n  \"email\": \"ahmet@example.com\"\n}" }
+          }
+        },
+
+        {
+          "name": "List Users (SuperAdmin)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "const items = Array.isArray(r) ? r : (r.data ?? r.items ?? []);",
+              "if (items[0]?._id && !pm.collectionVariables.get('userId')) {",
+              "  pm.collectionVariables.set('userId', items[0]._id);",
+              "  console.log('[User] userId saved from list:', items[0]._id);",
+              "}",
+              "pm.test('total present', () => pm.expect(r).to.exist);"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/user?_start=0&_end=10&_sort=createdAt&_order=desc",
+              "host": ["{{baseUrl}}"], "path": ["user"],
+              "query": [
+                { "key": "_start", "value": "0" },
+                { "key": "_end",   "value": "10" },
+                { "key": "_sort",  "value": "createdAt" },
+                { "key": "_order", "value": "desc" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Get User by ID (SuperAdmin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/user/{{userId}}"
+          }
+        },
+
+        {
+          "name": "Ban User (SuperAdmin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/user/{{userId}}/ban?duration=1w",
+              "host": ["{{baseUrl}}"], "path": ["user", "{{userId}}", "ban"],
+              "query": [{ "key": "duration", "value": "1w" }]
+            }
+          }
+        },
+
+        {
+          "name": "Unban User (SuperAdmin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/user/{{userId}}/unban"
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Rezervem Admin",
+      "description": "Run Sync first, then List Venues to populate {{slug}}.",
+      "item": [
+
+        {
+          "name": "Cache Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/admin/rezervem/status"
+          }
+        },
+
+        {
+          "name": "Sync Venues",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "console.log('[Sync] result:', JSON.stringify(r));",
+              "pm.test('sync completed', () => pm.response.to.have.status(201));"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/admin/rezervem/sync"
+          }
+        },
+
+        {
+          "name": "List Venues — saves {{slug}}",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "const items = r.items ?? r.data ?? r ?? [];",
+              "if (items.length > 0) {",
+              "  const first = items[0];",
+              "  pm.collectionVariables.set('slug', first.slug);",
+              "  console.log('[Venues] slug saved:', first.slug, '|', first.name);",
+              "  console.log('[Venues] all slugs:', items.map(v => v.slug).join(', '));",
+              "}",
+              "pm.test('has items', () => pm.expect(items.length).to.be.above(0));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/rezervem/venues?page=1&pageSize=50",
+              "host": ["{{baseUrl}}"], "path": ["admin", "rezervem", "venues"],
+              "query": [
+                { "key": "page",     "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Get Venue Detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/admin/rezervem/venues/{{slug}}"
+          }
+        },
+
+        {
+          "name": "Bootstrap Raw (live API, no cache)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "console.log('[Bootstrap-Raw] keys:', Object.keys(r));",
+              "console.log('[Bootstrap-Raw] bookingFlow:', JSON.stringify(r.bookingFlow));",
+              "console.log('[Bootstrap-Raw] paymentPreview:', JSON.stringify(r.paymentPreview));",
+              "console.log('[Bootstrap-Raw] genderPolicy:', r.genderPolicy);",
+              "console.log('[Bootstrap-Raw] leadTimes:', JSON.stringify(r.leadTimes));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/admin/rezervem/venues/{{slug}}/bootstrap-raw"
+          }
+        },
+
+        {
+          "name": "Import Venue to Restaurant",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "const id = r._id ?? r.id ?? r.restaurant?._id;",
+              "if (id) {",
+              "  pm.collectionVariables.set('restaurantId', id);",
+              "  console.log('[Import] restaurantId saved:', id);",
+              "}"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{superAdminToken}}" }
+            ],
+            "url": "{{baseUrl}}/admin/rezervem/venues/{{slug}}/import",
+            "body": { "mode": "raw", "raw": "{\n  \"discountPercent\": 15,\n  \"categories\": []\n}" }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Booking Flow",
+      "description": "Run in order: Bootstrap → Dates → Times → Areas → Hold → Confirm → (Finalize if payment required). Requires {{slug}} from Rezervem Admin / List Venues.",
+      "item": [
+
+        {
+          "name": "1. Bootstrap",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('paxOptions is array', () => pm.expect(r.paxOptions).to.be.an('array'));",
+              "console.log('[Bootstrap] slug:', r.slug);",
+              "console.log('[Bootstrap] paxOptions:', JSON.stringify(r.paxOptions));",
+              "console.log('[Bootstrap] bookingFlow steps:', JSON.stringify(r.bookingFlow?.steps));",
+              "console.log('[Bootstrap] paymentPreview:', JSON.stringify(r.paymentPreview));",
+              "console.log('[Bootstrap] genderPolicy:', r.genderPolicy);",
+              "console.log('[Bootstrap] leadTimes:', JSON.stringify(r.leadTimes));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/booking/venues/{{slug}}/bootstrap"
+          }
+        },
+
+        {
+          "name": "2. Available Dates",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('availableDates is array', () => pm.expect(r.availableDates).to.be.an('array'));",
+              "console.log('[Dates] available count:', r.availableDates?.length);",
+              "console.log('[Dates] first 7 dates:', r.availableDates?.slice(0, 7));",
+              "console.log('[Dates] lowStockDates:', r.lowStockDates);"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/booking/venues/{{slug}}/availability/dates?pax=2",
+              "host": ["{{baseUrl}}"], "path": ["booking", "venues", "{{slug}}", "availability", "dates"],
+              "query": [{ "key": "pax", "value": "2" }]
+            }
+          }
+        },
+
+        {
+          "name": "3. Available Times",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('slots is array', () => pm.expect(r.slots).to.be.an('array'));",
+              "const avail = (r.slots ?? []).filter(s => s.available);",
+              "console.log('[Times] total slots:', r.slots?.length, '| available:', avail.length);",
+              "console.log('[Times] available times:', avail.map(s => s.time));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/booking/venues/{{slug}}/availability/times?pax=2&date=2026-06-01",
+              "host": ["{{baseUrl}}"], "path": ["booking", "venues", "{{slug}}", "availability", "times"],
+              "query": [
+                { "key": "pax",  "value": "2" },
+                { "key": "date", "value": "2026-06-01" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "4. Available Areas",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "console.log('[Areas] count:', r.areas?.length);",
+              "console.log('[Areas]', JSON.stringify(r.areas?.map(a => ({ id: a.id, name: a.name, available: a.available }))));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/booking/venues/{{slug}}/availability/areas?pax=2&date=2026-06-01&time=20:00",
+              "host": ["{{baseUrl}}"], "path": ["booking", "venues", "{{slug}}", "availability", "areas"],
+              "query": [
+                { "key": "pax",  "value": "2" },
+                { "key": "date", "value": "2026-06-01" },
+                { "key": "time", "value": "20:00" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "5. Hold Slot — saves {{holdId}}",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "pm.test('200', () => pm.response.to.have.status(201));",
+              "if (r.holdId) {",
+              "  pm.collectionVariables.set('holdId', r.holdId);",
+              "  console.log('[Hold] holdId saved:', r.holdId);",
+              "}",
+              "pm.test('holdId is set', () => pm.expect(r.holdId).to.be.a('string').and.not.empty);",
+              "console.log('[Hold] status:', r.status, '| expiresAt:', r.expiresAt, '| ttlSeconds:', r.ttlSeconds);"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/booking/venues/{{slug}}/hold",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pax\": 2,\n  \"date\": \"2026-06-01\",\n  \"time\": \"20:00\",\n  \"areaId\": \"\",\n  \"paymentMode\": \"immediate\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "6. Confirm Hold",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "pm.test('200', () => pm.response.to.have.status(201));",
+              "console.log('[Confirm] status:', r.status);",
+              "console.log('[Confirm] confirmationCode:', r.confirmationCode);",
+              "console.log('[Confirm] paymentRequired:', r.paymentRequired);",
+              "",
+              "if (r.paymentRequired) {",
+              "  console.warn('[Confirm] PAYMENT_REQUIRED');",
+              "  console.log('[Confirm] paymentType:', r.paymentType);",
+              "  console.log('[Confirm] paymentExpiresAt:', r.paymentExpiresAt);",
+              "  console.log('[Confirm] paymentUrl:', r.paymentUrl || '(empty — no URL in spec)');",
+              "  console.log('[Confirm] paymentInfo (full):', JSON.stringify(r.paymentInfo));",
+              "} else {",
+              "  pm.test('confirmationCode present', () => pm.expect(r.confirmationCode).to.be.a('string').and.not.empty);",
+              "}"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/booking/holds/{{holdId}}/confirm",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guestInfo\": {\n    \"firstName\": \"Ahmet\",\n    \"lastName\": \"Yilmaz\",\n    \"phone\": \"5551234567\",\n    \"email\": \"ahmet@example.com\",\n    \"note\": \"Pencere kenari tercih ederiz\"\n  },\n  \"bookingMeta\": {\n    \"pax\": 2,\n    \"date\": \"2026-06-01\",\n    \"time\": \"20:00\",\n    \"areaName\": \"\"\n  }\n}"
+            }
+          }
+        },
+
+        {
+          "name": "7. Finalize (after payment — Scenario B/D only)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "pm.test('200', () => pm.response.to.have.status(201));",
+              "console.log('[Finalize] status:', r.status);",
+              "console.log('[Finalize] confirmationCode:', r.confirmationCode);"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/booking/holds/{{holdId}}/finalize",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentCompleted\": true,\n  \"guestInfo\": {\n    \"firstName\": \"Ahmet\",\n    \"lastName\": \"Yilmaz\",\n    \"phone\": \"5551234567\",\n    \"email\": \"ahmet@example.com\"\n  },\n  \"bookingMeta\": {\n    \"pax\": 2,\n    \"date\": \"2026-06-01\",\n    \"time\": \"20:00\",\n    \"areaName\": \"\"\n  }\n}"
+            }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Restaurant",
+      "item": [
+
+        {
+          "name": "List Restaurants (Public) — saves {{restaurantId}}",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "const items = Array.isArray(r) ? r : (r.data ?? r.items ?? []);",
+              "if (items[0]?._id) {",
+              "  pm.collectionVariables.set('restaurantId', items[0]._id);",
+              "  console.log('[Restaurant] restaurantId saved:', items[0]._id, items[0].name ?? '');",
+              "}",
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/restaurant/public?_start=0&_end=20",
+              "host": ["{{baseUrl}}"], "path": ["restaurant", "public"],
+              "query": [
+                { "key": "_start", "value": "0" },
+                { "key": "_end",   "value": "20" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Get Restaurant Detail (Public)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/restaurant/public/{{restaurantId}}"
+          }
+        },
+
+        {
+          "name": "List Restaurants (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/restaurant?_start=0&_end=20&_sort=createdAt&_order=desc",
+              "host": ["{{baseUrl}}"], "path": ["restaurant"],
+              "query": [
+                { "key": "_start",  "value": "0" },
+                { "key": "_end",    "value": "20" },
+                { "key": "_sort",   "value": "createdAt" },
+                { "key": "_order",  "value": "desc" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Get Restaurant Stats",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/restaurant/stats?restaurantId={{restaurantId}}",
+              "host": ["{{baseUrl}}"], "path": ["restaurant", "stats"],
+              "query": [{ "key": "restaurantId", "value": "{{restaurantId}}" }]
+            }
+          }
+        },
+
+        {
+          "name": "Get Restaurant Summary (SuperAdmin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/restaurant/{{restaurantId}}/summary"
+          }
+        },
+
+        {
+          "name": "Add to Favorites",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/restaurant/favorite/{{restaurantId}}"
+          }
+        },
+
+        {
+          "name": "Remove from Favorites",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/restaurant/favorite/{{restaurantId}}"
+          }
+        },
+
+        {
+          "name": "My Favorites",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/restaurant/favorites/my"
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Reservation",
+      "item": [
+
+        {
+          "name": "My Reservations",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "const items = Array.isArray(r) ? r : (r.data ?? []);",
+              "if (items[0]?._id) {",
+              "  pm.collectionVariables.set('reservationId', items[0]._id);",
+              "  console.log('[Reservation] reservationId saved:', items[0]._id);",
+              "}",
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/reservation/my"
+          }
+        },
+
+        {
+          "name": "My Savings",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/reservation/my-savings"
+          }
+        },
+
+        {
+          "name": "List All Reservations (SuperAdmin)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "const items = Array.isArray(r) ? r : (r.data ?? []);",
+              "if (items[0]?._id) pm.collectionVariables.set('reservationId', items[0]._id);",
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]}
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/reservation?_start=0&_end=20&_sort=date&_order=desc",
+              "host": ["{{baseUrl}}"], "path": ["reservation"],
+              "query": [
+                { "key": "_start",  "value": "0" },
+                { "key": "_end",    "value": "20" },
+                { "key": "_sort",   "value": "date" },
+                { "key": "_order",  "value": "desc" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Restaurant Reservations (Owner/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/reservation/restaurant/{{restaurantId}}"
+          }
+        },
+
+        {
+          "name": "Completed Report (SuperAdmin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/reservation/report/completed?_start=0&_end=20&_sort=date&_order=desc",
+              "host": ["{{baseUrl}}"], "path": ["reservation", "report", "completed"],
+              "query": [
+                { "key": "_start",  "value": "0" },
+                { "key": "_end",    "value": "20" },
+                { "key": "_sort",   "value": "date" },
+                { "key": "_order",  "value": "desc" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "User Reservation Summary (SuperAdmin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/reservation/user-summary/{{userId}}"
+          }
+        },
+
+        {
+          "name": "Update Reservation Status (Admin/Owner)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{superAdminToken}}" }
+            ],
+            "url": "{{baseUrl}}/reservation/{{reservationId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\",\n  \"totalAmount\": 1500,\n  \"nonDiscountedAmount\": 500\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Cancel Reservation (User)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/reservation/{{reservationId}}"
+          }
+        },
+
+        {
+          "name": "Bulk Cancel (Admin/Owner)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{superAdminToken}}" }
+            ],
+            "url": "{{baseUrl}}/reservation/bulk-cancel",
+            "body": { "mode": "raw", "raw": "{\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"date\": \"2026-06-01\"\n}" }
+          }
+        },
+
+        {
+          "name": "Delete Phantom Rezervem Records (SuperAdmin)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const r = pm.response.json();",
+              "console.log('[Phantom] deleted count:', r.deleted);",
+              "pm.test('200', () => pm.response.to.have.status(200));"
+            ]}
+          }],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/reservation/admin/phantom-rezervem"
+          }
+        },
+
+        {
+          "name": "Admin Delete Reservation (SuperAdmin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": "{{baseUrl}}/reservation/admin/{{reservationId}}"
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Waitlist",
+      "item": [
+        {
+          "name": "Submit Waitlist",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/waitlist",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"5559999999\",\n  \"firstName\": \"Zeynep\",\n  \"lastName\": \"Arslan\",\n  \"email\": \"zeynep@example.com\",\n  \"birthDate\": \"1992-08-20\",\n  \"acceptedMarketing\": true,\n  \"hospitalityStandards\": \"Yuksek kalite\",\n  \"privateClubMemberships\": \"\",\n  \"hospitalityValues\": \"Samimiyet\",\n  \"agreedToTerms\": true,\n  \"agreedToPrivacy\": true\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Referral Code",
+      "item": [
+        {
+          "name": "List Referral Codes (SuperAdmin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/referral-code?_start=0&_end=20",
+              "host": ["{{baseUrl}}"], "path": ["referral-code"],
+              "query": [
+                { "key": "_start", "value": "0" },
+                { "key": "_end",   "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Referral Code (SuperAdmin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{superAdminToken}}" }
+            ],
+            "url": "{{baseUrl}}/referral-code",
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"INVITE2026\",\n  \"quota\": 10,\n  \"discount\": 0,\n  \"discountType\": \"percent\"\n}" }
+          }
+        }
+      ]
+    }
+
+  ]
+}

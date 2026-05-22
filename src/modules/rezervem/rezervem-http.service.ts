@@ -295,17 +295,17 @@ export class RezervemHttpService {
           .filter(Boolean)
       : [];
     if (Array.isArray(raw?.shifts)) {
-      const slots: { time: string; available: boolean }[] = [];
+      const slots: { time: string; available: boolean; shiftId: number }[] = [];
       for (const shift of raw.shifts) {
         for (const t of shift.times ?? []) {
           const available = t.status === 'AVAILABLE' || t.status === 'LIMITED';
-          slots.push({ time: t.time ?? t.displayTime, available });
+          slots.push({ time: t.time ?? t.displayTime, available, shiftId: shift.shift });
         }
       }
       this.logger.log(`[Rezervem] transformTimes: ${slots.length} slots from ${raw.shifts.length} shifts`);
       return { slug, pax, date, slots, alternativeDates };
     }
-    // Direct array of time slots
+    // Direct array of time slots — no shift info available, shiftId omitted
     if (Array.isArray(raw)) {
       const slots = raw.map((t: any) => ({
         time: t.time ?? t.displayTime,
