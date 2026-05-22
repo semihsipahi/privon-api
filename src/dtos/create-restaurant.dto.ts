@@ -8,7 +8,7 @@ import {
   IsBoolean,
   IsMongoId,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class LocationDto {
   @ApiPropertyOptional({ description: 'Restoran adresi' })
@@ -193,8 +193,9 @@ export class CreateRestaurantDto {
   @IsOptional()
   atmosphereTypes?: string[];
 
-  @ApiPropertyOptional({ description: 'Rezervem partner API mekan slug (rezervasyon entegrasyonu için)' })
-  @IsString({ message: 'Rezervem slug metin formatında olmalıdır' })
+  @ApiPropertyOptional({ description: 'Rezervem partner API mekan slug (rezervasyon entegrasyonu için). Bağlantıyı kaldırmak için null veya boş string gönderin.' })
   @IsOptional()
-  rezervemSlug?: string;
+  @Transform(({ value }) => (value === '' ? null : value))
+  @IsString({ message: 'Rezervem slug metin formatında olmalıdır' })
+  rezervemSlug?: string | null;
 }
