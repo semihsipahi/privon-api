@@ -143,6 +143,13 @@ export class ReservationController {
         return await this.reservationService.updateStatus(id, updateDto, req.user);
     }
 
+    @Delete('admin/:id')
+    @Roles(Role.SuperAdmin)
+    @ApiOperation({ summary: 'Rezervasyonu kalıcı olarak sil (SuperAdmin)' })
+    async adminDelete(@Param('id') id: string) {
+        return await this.reservationService.adminDeleteReservation(id);
+    }
+
     @Delete(':id')
     @Roles(Role.User)
     @ApiOperation({ summary: 'Rezervasyon iptal et' })

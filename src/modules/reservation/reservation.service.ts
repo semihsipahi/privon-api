@@ -364,6 +364,15 @@ export class ReservationService extends ResourceService<
         return await reservation.save();
     }
 
+    async adminDeleteReservation(id: string): Promise<{ message: string }> {
+        const reservation = await this.reservationModel.findById(id);
+        if (!reservation) {
+            throw new NotFoundException('Rezervasyon bulunamadı');
+        }
+        await this.reservationModel.deleteOne({ _id: id });
+        return { message: 'Rezervasyon silindi' };
+    }
+
     async deletePhantomRezervem(): Promise<{ deleted: number }> {
         const result = await this.reservationModel.deleteMany({
             source: 'rezervem',
