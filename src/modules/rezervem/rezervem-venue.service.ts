@@ -163,6 +163,12 @@ export class RezervemVenueService implements OnModuleInit {
           try {
             const boot = await this.http.getBootstrap(slug);
             const listCategoryKey = categoryBySlug.get(slug);
+            const existing = await this.model.findOne({ slug }).select('adminExcluded').lean();
+            if ((existing as any)?.adminExcluded) {
+              this.logger.log(`[Rezervem] sync skip (adminExcluded) slug=${slug}`);
+              report.succeeded += 1;
+              continue;
+            }
             await this.upsertFromBootstrap(slug, listName, boot, fallback, listCategoryKey);
             report.succeeded += 1;
           } catch (err: any) {
@@ -370,9 +376,14 @@ export class RezervemVenueService implements OnModuleInit {
 
   // ── Query helpers ─────────────────────────────────────────────────
 
+  async setAdminExcluded(slug: string, excluded: boolean): Promise<void> {
+    await this.model.updateOne({ slug }, { $set: { adminExcluded: excluded, isActive: !excluded } });
+    this.logger.log(`[RezervemVenue] adminExcluded=${excluded} set for slug=${slug}`);
+  }
+
   findActiveByCategoryKey(categoryKey: string, limit: number, skip: number) {
     return this.model
-      .find({ isActive: true, categoryKey })
+      .find({ isActive: true, adminExcluded: { $ne: true }, categoryKey })
       .sort({ categoryScore: -1, name: 1 })
       .skip(skip)
       .limit(limit)
@@ -380,17 +391,17 @@ export class RezervemVenueService implements OnModuleInit {
   }
 
   countActiveByCategoryKey(categoryKey: string) {
-    return this.model.countDocuments({ isActive: true, categoryKey });
+    return this.model.countDocuments({ isActive: true, adminExcluded: { $ne: true }, categoryKey });
   }
 
   findActive(limit: number, skip: number, q?: string) {
-    const filter: any = { isActive: true };
+    const filter: any = { isActive: true, adminExcluded: { $ne: true } };
     if (q && q.trim()) filter.name = { $regex: q.trim(), $options: 'i' };
     return this.model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean();
   }
 
   countActive(q?: string) {
-    const filter: any = { isActive: true };
+    const filter: any = { isActive: true, adminExcluded: { $ne: true } };
     if (q && q.trim()) filter.name = { $regex: q.trim(), $options: 'i' };
     return this.model.countDocuments(filter);
   }

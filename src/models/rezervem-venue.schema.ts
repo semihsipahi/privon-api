@@ -76,6 +76,9 @@ export class RezervemVenue extends Document {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ default: false })
+  adminExcluded: boolean;
+
   @Prop({ type: [String], default: [] })
   badges: string[]; // e.g. ['Michelin', 'Tasting Menu', 'New']
 

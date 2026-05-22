@@ -129,6 +129,15 @@ export class RestaurantService extends ResourceService<
     };
   }
 
+  async delete(id: string) {
+    const restaurant = await this.restaurantModel.findById(id).select('rezervemSlug').lean();
+    const result = await this.restaurantModel.findByIdAndDelete(id);
+    if ((restaurant as any)?.rezervemSlug) {
+      await this.rezervemVenueService.setAdminExcluded((restaurant as any).rezervemSlug, true);
+    }
+    return result;
+  }
+
   async create(data: CreateRestaurantDto, session?: any) {
     if (data.phone) {
       const existingRestaurant = await this.restaurantModel.findOne({ phone: data.phone });
