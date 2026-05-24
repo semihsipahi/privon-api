@@ -45,6 +45,12 @@
       "key": "reservationId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "rezervemId",
+      "value": "",
+      "type": "string",
+      "description": "Rezervem integer ID — Confirm response'dan otomatik set edilir"
     }
   ],
   "item": [
@@ -943,14 +949,24 @@
                   "const r = pm.response.json();",
                   "pm.test('200', () => pm.response.to.have.status(201));",
                   "console.log('[Confirm] status:', r.status);",
+                  "console.log('[Confirm] reservationId:', r.reservationId);",
                   "console.log('[Confirm] confirmationCode:', r.confirmationCode);",
                   "console.log('[Confirm] paymentRequired:', r.paymentRequired);",
                   "",
-                  "if (r.paymentRequired) {",
-                  "  console.warn('[Confirm] PAYMENT_REQUIRED');",
+                  "// Auto-save rezervemId for step 8",
+                  "if (r.reservationId) {",
+                  "  pm.collectionVariables.set('rezervemId', r.reservationId);",
+                  "  console.log('[Confirm] rezervemId saved:', r.reservationId);",
+                  "}",
+                  "",
+                  "if (r.status === 'financial') {",
+                  "  console.log('[Confirm] FINANCIAL (Pre-Auth) — SMS/email link gönderildi');",
+                  "  console.log('[Confirm] paymentUrl:', r.paymentUrl);",
+                  "} else if (r.paymentRequired) {",
+                  "  console.warn('[Confirm] PAYMENT_REQUIRED (Scenario B/D)');",
                   "  console.log('[Confirm] paymentType:', r.paymentType);",
                   "  console.log('[Confirm] paymentExpiresAt:', r.paymentExpiresAt);",
-                  "  console.log('[Confirm] paymentUrl:', r.paymentUrl || '(empty — no URL in spec)');",
+                  "  console.log('[Confirm] paymentUrl:', r.paymentUrl || '(empty)');",
                   "  console.log('[Confirm] paymentInfo (full):', JSON.stringify(r.paymentInfo));",
                   "} else {",
                   "  pm.test('confirmationCode present', () => pm.expect(r.confirmationCode).to.be.a('string').and.not.empty);",
@@ -1020,6 +1036,38 @@
                 }
               }
             }
+          }
+        },
+        {
+          "name": "8. Rezervasyon Canlı Statüsü",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "console.log('[Rezervasyon Statüs] status:', r.status);",
+                  "console.log('[Rezervasyon Statüs] rawStatus:', r.rawStatus);",
+                  "console.log('[Rezervasyon Statüs] confirmationCode:', r.confirmationCode);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/booking/reservation/{{rezervemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["booking", "reservation", "{{rezervemId}}"]
+            },
+            "description": "Rezervem rezervasyon canlı statüsünü getirir.\nMobil Rezervasyonlarım ekranı bu endpoint'i kullanır.\n\nÖnce Confirm'den gelen reservationId'yi {{rezervemId}} değişkenine set edin.\nDönen status değerleri: CONFIRMED | FINANCIAL | PENDING | COMPLETED | CANCELLED | NO_SHOW | SEATED"
           }
         }
       ]
