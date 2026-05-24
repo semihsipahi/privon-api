@@ -74,7 +74,7 @@ export class BookingService {
     return this.rezervemHttp.getAvailableAreas(slug, pax, date, time, shift);
   }
 
-  holdSlot(params: {
+  async holdSlot(params: {
     slug: string;
     pax: number;
     date: string;
@@ -84,7 +84,19 @@ export class BookingService {
     roomId?: number;
     paymentMode?: 'immediate' | 'deferred';
   }) {
-    return this.rezervemHttp.holdSlot(params);
+    // Auto-detect Pre-Authorization venues: if mobile didn't explicitly pass a paymentMode,
+    // check the cached venue's paymentPreview. If mayRequire.preauth is true, Rezervem
+    // expects paymentMode:"deferred" on the hold — confirmed with "FINANCIAL" + url on confirm.
+    let paymentMode = params.paymentMode;
+    if (!paymentMode) {
+      const cached = await this.venueService.findBySlug(params.slug);
+      const isPreAuth = cached?.paymentPreview?.mayRequire?.preauth === true;
+      paymentMode = isPreAuth ? 'deferred' : 'immediate';
+      if (isPreAuth) {
+        this.logger.log(`[holdSlot] Pre-Auth venue detected (slug=${params.slug}), using paymentMode=deferred`);
+      }
+    }
+    return this.rezervemHttp.holdSlot({ ...params, paymentMode });
   }
 
   confirmHold(holdId: string, guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number }) {

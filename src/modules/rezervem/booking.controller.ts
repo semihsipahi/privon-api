@@ -49,6 +49,7 @@ export class BookingController {
       currency: raw?.venue?.currency ?? 'TRY',
       holdTtlSeconds: 600,
       policies: {},
+      paymentPreview: raw?.paymentPreview ?? null,
     };
   }
 

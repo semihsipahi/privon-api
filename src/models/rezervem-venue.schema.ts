@@ -40,6 +40,11 @@ export class RezervemVenue extends Document {
   @Prop({ type: Object })
   pax: { min: number; max: number; step: number };
 
+  // Payment capabilities — used to determine paymentMode for hold requests.
+  // mayRequire.preauth === true → venue is Pre-Authorization, hold must use paymentMode:"deferred"
+  @Prop({ type: Object })
+  paymentPreview: any;
+
   @Prop({ type: Object })
   bookingFlow: any;
 
