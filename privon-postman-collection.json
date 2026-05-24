@@ -1062,12 +1062,8 @@
                 "value": "Bearer {{token}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/booking/reservation/{{rezervemId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["booking", "reservation", "{{rezervemId}}"]
-            },
-            "description": "Rezervem rezervasyon canlı statüsünü getirir.\nMobil Rezervasyonlarım ekranı bu endpoint'i kullanır.\n\nÖnce Confirm'den gelen reservationId'yi {{rezervemId}} değişkenine set edin.\nDönen status değerleri: CONFIRMED | FINANCIAL | PENDING | COMPLETED | CANCELLED | NO_SHOW | SEATED"
+            "url": "{{baseUrl}}/booking/reservation/{{rezervemId}}",
+            "description": "Rezervem rezervasyon canlı statüsünü getirir. Önce 6. Confirm çalıştırın — rezervemId otomatik set edilir. Dönen status: CONFIRMED | FINANCIAL | PENDING | COMPLETED | CANCELLED | NO_SHOW | SEATED"
           }
         }
       ]
