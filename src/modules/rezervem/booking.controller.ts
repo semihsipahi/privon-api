@@ -226,7 +226,14 @@ export class BookingController {
   async getRezervemReservation(@Param('rezervemId') rezervemId: string) {
     const id = parseInt(rezervemId, 10);
     if (isNaN(id)) throw new BadRequestException('Geçersiz rezervasyon ID');
-    return this.bookingService.getRezervemReservation(id);
+    try {
+      return await this.bookingService.getRezervemReservation(id);
+    } catch (err: any) {
+      this.logger.error(`[FLOW] GET reservation/${id} → Rezervem API error: ${err?.message}`);
+      // Rezervem API başarısız olduysa 500 fırlatmak yerine status=UNKNOWN döndür.
+      // Mobil bu durumda DB'deki statüsü kullanır (catch bloğunda).
+      throw err; // Hata fırlatmaya devam et — ama log ile
+    }
   }
 
   @Post('venues/:slug/confirm')

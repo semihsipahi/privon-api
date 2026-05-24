@@ -638,8 +638,15 @@ export class RezervemHttpService {
    * Dönen `status` alanını mobil kontrattaki STATUS_CONFIG anahtarlarına normalize eder.
    */
   async getRezervemReservation(id: number): Promise<object> {
-    const raw: any = await this.get(`/v1/reservations/${id}`);
-    return this.normalizeReservationStatus(raw);
+    this.logger.log(`[getRezervemReservation] Fetching id=${id} from ${this.baseUrl}/v1/reservations/${id}`);
+    try {
+      const raw: any = await this.get(`/v1/reservations/${id}`);
+      this.logger.log(`[getRezervemReservation] id=${id} raw keys=${Object.keys(raw ?? {}).join(',')} status=${raw?.status}`);
+      return this.normalizeReservationStatus(raw);
+    } catch (err: any) {
+      this.logger.error(`[getRezervemReservation] id=${id} FAILED: ${err?.message}`);
+      throw err;
+    }
   }
 
   private normalizeReservationStatus(raw: any): object {
