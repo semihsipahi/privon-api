@@ -629,4 +629,42 @@ export class RezervemHttpService {
       model,
     });
   }
+
+  // --- Reservation Status ---
+
+  /**
+   * Rezervem rezervasyon detayını getirir.
+   * GET /v1/reservations/{id}
+   * Dönen `status` alanını mobil kontrattaki STATUS_CONFIG anahtarlarına normalize eder.
+   */
+  async getRezervemReservation(id: number): Promise<object> {
+    const raw: any = await this.get(`/v1/reservations/${id}`);
+    return this.normalizeReservationStatus(raw);
+  }
+
+  private normalizeReservationStatus(raw: any): object {
+    const s = String(raw?.status ?? '').toUpperCase();
+    let status: string;
+    if (s === '2' || s === 'CONFIRMED' || s === 'ACTIVE') status = 'CONFIRMED';
+    else if (s === 'FINANCIAL') status = 'FINANCIAL';
+    else if (s === '1' || s === 'PENDING' || s === 'PAYMENT_REQUIRED') status = 'PENDING';
+    else if (s === '3' || s === 'COMPLETED') status = 'COMPLETED';
+    else if (s.includes('CANCEL') || s === '4' || s === '5') status = 'CANCELLED';
+    else if (s === 'NO_SHOW' || s === '6') status = 'NO_SHOW';
+    else if (s === 'SEATED' || s === '7') status = 'SEATED';
+    else status = s || 'CONFIRMED';
+
+    return {
+      reservationId: raw?.reservationId ?? String(raw?.id ?? ''),
+      slug: raw?.slug ?? '',
+      date: raw?.date ?? '',
+      time: raw?.time ?? '',
+      personCount: raw?.personCount ?? raw?.pax ?? '',
+      status,
+      rawStatus: raw?.status,
+      confirmationCode: raw?.code ?? raw?.confirmationCode ?? '',
+      createdAt: raw?.createdAt ?? '',
+      updatedAt: raw?.updatedAt ?? null,
+    };
+  }
 }

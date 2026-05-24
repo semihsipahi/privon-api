@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, Body, Logger, Request } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, Logger, Request, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BookingService } from './booking.service';
 
@@ -218,6 +218,15 @@ export class BookingController {
     }
 
     return result;
+  }
+
+  // Rezervasyon canlı durumu — mobil "Rezervasyonlarım" ekranı için
+  @Get('reservation/:rezervemId')
+  @ApiOperation({ summary: 'Rezervem rezervasyon durumunu getir (mobil rezervasyonlarım)' })
+  async getRezervemReservation(@Param('rezervemId') rezervemId: string) {
+    const id = parseInt(rezervemId, 10);
+    if (isNaN(id)) throw new BadRequestException('Geçersiz rezervasyon ID');
+    return this.bookingService.getRezervemReservation(id);
   }
 
   @Post('venues/:slug/confirm')
