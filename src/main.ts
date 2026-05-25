@@ -19,15 +19,21 @@ async function bootstrap() {
   );
 
   // Raw body capture — webhook HMAC imza doğrulaması için gerekli.
-  // Fastify varsayılan JSON parser'ının önüne geçer, raw body'yi req.rawBody'ye yazar.
+  // preParsing hook, NestJS'in kendi JSON parser'ına dokunmadan raw body'yi yakalar.
   const fastifyInstance = app.getHttpAdapter().getInstance();
-  fastifyInstance.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_req: any, body: Buffer, done: any) => {
-    try {
-      (_req as any).rawBody = body; // Buffer olarak sakla
-      done(null, JSON.parse(body.toString('utf8')));
-    } catch (e) {
-      done(e, null);
+  fastifyInstance.addHook('preParsing', async (request: any, _reply: any, payload: any) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of payload) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
+    const rawBody = Buffer.concat(chunks);
+    request.rawBody = rawBody;
+    // Aynı veriyi yeni stream olarak geri döndür (Fastify parse etmeye devam etsin)
+    const { Readable } = await import('stream');
+    const readable = new Readable();
+    readable.push(rawBody);
+    readable.push(null);
+    return readable;
   });
 
   // Register fastify multipart for file uploads
