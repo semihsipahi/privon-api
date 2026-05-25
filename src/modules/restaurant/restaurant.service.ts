@@ -129,6 +129,23 @@ export class RestaurantService extends ResourceService<
     };
   }
 
+  async updateVenueAreaImages(
+    id: string,
+    venueAreaImages: { areaId: string; areaName: string; imageUrl: string }[],
+  ): Promise<any> {
+    const restaurant = await this.restaurantModel.findByIdAndUpdate(
+      id,
+      { $set: { venueAreaImages } },
+      { new: true },
+    ).lean();
+
+    if (!restaurant) {
+      throw new NotFoundException('Restoran bulunamadı');
+    }
+
+    return restaurant;
+  }
+
   async delete(id: string) {
     const restaurant = await this.restaurantModel.findById(id).select('rezervemSlug').lean();
     const result = await this.restaurantModel.findByIdAndDelete(id);

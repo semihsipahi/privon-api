@@ -25,7 +25,7 @@ import {
   ApiTags,
   ApiQuery,
 } from '@nestjs/swagger';
-import { CreateRestaurantDto } from 'src/dtos/create-restaurant.dto';
+import { CreateRestaurantDto, VenueAreaImageDto } from 'src/dtos/create-restaurant.dto';
 import { UpdateRestaurantDto } from 'src/dtos/update-restaurant.dto';
 import { LocationQueryDto } from 'src/dtos/location-query.dto';
 import { RestaurantListQueryDto } from 'src/dtos/restaurant-list-query.dto';
@@ -183,6 +183,19 @@ export class RestaurantController {
     @Body() updateRestaurantDto: UpdateRestaurantDto,
   ) {
     return await this.restaurantService.update(id, updateRestaurantDto);
+  }
+
+  @Put(':id/venue-areas')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin, Role.RestaurantOwner)
+  @UseGuards(ResourceOwnerGuard)
+  @RequiresOwnership({ modelName: 'Restaurant', ownerField: 'owner' })
+  @ApiOperation({ summary: 'Salon görsellerini güncelle (Rezervem area ID → imageUrl)' })
+  async updateVenueAreaImages(
+    @Param('id') id: string,
+    @Body() body: { venueAreaImages: VenueAreaImageDto[] },
+  ) {
+    return await this.restaurantService.updateVenueAreaImages(id, body.venueAreaImages ?? []);
   }
 
   @Delete(':id')

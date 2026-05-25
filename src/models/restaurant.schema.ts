@@ -4,6 +4,18 @@ import { CuisineType } from '../common/enums/cuisine-type.enum';
 import { AtmosphereType } from '../common/enums/atmosphere-type.enum';
 
 @Schema({ _id: false })
+export class VenueAreaImage {
+  @Prop({ required: true })
+  areaId: string; // Rezervem area ID (eşleştirme anahtarı)
+
+  @Prop({ required: true })
+  areaName: string; // Rezervem'den gelen alan adı (RestaurantDetail ekranında gösterim için)
+
+  @Prop({ required: true })
+  imageUrl: string; // MinIO/S3 görsel URL
+}
+
+@Schema({ _id: false })
 export class Location {
   @Prop({ type: String, enum: ['Point'], default: 'Point' })
   type: string;
@@ -120,6 +132,9 @@ export class Restaurant extends Document {
 
   @Prop({ sparse: true })
   rezervemSlug?: string;
+
+  @Prop({ type: [VenueAreaImage], default: [] })
+  venueAreaImages: VenueAreaImage[];
 }
 
 export const RestaurantSchema = SchemaFactory.createForClass(Restaurant);

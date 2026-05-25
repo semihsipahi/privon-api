@@ -70,8 +70,26 @@ export class BookingService {
     return this.rezervemHttp.getAvailableTimes(slug, pax, date);
   }
 
-  getAvailableAreas(slug: string, pax: number, date: string, time: string, shift: number) {
-    return this.rezervemHttp.getAvailableAreas(slug, pax, date, time, shift);
+  async getAvailableAreas(slug: string, pax: number, date: string, time: string, shift: number) {
+    const result: any = await this.rezervemHttp.getAvailableAreas(slug, pax, date, time, shift);
+
+    // Restoranın DB'deki salon görsellerini Rezervem area'larıyla eşleştir.
+    // areaId → imageUrl eşlemesi kullanılır; bizim yüklediğimiz görsel önceliklidir.
+    const restaurant = await this.restaurantModel
+      .findOne({ rezervemSlug: slug })
+      .select('venueAreaImages')
+      .lean();
+
+    const photoList: { areaId: string; imageUrl: string }[] = (restaurant as any)?.venueAreaImages ?? [];
+    if (photoList.length > 0) {
+      const photoMap = new Map<string, string>(photoList.map((v) => [v.areaId, v.imageUrl]));
+      result.areas = ((result.areas ?? []) as any[]).map((area: any) => ({
+        ...area,
+        imageUrl: photoMap.get(String(area.id)) ?? area.imageUrl,
+      }));
+    }
+
+    return result;
   }
 
   async holdSlot(params: {

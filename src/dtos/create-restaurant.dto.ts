@@ -10,6 +10,20 @@ import {
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
+export class VenueAreaImageDto {
+  @ApiProperty({ description: 'Rezervem area ID' })
+  @IsString()
+  areaId: string;
+
+  @ApiProperty({ description: 'Rezervem alan adı' })
+  @IsString()
+  areaName: string;
+
+  @ApiProperty({ description: 'Görsel URL (MinIO/S3)' })
+  @IsString()
+  imageUrl: string;
+}
+
 export class LocationDto {
   @ApiPropertyOptional({ description: 'Restoran adresi' })
   @IsString({ message: 'Adres metin formatında olmalıdır' })
@@ -198,4 +212,11 @@ export class CreateRestaurantDto {
   @Transform(({ value }) => (value === '' ? null : value))
   @IsString({ message: 'Rezervem slug metin formatında olmalıdır' })
   rezervemSlug?: string | null;
+
+  @ApiPropertyOptional({ description: 'Salon görselleri (Rezervem area ID → görsel URL eşlemesi)', type: [VenueAreaImageDto] })
+  @IsArray({ message: 'Salon görselleri liste olmalıdır' })
+  @ValidateNested({ each: true })
+  @Type(() => VenueAreaImageDto)
+  @IsOptional()
+  venueAreaImages?: VenueAreaImageDto[];
 }
