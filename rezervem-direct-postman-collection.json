@@ -1,22 +1,81 @@
 {
   "info": {
-    "name": "Rezervem Partner API — Direct",
-    "description": "Rezervem Partner API'sine doğrudan erişim. Privon API proxy olmadan ham yanıtları karşılaştırmak için kullanın.\n\nAkış: Token Al → Mekanlar → Bootstrap → Tarihler → Saatler → Alanlar → Hold → Confirm (x2) → Finalize",
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Rezervem Partner API - Direct",
+    "description": "Rezervem Partner API'ye dogrudan erisim. Privon proxy olmadan ham yanitleri test etmek icin.\n\nAkis: 1.Token -> 2.Venues -> 3.Booking Flow -> 4.Utilities -> 5.Reservations",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "rezervemBaseUrl", "value": "https://partnerapi.rezervem.com.tr", "type": "string" },
-    { "key": "rezervemToken",   "value": "", "type": "string" },
-    { "key": "clientId",        "value": "", "type": "string", "description": "REZERVEM_CLIENT_ID (.env)" },
-    { "key": "clientSecret",    "value": "", "type": "string", "description": "REZERVEM_CLIENT_SECRET (.env)" },
-    { "key": "slug",            "value": "", "type": "string" },
-    { "key": "sessionId",       "value": "", "type": "string" },
-    { "key": "pax",             "value": "2", "type": "string" },
-    { "key": "date",            "value": "", "type": "string", "description": "YYYY-MM-DD" },
-    { "key": "time",            "value": "", "type": "string", "description": "HH:mm" },
-    { "key": "shift",           "value": "2", "type": "string", "description": "0=Kahvalti 1=Ogle 2=Aksam 3=Bar" },
-    { "key": "roomId",          "value": "", "type": "string", "description": "areas[].id — alan gerektiren mekanlarda zorunlu" },
-    { "key": "reservationId",   "value": "", "type": "string", "description": "GET /v1/reservations sonrasinda otomatik set edilir" }
+    {
+      "key": "rezervemBaseUrl",
+      "value": "https://partnerapi.rezervem.com.tr",
+      "type": "string"
+    },
+    {
+      "key": "rezervemToken",
+      "value": "",
+      "type": "string",
+      "description": "Get Token calistirinca otomatik set edilir"
+    },
+    {
+      "key": "clientId",
+      "value": "",
+      "type": "string",
+      "description": "REZERVEM_CLIENT_ID (.env dosyasindan)"
+    },
+    {
+      "key": "clientSecret",
+      "value": "",
+      "type": "string",
+      "description": "REZERVEM_CLIENT_SECRET (.env dosyasindan)"
+    },
+    {
+      "key": "slug",
+      "value": "",
+      "type": "string",
+      "description": "List Venues calistirinca otomatik set edilir"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string",
+      "description": "Hold Slot calistirinca otomatik set edilir"
+    },
+    {
+      "key": "reservationId",
+      "value": "",
+      "type": "string",
+      "description": "List Reservations calistirinca otomatik set edilir"
+    },
+    {
+      "key": "pax",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "date",
+      "value": "",
+      "type": "string",
+      "description": "YYYY-MM-DD formatinda"
+    },
+    {
+      "key": "time",
+      "value": "",
+      "type": "string",
+      "description": "HH:mm formatinda"
+    },
+    {
+      "key": "shift",
+      "value": "2",
+      "type": "string",
+      "description": "0=Kahvalti 1=Ogle 2=Aksam 3=Bar"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string",
+      "description": "Available Areas calistirinca otomatik set edilir"
+    }
   ],
   "item": [
     {
@@ -28,35 +87,47 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "const res = pm.response.json();",
                   "if (res.accessToken) {",
                   "  pm.collectionVariables.set('rezervemToken', res.accessToken);",
-                  "  console.log('[Rezervem] Token saved. Expires in:', res.expiresIn, 's');",
+                  "  console.log('Token saved. Expires in:', res.expiresIn, 's');",
                   "} else {",
-                  "  console.error('[Rezervem] Token missing in response:', JSON.stringify(res));",
+                  "  console.error('Token missing:', JSON.stringify(res));",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"GrantType\": \"client_credentials\",\n  \"ClientId\": \"{{clientId}}\",\n  \"ClientSecret\": \"{{clientSecret}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{rezervemBaseUrl}}/connect/token",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["connect", "token"]
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "connect",
+                "token"
+              ]
             },
-            "description": "OAuth2 token alır. Basarili olursa {{rezervemToken}} otomatik set edilir.\n\nclientId ve clientSecret'i collection Variables'tan girin (.env dosyasindaki REZERVEM_CLIENT_ID / REZERVEM_CLIENT_SECRET)."
+            "description": "OAuth2 token alir. Basarili olursa {{rezervemToken}} otomatik set edilir.\n\nclientId ve clientSecret degerlerini Collection Variables'tan girin (.env dosyasindaki REZERVEM_CLIENT_ID / REZERVEM_CLIENT_SECRET)."
           }
         }
       ]
@@ -65,38 +136,52 @@
       "name": "2. Venues",
       "item": [
         {
-          "name": "List Venues — saves slug",
+          "name": "List Venues - saves slug",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "const res = pm.response.json();",
                   "const items = res.items ?? res;",
                   "if (Array.isArray(items) && items.length > 0) {",
                   "  pm.collectionVariables.set('slug', items[0].slug);",
-                  "  console.log('[Rezervem] slug saved:', items[0].slug);",
-                  "  console.log('[Rezervem] All slugs:', items.map(v => v.slug).join(', '));",
+                  "  console.log('slug saved:', items[0].slug);",
+                  "  console.log('All slugs:', items.map(v => v.slug).join(', '));",
                   "} else {",
-                  "  console.warn('[Rezervem] No venues found');",
+                  "  console.warn('No venues found');",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
             ],
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues?page=1&pageSize=50",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues"],
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "50" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
               ]
             },
             "description": "Tum mekan listesi. items[0].slug otomatik olarak {{slug}}'a kaydedilir."
@@ -112,12 +197,22 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
             ],
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/bootstrap",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "bootstrap"]
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "bootstrap"
+              ]
             },
             "description": "Mekanin rezervasyon akisi yapilandirmasi. pax min/max, bookingFlow adimlari, odeme politikalari, alan listesi."
           }
@@ -127,14 +222,28 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
             ],
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/availability/dates?partySize={{pax}}",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "availability", "dates"],
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "availability",
+                "dates"
+              ],
               "query": [
-                { "key": "partySize", "value": "{{pax}}" }
+                {
+                  "key": "partySize",
+                  "value": "{{pax}}"
+                }
               ]
             },
             "description": "Musait tarihleri getirir. dates[].status: AVAILABLE | LIMITED | FULL"
@@ -145,145 +254,242 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
             ],
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/availability/times?partySize={{pax}}&date={{date}}",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "availability", "times"],
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "availability",
+                "times"
+              ],
               "query": [
-                { "key": "partySize", "value": "{{pax}}" },
-                { "key": "date",      "value": "{{date}}" }
+                {
+                  "key": "partySize",
+                  "value": "{{pax}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{date}}"
+                }
               ]
             },
             "description": "Secilen tarihteki musait saatler. shifts[].times[].status: AVAILABLE | LIMITED | FULL"
           }
         },
         {
-          "name": "4. Available Areas — saves roomId",
+          "name": "4. Available Areas - saves roomId",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "const res = pm.response.json();",
                   "const areas = res.areas ?? res.rooms ?? (Array.isArray(res) ? res : []);",
                   "if (areas.length > 0) {",
                   "  const first = areas[0];",
                   "  pm.collectionVariables.set('roomId', String(first.id));",
-                  "  console.log('[Rezervem] roomId saved:', first.id, '| name:', first.title?.tr ?? first.title ?? first.name);",
-                  "  console.log('[Rezervem] All areas:', areas.map(a => a.id + ':' + (a.title?.tr ?? a.title ?? a.name)).join(', '));",
+                  "  console.log('roomId saved:', first.id, '| name:', first.title?.tr ?? first.title ?? first.name);",
+                  "  console.log('All areas:', areas.map(a => a.id + ':' + (a.title?.tr ?? a.title ?? a.name)).join(', '));",
                   "} else {",
-                  "  console.log('[Rezervem] No areas — this venue does not require area selection');",
+                  "  console.log('No areas - venue does not require area selection');",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
             ],
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/availability/areas?partySize={{pax}}&date={{date}}&time={{time}}&shift={{shift}}",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "availability", "areas"],
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "availability",
+                "areas"
+              ],
               "query": [
-                { "key": "partySize", "value": "{{pax}}" },
-                { "key": "date",      "value": "{{date}}" },
-                { "key": "time",      "value": "{{time}}" },
-                { "key": "shift",     "value": "{{shift}}" }
+                {
+                  "key": "partySize",
+                  "value": "{{pax}}"
+                },
+                {
+                  "key": "date",
+                  "value": "{{date}}"
+                },
+                {
+                  "key": "time",
+                  "value": "{{time}}"
+                },
+                {
+                  "key": "shift",
+                  "value": "{{shift}}"
+                }
               ]
             },
             "description": "Secilen tarih ve saatteki musait alanlar/odalar. areas[].selectable: true/false"
           }
         },
         {
-          "name": "5. Hold Slot — saves sessionId",
+          "name": "5. Hold Slot - saves sessionId",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "const res = pm.response.json();",
                   "const sid = res.sessionId ?? res.result?.sessionId;",
                   "if (sid) {",
                   "  pm.collectionVariables.set('sessionId', sid);",
-                  "  console.log('[Rezervem] sessionId saved:', sid);",
-                  "  console.log('[Rezervem] hold status:', res.status, '| expiresOn:', res.expiresOn);",
+                  "  console.log('sessionId saved:', sid);",
+                  "  console.log('hold status:', res.status, '| expiresOn:', res.expiresOn);",
                   "} else {",
-                  "  console.warn('[Rezervem] No sessionId in hold response. status:', res.status);",
-                  "  console.warn('[Rezervem] Full response:', JSON.stringify(res));",
+                  "  console.warn('No sessionId. status:', res.status);",
+                  "  console.warn('Full response:', JSON.stringify(res));",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" },
-              { "key": "Content-Type",  "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"date\": \"{{date}}\",\n  \"time\": \"{{time}}\",\n  \"pax\": {{pax}},\n  \"shift\": {{shift}},\n  \"roomId\": {{roomId}},\n  \"paymentMode\": \"immediate\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/checkout/hold",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "checkout", "hold"]
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "checkout",
+                "hold"
+              ]
             },
             "description": "Slotu gecici olarak rezerve eder. Basarili olursa sessionId otomatik kaydedilir.\n\nroomId: alan secildiyse ekle. paymentMode: immediate | deferred"
           }
         },
         {
-          "name": "6a. Confirm — WITHOUT responseMode (ham yanit)",
+          "name": "6a. Confirm - WITHOUT responseMode (ham yanit)",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" },
-              { "key": "Content-Type",  "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"model\": {\n    \"client\": {\n      \"firstName\": \"Test\",\n      \"lastName\": \"Kullanici\",\n      \"phoneNumberCountryCode\": \"90\",\n      \"phoneNumber\": \"5001234567\",\n      \"emailAddress\": \"test@privon.com\"\n    },\n    \"femaleCount\": 0,\n    \"note\": \"Postman test\",\n    \"hasCakeDelivery\": false,\n    \"hasFlowerDelivery\": false,\n    \"needInvoice\": false\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/checkout/confirm",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "checkout", "confirm"]
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "checkout",
+                "confirm"
+              ]
             },
-            "description": "responseMode parametresi YOK — tam (full) yanit. PAYMENT_REQUIRED durumunda paymentUrl/paymentInfo icerigi burada gorunur.\n\nScenario A (ucretsiz): {id, code, status, ...}\nScenario B/D (odeme): {status:PAYMENT_REQUIRED, paymentType, paymentInfo, ...}"
+            "description": "responseMode parametresi YOK. Tam yanit.\nScenario A (ucretsiz): {id, code, status}\nScenario B/D (odeme): {status: PAYMENT_REQUIRED, paymentType, paymentInfo}"
           }
         },
         {
-          "name": "6b. Confirm — WITH responseMode=v1 (slim yanit)",
+          "name": "6b. Confirm - WITH responseMode=v1 (slim yanit)",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" },
-              { "key": "Content-Type",  "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"model\": {\n    \"client\": {\n      \"firstName\": \"Test\",\n      \"lastName\": \"Kullanici\",\n      \"phoneNumberCountryCode\": \"90\",\n      \"phoneNumber\": \"5001234567\",\n      \"emailAddress\": \"test@privon.com\"\n    },\n    \"femaleCount\": 0,\n    \"note\": \"Postman test\",\n    \"hasCakeDelivery\": false,\n    \"hasFlowerDelivery\": false,\n    \"needInvoice\": false\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/checkout/confirm?responseMode=v1",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "checkout", "confirm"],
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "checkout",
+                "confirm"
+              ],
               "query": [
-                { "key": "responseMode", "value": "v1" }
+                {
+                  "key": "responseMode",
+                  "value": "v1"
+                }
               ]
             },
-            "description": "responseMode=v1 VAR — slim yanit. Privon API'nin simdi kullandigi mod.\n\n6a vs 6b'yi karsilastirarak responseMode'un PAYMENT_REQUIRED yanitini degistirip degistirmedigini gorebilirsiniz."
+            "description": "responseMode=v1 ile slim yanit. Privon API'nin kullandigi mod."
           }
         },
         {
@@ -291,159 +497,38 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" },
-              { "key": "Content-Type",  "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"paymentCompleted\": true,\n  \"model\": {\n    \"client\": {\n      \"firstName\": \"Test\",\n      \"lastName\": \"Kullanici\",\n      \"phoneNumberCountryCode\": \"90\",\n      \"phoneNumber\": \"5001234567\",\n      \"emailAddress\": \"test@privon.com\"\n    },\n    \"femaleCount\": 0,\n    \"note\": \"Postman test\",\n    \"hasCakeDelivery\": false,\n    \"hasFlowerDelivery\": false,\n    \"needInvoice\": false\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/checkout/finalize",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "checkout", "finalize"]
-            },
-            "description": "3D-Secure veya Provision odemesi tamamlandiktan sonra cagrilir. paymentCompleted: true/false"
-          }
-        }
-      ]
-    },
-    {
-      "name": "5. Reservations",
-      "item": [
-        {
-          "name": "List Reservations — saves reservationId",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const res = pm.response.json();",
-                  "const items = res.items ?? [];",
-                  "if (items.length > 0) {",
-                  "  const first = items[0];",
-                  "  const rid = first.reservationId ?? first.id;",
-                  "  pm.collectionVariables.set('reservationId', String(rid));",
-                  "  console.log('[Rezervem] reservationId saved:', rid);",
-                  "  console.log('[Rezervem] totalCount:', res.totalCount, '| page:', res.page, '| pageSize:', res.pageSize);",
-                  "  console.log('[Rezervem] First reservation slug:', first.slug, '| status:', first.status, '| date:', first.date);",
-                  "} else {",
-                  "  console.warn('[Rezervem] No reservations found for the given filters');",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
-            ],
-            "url": {
-              "raw": "{{rezervemBaseUrl}}/v1/reservations?page=1&pageSize=20",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "reservations"],
-              "query": [
-                { "key": "page",     "value": "1",  "description": "Sayfa numarasi (1'den baslar)" },
-                { "key": "pageSize", "value": "20", "description": "Sayfa basi kayit sayisi" },
-                { "key": "date",     "value": "",   "description": "Tarih filtresi (yyyy-MM-dd). Bos birakilirsa tum tarihler", "disabled": true },
-                { "key": "status",   "value": "",   "description": "Durum filtresi. Bos birakilirsa tum durumlar", "disabled": true }
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "checkout",
+                "finalize"
               ]
             },
-            "description": "Partner'a ait tüm rezervasyonları listeler. Filtre parametreleri:\n\n- **date**: `yyyy-MM-dd` formatında (ör: `2026-06-15`) — sadece o günün rezervasyonları\n- **status**: durum filtresi — Confirmed, Cancelled, Pending vb. (Rezervem dokümantasyonundaki değerleri kullanın)\n- **page / pageSize**: sayfalama\n\n✅ İlk rezervasyonun `reservationId`'si otomatik `{{reservationId}}`'ye kaydedilir.\n\n⚠️ POS partner: telefon/email tam görünür. GuestNetwork partner: maskelenmiş."
-          }
-        },
-        {
-          "name": "List Reservations — by DATE filter",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
-            ],
-            "url": {
-              "raw": "{{rezervemBaseUrl}}/v1/reservations?date={{date}}&page=1&pageSize=50",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "reservations"],
-              "query": [
-                { "key": "date",     "value": "{{date}}", "description": "{{date}} collection variable'ini kullanir (yyyy-MM-dd)" },
-                { "key": "page",     "value": "1" },
-                { "key": "pageSize", "value": "50" }
-              ]
-            },
-            "description": "Belirli bir güne ait tüm rezervasyonları çeker. `{{date}}` değişkenini güncelleyerek kullanın (ör: `2026-06-15`)."
-          }
-        },
-        {
-          "name": "List Reservations — by STATUS filter",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
-            ],
-            "url": {
-              "raw": "{{rezervemBaseUrl}}/v1/reservations?status=Confirmed&page=1&pageSize=50",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "reservations"],
-              "query": [
-                { "key": "status",   "value": "Confirmed", "description": "Confirmed | Cancelled | Pending | Rejected — Rezervem deger listesi icin dokumantasyonu kontrol edin" },
-                { "key": "page",     "value": "1" },
-                { "key": "pageSize", "value": "50" }
-              ]
-            },
-            "description": "Belirli durumdaki rezervasyonları filtreler. `status` parametresini değiştirerek farklı durumları test edin."
-          }
-        },
-        {
-          "name": "List Reservations — DATE + STATUS combined",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
-            ],
-            "url": {
-              "raw": "{{rezervemBaseUrl}}/v1/reservations?date={{date}}&status=Confirmed&page=1&pageSize=50",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "reservations"],
-              "query": [
-                { "key": "date",     "value": "{{date}}" },
-                { "key": "status",   "value": "Confirmed" },
-                { "key": "page",     "value": "1" },
-                { "key": "pageSize", "value": "50" }
-              ]
-            },
-            "description": "Tarih + durum filtresi birlikte kullanımı. Günlük onaylı rezervasyonları çekmek için tipik senaryo."
-          }
-        },
-        {
-          "name": "Get Reservation Detail — by {{reservationId}}",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
-            ],
-            "url": {
-              "raw": "{{rezervemBaseUrl}}/v1/reservations/{{reservationId}}",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "reservations", "{{reservationId}}"]
-            },
-            "description": "Tekil rezervasyon detayı. `{{reservationId}}` değişkenini kullanır — 'List Reservations' isteği çalıştırıldıktan sonra otomatik set edilir.\n\nYanıt alanları:\n- `reservationId`, `slug`, `date`, `time`, `personCount`, `status`\n- `guestName`, `guestPhone` (POS: tam, GuestNetwork: maskelenmiş)\n- `guestEmail` (POS: tam, GuestNetwork: maskelenmiş)\n- `guestNotes`, `guestTags`, `reservationNotes`, `reservationTags`\n- `invoiceInfo`, `cakeInfo`, `flowerInfo`\n- `createdAt`, `updatedAt`\n\nHTTP 404: Rezervasyon bulunamadı veya bu partner'ın erişim yetkisi yok."
-          }
-        },
-        {
-          "name": "Get Reservation Detail — manual ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
-            ],
-            "url": {
-              "raw": "{{rezervemBaseUrl}}/v1/reservations/12345",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "reservations", "12345"]
-            },
-            "description": "URL'deki `12345`'i test etmek istediğiniz gerçek rezervasyon ID'siyle değiştirin. Integer format (int32)."
+            "description": "3D-Secure veya Provision odemesi tamamlandiktan sonra cagrilir."
           }
         }
       ]
@@ -456,14 +541,23 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
             ],
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}"]
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}"
+              ]
             },
-            "description": "Tek mekan detayi."
+            "description": "Tek mekan detayi. Bootstrap, alanlar, etiketler dahil."
           }
         },
         {
@@ -471,14 +565,261 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
             ],
             "url": {
               "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/checkout/{{sessionId}}",
-              "host": ["{{rezervemBaseUrl}}"],
-              "path": ["v1", "venues", "{{slug}}", "checkout", "{{sessionId}}"]
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "checkout",
+                "{{sessionId}}"
+              ]
             },
             "description": "Mevcut checkout oturumunun durumunu sorgular."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Reservations",
+      "item": [
+        {
+          "name": "List Reservations - saves reservationId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const items = res.items ?? [];",
+                  "console.log('HTTP status:', pm.response.code);",
+                  "console.log('totalCount:', res.totalCount, '| page:', res.page, '| pageSize:', res.pageSize);",
+                  "if (items.length > 0) {",
+                  "  const first = items[0];",
+                  "  const rid = first.reservationId ?? first.id;",
+                  "  pm.collectionVariables.set('reservationId', String(rid));",
+                  "  console.log('reservationId saved:', rid);",
+                  "  console.log('First: slug=' + first.slug + ' status=' + first.status + ' date=' + first.date + ' guest=' + first.guestName);",
+                  "} else {",
+                  "  console.warn('No reservations found');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations?page=1&pageSize=20",
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "date",
+                  "value": "",
+                  "description": "Tarih filtresi yyyy-MM-dd. Aktif etmek icin disable kaldir.",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Durum filtresi. Aktif etmek icin disable kaldir.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Partner'a ait tum rezervasyonlari listeler.\n\nParametreler:\n- date: yyyy-MM-dd (optional)\n- status: Confirmed | Cancelled | Pending vb. (optional)\n- page / pageSize: sayfalama\n\nIlk reservationId otomatik {{reservationId}}'ye kaydedilir.\n\nNot: POS partner telefon/email tam goriinur. GuestNetwork maskelenmis."
+          }
+        },
+        {
+          "name": "List Reservations - by DATE",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations?date={{date}}&page=1&pageSize=50",
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{date}}"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Belirli bir gune ait tum rezervasyonlar. {{date}} collection variable kullanilir (yyyy-MM-dd).\n\nOrnek: date = 2026-06-15"
+          }
+        },
+        {
+          "name": "List Reservations - by STATUS",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations?status=Confirmed&page=1&pageSize=50",
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "Confirmed"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Belirli durumdaki rezervasyonlar. status degerini degistirin:\nConfirmed | Cancelled | Pending | Rejected"
+          }
+        },
+        {
+          "name": "List Reservations - DATE + STATUS",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations?date={{date}}&status=Confirmed&page=1&pageSize=50",
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{date}}"
+                },
+                {
+                  "key": "status",
+                  "value": "Confirmed"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Tarih + durum filtresi birlikte. Gunluk onaylanmis rezervasyonlar icin tipik kullanim."
+          }
+        },
+        {
+          "name": "Get Reservation Detail - by reservationId variable",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations/{{reservationId}}",
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "reservations",
+                "{{reservationId}}"
+              ]
+            },
+            "description": "Tekil rezervasyon detayi. {{reservationId}} kullanilir - List Reservations sonrasi otomatik set edilir.\n\nYanit alanlari:\n- reservationId, slug, date, time, personCount, status\n- guestName, guestPhone (POS: tam, GuestNetwork: maskelenmis)\n- guestEmail (POS: tam, GuestNetwork: maskelenmis)\n- guestNotes, guestTags, reservationNotes, reservationTags\n- invoiceInfo, cakeInfo, flowerInfo\n- createdAt, updatedAt\n\nHTTP 404: Bulunamadi veya bu partner'in erisim yetkisi yok."
+          }
+        },
+        {
+          "name": "Get Reservation Detail - manual ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations/12345",
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "reservations",
+                "12345"
+              ]
+            },
+            "description": "URL'deki 12345'i test etmek istediginiz gercek rezervasyon ID'siyle degistirin. Integer format (int32)."
           }
         }
       ]
