@@ -221,18 +221,21 @@ export class BookingController {
   }
 
   // Rezervasyon canlı durumu — mobil "Rezervasyonlarım" ekranı için
+  // GET /booking/reservation/:rezervemId?slug=venue-slug
   @Get('reservation/:rezervemId')
   @ApiOperation({ summary: 'Rezervem rezervasyon durumunu getir (mobil rezervasyonlarım)' })
-  async getRezervemReservation(@Param('rezervemId') rezervemId: string) {
+  @ApiQuery({ name: 'slug', required: false, type: String, description: 'Mekan slug (venue-scoped sorgu için)' })
+  async getRezervemReservation(
+    @Param('rezervemId') rezervemId: string,
+    @Query('slug') slug?: string,
+  ) {
     const id = parseInt(rezervemId, 10);
     if (isNaN(id)) throw new BadRequestException('Geçersiz rezervasyon ID');
     try {
-      return await this.bookingService.getRezervemReservation(id);
+      return await this.bookingService.getRezervemReservation(id, slug);
     } catch (err: any) {
-      this.logger.error(`[FLOW] GET reservation/${id} → Rezervem API error: ${err?.message}`);
-      // Rezervem API başarısız olduysa 500 fırlatmak yerine status=UNKNOWN döndür.
-      // Mobil bu durumda DB'deki statüsü kullanır (catch bloğunda).
-      throw err; // Hata fırlatmaya devam et — ama log ile
+      this.logger.error(`[FLOW] GET reservation/${id} slug=${slug ?? '-'} → ${err?.message}`);
+      throw err;
     }
   }
 

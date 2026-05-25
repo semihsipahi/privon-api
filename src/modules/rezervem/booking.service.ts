@@ -128,8 +128,8 @@ export class BookingService {
     });
   }
 
-  getRezervemReservation(id: number) {
-    return this.rezervemHttp.getRezervemReservation(id);
+  getRezervemReservation(id: number, slug?: string) {
+    return this.rezervemHttp.getRezervemReservation(id, slug);
   }
 
   confirmReservation(slug: string, sessionId: string, model: any) {

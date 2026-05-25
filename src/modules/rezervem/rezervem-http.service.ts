@@ -634,17 +634,30 @@ export class RezervemHttpService {
 
   /**
    * Rezervem rezervasyon detayını getirir.
-   * GET /v1/reservations/{id}
-   * Dönen `status` alanını mobil kontrattaki STATUS_CONFIG anahtarlarına normalize eder.
+   * Önce venue-scoped endpoint dener: GET /v1/venues/{slug}/reservations/{id}
+   * slug yoksa veya bu da 403 verirse global endpoint dener: GET /v1/reservations/{id}
    */
-  async getRezervemReservation(id: number): Promise<object> {
-    this.logger.log(`[getRezervemReservation] Fetching id=${id} from ${this.baseUrl}/v1/reservations/${id}`);
+  async getRezervemReservation(id: number, slug?: string): Promise<object> {
+    // 1. Venue-scoped endpoint (Partner API'de genellikle açık)
+    if (slug) {
+      this.logger.log(`[getRezervemReservation] Trying venue-scoped: /v1/venues/${slug}/reservations/${id}`);
+      try {
+        const raw: any = await this.get(`/v1/venues/${slug}/reservations/${id}`);
+        this.logger.log(`[getRezervemReservation] venue-scoped OK id=${id} status=${raw?.status}`);
+        return this.normalizeReservationStatus(raw);
+      } catch (err: any) {
+        this.logger.warn(`[getRezervemReservation] venue-scoped FAILED id=${id} slug=${slug}: ${err?.message} — falling back to global`);
+      }
+    }
+
+    // 2. Global endpoint fallback: GET /v1/reservations/{id}
+    this.logger.log(`[getRezervemReservation] Trying global: /v1/reservations/${id}`);
     try {
       const raw: any = await this.get(`/v1/reservations/${id}`);
-      this.logger.log(`[getRezervemReservation] id=${id} raw keys=${Object.keys(raw ?? {}).join(',')} status=${raw?.status}`);
+      this.logger.log(`[getRezervemReservation] global OK id=${id} status=${raw?.status}`);
       return this.normalizeReservationStatus(raw);
     } catch (err: any) {
-      this.logger.error(`[getRezervemReservation] id=${id} FAILED: ${err?.message}`);
+      this.logger.error(`[getRezervemReservation] global FAILED id=${id}: ${err?.message}`);
       throw err;
     }
   }
