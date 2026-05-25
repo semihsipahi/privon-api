@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserService } from 'src/modules/user/user.service';
 import { ReferralCodeService } from 'src/modules/referral-code/referral-code.service';
 import { WaitlistService } from 'src/modules/waitlist/waitlist.service';
+import { WhitelistService } from 'src/modules/whitelist/whitelist.service';
 import * as bcrypt from 'bcrypt';
 import { User } from 'src/models/user.schema';
 import { Restaurant } from 'src/models/restaurant.schema';
@@ -37,6 +38,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly referralCodeService: ReferralCodeService,
     private readonly waitlistService: WaitlistService,
+    private readonly whitelistService: WhitelistService,
     private templateService: TemplateService,
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Restaurant.name) private readonly restaurantModel: Model<Restaurant>,
@@ -45,7 +47,7 @@ export class AuthService {
   async checkPhone(
     phoneNumber: string,
   ): Promise<{
-    status: 'new' | 'existing' | 'waitlist' | 'banned';
+    status: 'new' | 'existing' | 'waitlist' | 'banned' | 'not_allowed';
     accessToken?: string;
     firstName?: string;
     lastName?: string;
@@ -56,6 +58,7 @@ export class AuthService {
     const user = await this.userModel.findOne({ phoneNumber });
 
     if (!user) {
+      // Waitlist kontrolü — bekleme listesindeki kullanıcı (invite code ile kayıt olabilir)
       const waitlistEntry = await this.waitlistService.findByPhone(phoneNumber);
       if (waitlistEntry) {
         return {
@@ -66,7 +69,15 @@ export class AuthService {
           birthDate: waitlistEntry.birthDate,
         };
       }
-      return { status: 'new' };
+
+      // Whitelist kontrolü — doğrudan erişim yetkisi verilmiş numara (invite code ile kayıt olabilir)
+      const whitelistEntry = await this.whitelistService.findByPhone(phoneNumber);
+      if (whitelistEntry) {
+        return { status: 'new' };
+      }
+
+      // Ne waitlist'te ne whitelist'te — erişim izni yok
+      return { status: 'not_allowed' };
     }
 
     if (user.status === UserStatus.Banned) {
