@@ -168,6 +168,12 @@ export class CreateRestaurantDto {
   @IsOptional()
   menu?: string;
 
+  @ApiPropertyOptional({ description: 'Menü fotoğrafları URL listesi', type: [String] })
+  @IsArray({ message: 'Menü fotoğrafları dizi formatında olmalıdır' })
+  @IsString({ each: true, message: 'Her menü fotoğrafı URL formatında olmalıdır' })
+  @IsOptional()
+  menuImages?: string[];
+
   @ApiPropertyOptional({ description: 'Kampanya koşulları metni' })
   @IsString({ message: 'Kampanya koşulları metin formatında olmalıdır' })
   @IsOptional()

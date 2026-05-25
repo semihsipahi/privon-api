@@ -115,6 +115,9 @@ export class Restaurant extends Document {
   @Prop()
   menu?: string;
 
+  @Prop({ type: [String], default: [] })
+  menuImages: string[];
+
   @Prop()
   campaignTerms?: string;
 
