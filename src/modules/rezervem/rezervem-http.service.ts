@@ -630,32 +630,6 @@ export class RezervemHttpService {
     });
   }
 
-  // --- Webhook Management (Rezervem Partner API) ---
-
-  async listWebhooks(): Promise<any> {
-    return this.get('/webhooks');
-  }
-
-  async registerWebhook(webhookUrl: string, eventType: number, secretKey?: string): Promise<any> {
-    const body: any = { webhookUrl, eventType };
-    if (secretKey) body.secretKey = secretKey;
-    return this.post('/webhooks', body);
-  }
-
-  async deleteWebhook(webhookId: number): Promise<any> {
-    const token = await this.authService.getAccessToken();
-    const url = `${this.baseUrl}/webhooks/${webhookId}`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    });
-    const text = await response.text();
-    let json: any;
-    try { json = JSON.parse(text); } catch { json = { raw: text }; }
-    if (!response.ok) throw new Error(`Rezervem DELETE /webhooks/${webhookId} → ${response.status}`);
-    return json;
-  }
-
   // --- Reservation Status ---
 
   /**

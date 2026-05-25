@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Query, Body, Logger, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, Logger, Request, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BookingService } from './booking.service';
 
@@ -220,23 +220,17 @@ export class BookingController {
     return result;
   }
 
-  // Rezervasyon canlı durumu — mobil "Rezervasyonlarım" ekranı için
-  // GET /booking/reservation/:rezervemId?slug=venue-slug
+  // Rezervasyon canlı durumu — Rezervem Partner API izinleri açılınca aktif edilecek
   @Get('reservation/:rezervemId')
-  @ApiOperation({ summary: 'Rezervem rezervasyon durumunu getir (mobil rezervasyonlarım)' })
-  @ApiQuery({ name: 'slug', required: false, type: String, description: 'Mekan slug (venue-scoped sorgu için)' })
+  @ApiOperation({ summary: 'Rezervem rezervasyon durumunu getir' })
+  @ApiQuery({ name: 'slug', required: false, type: String })
   async getRezervemReservation(
     @Param('rezervemId') rezervemId: string,
     @Query('slug') slug?: string,
   ) {
     const id = parseInt(rezervemId, 10);
     if (isNaN(id)) throw new BadRequestException('Geçersiz rezervasyon ID');
-    try {
-      return await this.bookingService.getRezervemReservation(id, slug);
-    } catch (err: any) {
-      this.logger.error(`[FLOW] GET reservation/${id} slug=${slug ?? '-'} → ${err?.message}`);
-      throw err;
-    }
+    return this.bookingService.getRezervemReservation(id, slug);
   }
 
   @Post('venues/:slug/confirm')
@@ -255,30 +249,6 @@ export class BookingController {
     @Body() body: { sessionId: string; paymentCompleted: boolean; model: any },
   ) {
     return this.bookingService.finalizeReservation(slug, body.sessionId, body.paymentCompleted, body.model);
-  }
-
-  // ─── Webhook Management (Admin) ──────────────────────────────────────────────
-
-  @Get('webhooks')
-  @ApiOperation({ summary: 'Rezervem webhook listesi (admin)' })
-  listWebhooks() {
-    return this.bookingService.listWebhooks();
-  }
-
-  @Post('webhooks')
-  @ApiOperation({ summary: 'Rezervem webhook kayıt (admin)' })
-  registerWebhook(
-    @Body() body: { webhookUrl: string; eventType: number; secretKey?: string },
-  ) {
-    return this.bookingService.registerWebhook(body.webhookUrl, body.eventType, body.secretKey);
-  }
-
-  @Delete('webhooks/:webhookId')
-  @ApiOperation({ summary: 'Rezervem webhook sil (admin)' })
-  deleteWebhook(@Param('webhookId') webhookId: string) {
-    const id = parseInt(webhookId, 10);
-    if (isNaN(id)) throw new BadRequestException('Geçersiz webhook ID');
-    return this.bookingService.deleteWebhook(id);
   }
 
   private shiftFromTime(time: string): number {
