@@ -18,6 +18,18 @@ async function bootstrap() {
     new FastifyAdapter()
   );
 
+  // Raw body capture — webhook HMAC imza doğrulaması için gerekli.
+  // Fastify varsayılan JSON parser'ının önüne geçer, raw body'yi req.rawBody'ye yazar.
+  const fastifyInstance = app.getHttpAdapter().getInstance();
+  fastifyInstance.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_req: any, body: Buffer, done: any) => {
+    try {
+      (_req as any).rawBody = body; // Buffer olarak sakla
+      done(null, JSON.parse(body.toString('utf8')));
+    } catch (e) {
+      done(e, null);
+    }
+  });
+
   // Register fastify multipart for file uploads
   await app.register(multipart, {
     limits: {

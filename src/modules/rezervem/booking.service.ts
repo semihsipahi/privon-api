@@ -132,6 +132,18 @@ export class BookingService {
     return this.rezervemHttp.getRezervemReservation(id, slug);
   }
 
+  listWebhooks() {
+    return this.rezervemHttp.listWebhooks();
+  }
+
+  registerWebhook(webhookUrl: string, eventType: number, secretKey?: string) {
+    return this.rezervemHttp.registerWebhook(webhookUrl, eventType, secretKey);
+  }
+
+  deleteWebhook(webhookId: number) {
+    return this.rezervemHttp.deleteWebhook(webhookId);
+  }
+
   confirmReservation(slug: string, sessionId: string, model: any) {
     return this.rezervemHttp.confirmReservation(slug, sessionId, model);
   }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, Body, Logger, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query, Body, Logger, Request, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BookingService } from './booking.service';
 
@@ -255,6 +255,30 @@ export class BookingController {
     @Body() body: { sessionId: string; paymentCompleted: boolean; model: any },
   ) {
     return this.bookingService.finalizeReservation(slug, body.sessionId, body.paymentCompleted, body.model);
+  }
+
+  // ─── Webhook Management (Admin) ──────────────────────────────────────────────
+
+  @Get('webhooks')
+  @ApiOperation({ summary: 'Rezervem webhook listesi (admin)' })
+  listWebhooks() {
+    return this.bookingService.listWebhooks();
+  }
+
+  @Post('webhooks')
+  @ApiOperation({ summary: 'Rezervem webhook kayıt (admin)' })
+  registerWebhook(
+    @Body() body: { webhookUrl: string; eventType: number; secretKey?: string },
+  ) {
+    return this.bookingService.registerWebhook(body.webhookUrl, body.eventType, body.secretKey);
+  }
+
+  @Delete('webhooks/:webhookId')
+  @ApiOperation({ summary: 'Rezervem webhook sil (admin)' })
+  deleteWebhook(@Param('webhookId') webhookId: string) {
+    const id = parseInt(webhookId, 10);
+    if (isNaN(id)) throw new BadRequestException('Geçersiz webhook ID');
+    return this.bookingService.deleteWebhook(id);
   }
 
   private shiftFromTime(time: string): number {
