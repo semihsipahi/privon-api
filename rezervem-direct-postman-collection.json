@@ -15,7 +15,8 @@
     { "key": "date",            "value": "", "type": "string", "description": "YYYY-MM-DD" },
     { "key": "time",            "value": "", "type": "string", "description": "HH:mm" },
     { "key": "shift",           "value": "2", "type": "string", "description": "0=Kahvalti 1=Ogle 2=Aksam 3=Bar" },
-    { "key": "roomId",          "value": "", "type": "string", "description": "areas[].id — alan gerektiren mekanlarda zorunlu" }
+    { "key": "roomId",          "value": "", "type": "string", "description": "areas[].id — alan gerektiren mekanlarda zorunlu" },
+    { "key": "reservationId",   "value": "", "type": "string", "description": "GET /v1/reservations sonrasinda otomatik set edilir" }
   ],
   "item": [
     {
@@ -304,6 +305,145 @@
               "path": ["v1", "venues", "{{slug}}", "checkout", "finalize"]
             },
             "description": "3D-Secure veya Provision odemesi tamamlandiktan sonra cagrilir. paymentCompleted: true/false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Reservations",
+      "item": [
+        {
+          "name": "List Reservations — saves reservationId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const items = res.items ?? [];",
+                  "if (items.length > 0) {",
+                  "  const first = items[0];",
+                  "  const rid = first.reservationId ?? first.id;",
+                  "  pm.collectionVariables.set('reservationId', String(rid));",
+                  "  console.log('[Rezervem] reservationId saved:', rid);",
+                  "  console.log('[Rezervem] totalCount:', res.totalCount, '| page:', res.page, '| pageSize:', res.pageSize);",
+                  "  console.log('[Rezervem] First reservation slug:', first.slug, '| status:', first.status, '| date:', first.date);",
+                  "} else {",
+                  "  console.warn('[Rezervem] No reservations found for the given filters');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations?page=1&pageSize=20",
+              "host": ["{{rezervemBaseUrl}}"],
+              "path": ["v1", "reservations"],
+              "query": [
+                { "key": "page",     "value": "1",  "description": "Sayfa numarasi (1'den baslar)" },
+                { "key": "pageSize", "value": "20", "description": "Sayfa basi kayit sayisi" },
+                { "key": "date",     "value": "",   "description": "Tarih filtresi (yyyy-MM-dd). Bos birakilirsa tum tarihler", "disabled": true },
+                { "key": "status",   "value": "",   "description": "Durum filtresi. Bos birakilirsa tum durumlar", "disabled": true }
+              ]
+            },
+            "description": "Partner'a ait tüm rezervasyonları listeler. Filtre parametreleri:\n\n- **date**: `yyyy-MM-dd` formatında (ör: `2026-06-15`) — sadece o günün rezervasyonları\n- **status**: durum filtresi — Confirmed, Cancelled, Pending vb. (Rezervem dokümantasyonundaki değerleri kullanın)\n- **page / pageSize**: sayfalama\n\n✅ İlk rezervasyonun `reservationId`'si otomatik `{{reservationId}}`'ye kaydedilir.\n\n⚠️ POS partner: telefon/email tam görünür. GuestNetwork partner: maskelenmiş."
+          }
+        },
+        {
+          "name": "List Reservations — by DATE filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations?date={{date}}&page=1&pageSize=50",
+              "host": ["{{rezervemBaseUrl}}"],
+              "path": ["v1", "reservations"],
+              "query": [
+                { "key": "date",     "value": "{{date}}", "description": "{{date}} collection variable'ini kullanir (yyyy-MM-dd)" },
+                { "key": "page",     "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            },
+            "description": "Belirli bir güne ait tüm rezervasyonları çeker. `{{date}}` değişkenini güncelleyerek kullanın (ör: `2026-06-15`)."
+          }
+        },
+        {
+          "name": "List Reservations — by STATUS filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations?status=Confirmed&page=1&pageSize=50",
+              "host": ["{{rezervemBaseUrl}}"],
+              "path": ["v1", "reservations"],
+              "query": [
+                { "key": "status",   "value": "Confirmed", "description": "Confirmed | Cancelled | Pending | Rejected — Rezervem deger listesi icin dokumantasyonu kontrol edin" },
+                { "key": "page",     "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            },
+            "description": "Belirli durumdaki rezervasyonları filtreler. `status` parametresini değiştirerek farklı durumları test edin."
+          }
+        },
+        {
+          "name": "List Reservations — DATE + STATUS combined",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations?date={{date}}&status=Confirmed&page=1&pageSize=50",
+              "host": ["{{rezervemBaseUrl}}"],
+              "path": ["v1", "reservations"],
+              "query": [
+                { "key": "date",     "value": "{{date}}" },
+                { "key": "status",   "value": "Confirmed" },
+                { "key": "page",     "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            },
+            "description": "Tarih + durum filtresi birlikte kullanımı. Günlük onaylı rezervasyonları çekmek için tipik senaryo."
+          }
+        },
+        {
+          "name": "Get Reservation Detail — by {{reservationId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations/{{reservationId}}",
+              "host": ["{{rezervemBaseUrl}}"],
+              "path": ["v1", "reservations", "{{reservationId}}"]
+            },
+            "description": "Tekil rezervasyon detayı. `{{reservationId}}` değişkenini kullanır — 'List Reservations' isteği çalıştırıldıktan sonra otomatik set edilir.\n\nYanıt alanları:\n- `reservationId`, `slug`, `date`, `time`, `personCount`, `status`\n- `guestName`, `guestPhone` (POS: tam, GuestNetwork: maskelenmiş)\n- `guestEmail` (POS: tam, GuestNetwork: maskelenmiş)\n- `guestNotes`, `guestTags`, `reservationNotes`, `reservationTags`\n- `invoiceInfo`, `cakeInfo`, `flowerInfo`\n- `createdAt`, `updatedAt`\n\nHTTP 404: Rezervasyon bulunamadı veya bu partner'ın erişim yetkisi yok."
+          }
+        },
+        {
+          "name": "Get Reservation Detail — manual ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{rezervemToken}}" }
+            ],
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/reservations/12345",
+              "host": ["{{rezervemBaseUrl}}"],
+              "path": ["v1", "reservations", "12345"]
+            },
+            "description": "URL'deki `12345`'i test etmek istediğiniz gerçek rezervasyon ID'siyle değiştirin. Integer format (int32)."
           }
         }
       ]
