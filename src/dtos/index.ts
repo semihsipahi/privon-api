@@ -32,3 +32,4 @@ export * from './update-referral-code.dto';
 export * from './create-section.dto';
 export * from './update-section.dto';
 export * from './check-phone.dto';
+export * from './send-login-otp.dto';

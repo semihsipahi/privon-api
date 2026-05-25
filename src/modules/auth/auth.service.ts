@@ -90,7 +90,7 @@ export class AuthService {
   }
 
   private generateVerificationCode(): string {
-    return Math.floor(1000 + Math.random() * 9000).toString();
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   private async sendSMS(phoneNumber: string, code: string): Promise<void> {
@@ -458,6 +458,44 @@ export class AuthService {
 
     return { message: 'Şifre başarıyla değiştirildi.' };
   }
+
+  // ─── OTP-based Login (passwordless) ─────────────────────────────────────────
+
+  async sendLoginOtp(phoneNumber: string): Promise<{ message: string }> {
+    const normalizedPhone = normalizePhone(phoneNumber);
+    const user = await this.userModel.findOne({ phoneNumber: normalizedPhone });
+    if (!user) {
+      throw new CustomException('Bu telefon numarasıyla kayıtlı bir hesap bulunamadı.', 400);
+    }
+    if (user.status === UserStatus.Banned) {
+      throw new CustomException('Hesabınız askıya alınmıştır. Destek ile iletişime geçin.', 403);
+    }
+    const code = this.generateVerificationCode();
+    user.verificationCode = code;
+    user.codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+    await this.sendSMS(normalizedPhone, code);
+    return { message: 'Doğrulama kodu gönderildi.' };
+  }
+
+  async verifyLoginOtp(phoneNumber: string, otp: string): Promise<LoginResponseDto> {
+    const normalizedPhone = normalizePhone(phoneNumber);
+    const user = await this.userModel.findOne({
+      phoneNumber: normalizedPhone,
+      verificationCode: otp,
+      codeExpiresAt: { $gt: new Date() },
+    });
+    if (!user) {
+      throw new CustomException('Doğrulama kodu hatalı veya süresi dolmuş.', 400);
+    }
+    user.verificationCode = undefined;
+    user.codeExpiresAt = undefined;
+    await user.save();
+    const accessToken = await this.generateToken(user);
+    return this.buildLoginResponse(user, accessToken);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   async adminResendVerificationCode(userId: string) {
     const user = await this.userModel.findById(userId);

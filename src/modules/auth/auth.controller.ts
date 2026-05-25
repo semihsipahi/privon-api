@@ -12,6 +12,8 @@ import {
   VerifyResetCodeDto,
   ChangeUserStatusDto,
   CheckPhoneDto,
+  SendLoginOtpDto,
+  VerifyLoginOtpDto,
 } from 'src/dtos';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -81,6 +83,24 @@ export class AuthController {
   resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
+
+  // ─── OTP-based Login (passwordless) ─────────────────────────────────────────
+
+  @Public()
+  @Post('send-login-otp')
+  @ApiOperation({ summary: 'Mevcut kullanıcıya giriş OTP kodu gönder (şifresiz giriş)' })
+  sendLoginOtp(@Body() dto: SendLoginOtpDto) {
+    return this.authService.sendLoginOtp(dto.phoneNumber);
+  }
+
+  @Public()
+  @Post('verify-login-otp')
+  @ApiOperation({ summary: 'Giriş OTP kodunu doğrula ve token al (şifresiz giriş)' })
+  verifyLoginOtp(@Body() dto: VerifyLoginOtpDto) {
+    return this.authService.verifyLoginOtp(dto.phoneNumber, dto.otp);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   @ApiBearerAuth()
   @Post('change-password')
