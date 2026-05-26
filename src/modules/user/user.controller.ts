@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -11,10 +12,13 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ReferralCodeService } from '../referral-code/referral-code.service';
+import { UploadService } from '../upload/upload.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'src/common/enums/role.enum';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiTags,
   ApiQuery,
@@ -28,6 +32,7 @@ export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly referralCodeService: ReferralCodeService,
+    private readonly uploadService: UploadService,
   ) { }
 
   /**
@@ -50,6 +55,31 @@ export class UserController {
       req.user.userId,
       updateProfileDto,
     );
+  }
+
+  @Post('me/image')
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOperation({ summary: 'Profil fotoğrafı yükle ve kaydet' })
+  async uploadProfileImage(@Req() req: any) {
+    const data = await (req as any).file();
+    if (!data) throw new BadRequestException('Dosya bulunamadı');
+
+    const buffer = await data.toBuffer();
+    const file = {
+      buffer,
+      originalname: data.filename || 'profile.jpg',
+      mimetype: data.mimetype,
+    };
+
+    const imageUrl = await this.uploadService.uploadFile(file as any);
+    return await this.userService.updateProfile(req.user.userId, { imageUrl });
   }
 
   @Delete('me')

@@ -6,6 +6,7 @@ import { Restaurant, RestaurantSchema } from '../../models/restaurant.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MailModule } from '../mail/mail.module';
 import { ReferralCodeModule } from '../referral-code/referral-code.module';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ReferralCodeModule } from '../referral-code/referral-code.module';
     ]),
     MailModule,
     ReferralCodeModule,
+    UploadModule,
   ],
   providers: [UserService],
   controllers: [UserController],
