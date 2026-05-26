@@ -84,9 +84,9 @@ export class UserController {
 
   @Delete('me')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Mevcut kullanıcı hesabını sil' })
-  async deleteMe(@Req() req: any) {
-    return await this.userService.delete(req.user.userId);
+  @ApiOperation({ summary: 'Hesabı kalıcı olarak anonimleştir (KVKK)' })
+  async anonymizeMe(@Req() req: any) {
+    return await this.userService.anonymizeUser(req.user.userId);
   }
 
   /**

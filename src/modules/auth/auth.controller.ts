@@ -14,6 +14,8 @@ import {
   CheckPhoneDto,
   SendLoginOtpDto,
   VerifyLoginOtpDto,
+  SendPhoneUpdateOtpDto,
+  VerifyPhoneUpdateDto,
 } from 'src/dtos';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -110,6 +112,24 @@ export class AuthController {
   ) {
     return this.authService.changePassword(req.user.userId, changePasswordDto);
   }
+
+  // ─── Telefon Güncelleme (authenticated) ──────────────────────────────────────
+
+  @ApiBearerAuth()
+  @Post('send-phone-update-otp')
+  @ApiOperation({ summary: 'Telefon güncelleme — yeni numaraya OTP gönder (JWT gerekli)' })
+  sendPhoneUpdateOtp(@Body() dto: SendPhoneUpdateOtpDto, @Req() req: any) {
+    return this.authService.sendPhoneUpdateOtp(req.user.userId, dto.phoneNumber);
+  }
+
+  @ApiBearerAuth()
+  @Post('verify-phone-update')
+  @ApiOperation({ summary: 'Telefon güncelleme — OTP doğrula ve numarayı kaydet (JWT gerekli)' })
+  verifyPhoneUpdate(@Body() dto: VerifyPhoneUpdateDto, @Req() req: any) {
+    return this.authService.verifyPhoneUpdate(req.user.userId, dto.phoneNumber, dto.otp);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)

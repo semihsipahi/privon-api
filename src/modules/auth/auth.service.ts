@@ -555,4 +555,50 @@ export class AuthService {
   async updateUserStatus(userId: string, status: UserStatus) {
     return this.userModel.findByIdAndUpdate(userId, { status }, { new: true });
   }
+
+  // ─── Telefon Güncelleme (authenticated, 2-adım) ───────────────────────────────
+
+  async sendPhoneUpdateOtp(userId: string, newPhone: string): Promise<{ message: string }> {
+    const normalizedNew = normalizePhone(newPhone);
+
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new CustomException('Kullanıcı bulunamadı.', 404);
+    if (user.status === UserStatus.Banned) throw new CustomException('Hesabınız askıya alınmıştır.', 403);
+    if (user.phoneNumber === normalizedNew) throw new CustomException('Yeni numara mevcut numaranızla aynı.', 400);
+
+    const conflict = await this.userModel.findOne({ phoneNumber: normalizedNew, _id: { $ne: userId } });
+    if (conflict) throw new CustomException('Bu telefon numarası başka bir hesaba kayıtlı.', 409);
+
+    const code = this.generateVerificationCode();
+    user.verificationCode = code;
+    user.codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    // OTP yeni numaraya gönderilir — kullanıcı yeni numarasına erişimi kanıtlar
+    await this.sendSMS(normalizedNew, code);
+    return { message: 'Doğrulama kodu yeni telefon numaranıza gönderildi.' };
+  }
+
+  async verifyPhoneUpdate(userId: string, newPhone: string, otp: string): Promise<{ message: string }> {
+    const normalizedNew = normalizePhone(newPhone);
+
+    const user = await this.userModel.findOne({
+      _id: userId,
+      verificationCode: otp,
+      codeExpiresAt: { $gt: new Date() },
+    });
+
+    if (!user) throw new CustomException('Doğrulama kodu hatalı veya süresi dolmuş.', 400);
+
+    // send → verify arası başkası aynı numarayı almış olabilir
+    const conflict = await this.userModel.findOne({ phoneNumber: normalizedNew, _id: { $ne: userId } });
+    if (conflict) throw new CustomException('Bu telefon numarası başka bir hesaba kayıtlı.', 409);
+
+    user.phoneNumber = normalizedNew;
+    user.verificationCode = undefined;
+    user.codeExpiresAt = undefined;
+    await user.save();
+
+    return { message: 'Telefon numaranız başarıyla güncellendi.' };
+  }
 }

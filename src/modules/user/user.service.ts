@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../../models/user.schema';
 import { Restaurant } from '../../models/restaurant.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto'; // anonymizeUser için
 import { CreateUserDto, UpdateUserDto } from 'src/dtos';
 import { ResourceService } from 'src/services/resource.service';
 import { maskName } from 'src/helpers/mask-name.util';
@@ -37,6 +38,8 @@ export class UserService extends ResourceService<
   CreateUserDto,
   UpdateUserDto
 > {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Restaurant.name) private restaurantModel: Model<Restaurant>,
@@ -184,6 +187,7 @@ export class UserService extends ResourceService<
       imageUrl?: string;
       email?: string;
       phoneNumber?: string;
+      birthDate?: string;
       notification?: any;
     },
   ) {
@@ -204,6 +208,10 @@ export class UserService extends ResourceService<
 
     if (data.phoneNumber) {
       updateData.phoneNumber = data.phoneNumber;
+    }
+
+    if (data.birthDate) {
+      updateData.birthDate = data.birthDate;
     }
 
     if (data.notification) {
@@ -400,6 +408,47 @@ export class UserService extends ResourceService<
     }
 
     return user;
+  }
+
+  // ─── KVKK / GDPR — Hesap Anonimleştirme ─────────────────────────────────────
+
+  async anonymizeUser(userId: string): Promise<{ message: string }> {
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı.');
+    if (user.isAnonymized) throw new BadRequestException('Hesap zaten anonimleştirilmiş.');
+
+    // Benzersiz anonim telefon (unique constraint korunur)
+    const anonPhone = `ANON_${userId}`;
+    // Rastgele şifre hash'i (giriş yapılamaz)
+    const randomPass = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+
+    await this.userModel.findByIdAndUpdate(userId, {
+      // PII tamamen siliniyor / anonimleştiriliyor
+      firstName: 'Anonim',
+      lastName: 'Kullanıcı',
+      fullName: 'Anonim Kullanıcı',
+      maskedName: 'A*** K***',
+      email: undefined,
+      phoneNumber: anonPhone,
+      birthDate: undefined,
+      imageUrl: '',
+      ipAddress: undefined,
+      password: randomPass,
+      verificationCode: undefined,
+      codeExpiresAt: undefined,
+      // Hesap kapatılıyor
+      status: UserStatus.Passive,
+      isActive: false,
+      isAnonymized: true,
+      anonymizedAt: new Date(),
+      // Sosyal bağlantılar temizleniyor
+      favoriteRestaurants: [],
+      registeredWithCode: undefined,
+      referredBy: undefined,
+    });
+
+    this.logger.log(`User ${userId} anonymized (KVKK).`);
+    return { message: 'Hesabınız kalıcı olarak anonimleştirildi.' };
   }
 
   private async sendRoleUpdateEmail(email: string, fullName: string): Promise<void> {

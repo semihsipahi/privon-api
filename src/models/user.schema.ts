@@ -97,6 +97,13 @@ export class User extends Document {
 
   @Prop({ default: 0 })
   completedReservationCount: number;
+
+  /** KVKK / GDPR — hesap anonimleştirme */
+  @Prop({ default: false })
+  isAnonymized: boolean;
+
+  @Prop()
+  anonymizedAt: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

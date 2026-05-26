@@ -33,3 +33,5 @@ export * from './create-section.dto';
 export * from './update-section.dto';
 export * from './check-phone.dto';
 export * from './send-login-otp.dto';
+export * from './send-phone-update-otp.dto';
+export * from './verify-phone-update.dto';
