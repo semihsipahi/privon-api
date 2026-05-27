@@ -424,95 +424,20 @@ export class ReservationService extends ResourceService<
                 403
             );
         }
-        const cancellableStatuses = [
-            ReservationStatus.PENDING,
-            ReservationStatus.CONFIRMED,
-        ];
-        if (!cancellableStatuses.includes(reservation.status as ReservationStatus)) {
-            throw new CustomException(
-                'Sadece beklemedeki veya onaylanmış rezervasyonlar iptal edilebilir',
-                400
-            );
-        }
 
-        const cancellationWindowMinutes = 30;
-        const createdAt = new Date((reservation as any).createdAt);
-        if (Number.isNaN(createdAt.getTime())) {
-            throw new CustomException(
-                'Rezervasyon oluşturulma zamanı doğrulanamadı.',
-                400
-            );
-        }
-        const minutesSinceCreation =
-            (Date.now() - createdAt.getTime()) / (1000 * 60);
-
-        // 12 Saat kuralı kontrolü
-        let isMoreThan12HoursAway = false;
-        const isRezervem = (reservation as any).source === 'rezervem';
-
-        if (isRezervem) {
-            const reservationTime = (reservation as any).time as string | undefined;
-            if (reservationTime) {
-                const reservationIsoString = `${reservation.date}T${reservationTime}:00+03:00`;
-                const hoursDiff = (new Date(reservationIsoString).getTime() - Date.now()) / (1000 * 60 * 60);
-                if (hoursDiff >= 12) isMoreThan12HoursAway = true;
-            }
-        } else {
-            await reservation.populate('slot', 'time');
-            const slot = reservation.slot as any;
-            if (slot && slot.time) {
-                const reservationIsoString = `${reservation.date}T${slot.time}:00+03:00`;
-                const hoursDiff = (new Date(reservationIsoString).getTime() - Date.now()) / (1000 * 60 * 60);
-                if (hoursDiff >= 12) isMoreThan12HoursAway = true;
-            }
-        }
-
-        if (minutesSinceCreation > cancellationWindowMinutes && !isMoreThan12HoursAway) {
-            throw new CustomException(
-                'Rezervasyon sadece oluşturulduktan sonraki 30 dakika içinde veya rezervasyon saatine 12 saatten fazla kala iptal edilebilir.',
-                400
-            );
-        }
-
-        reservation.status = ReservationStatus.REJECTED;
-        const result = await reservation.save();
-
-        const delayedJob = await this.delayedJobModel.findOne({
-            reservation: new Types.ObjectId(id),
-            type: DelayedNotificationJobType.NEW_RESERVATION,
-            status: DelayedNotificationJobStatus.PENDING,
-        });
-
-        // Müşteri için bekleyen Hatırlatma (24h veya 4h) bildirimlerini iptal et
+        // Bekleyen bildirim joblarını iptal et
         await this.delayedJobModel.updateMany(
             {
                 reservation: new Types.ObjectId(id),
-                type: { $in: [DelayedNotificationJobType.USER_REMINDER_24H, DelayedNotificationJobType.USER_REMINDER_4H] },
                 status: DelayedNotificationJobStatus.PENDING,
             },
             { $set: { status: DelayedNotificationJobStatus.CANCELLED } }
         );
 
-        if (!isRezervem) {
-            // Müşteriye anında iptal bildirimi
-            await this.sendCustomerNotification(id, 'CANCEL');
+        // Rezervasyonu MongoDB'den komple sil
+        await this.reservationModel.findByIdAndDelete(id);
 
-            if (delayedJob) {
-                delayedJob.status = DelayedNotificationJobStatus.CANCELLED;
-                await delayedJob.save();
-            } else {
-                try {
-                    await this.sendRestaurantNotification(id, 'CANCEL');
-                } catch (err) {
-                    console.error('Error sending delayed cancellation notification:', err);
-                }
-            }
-        } else if (delayedJob) {
-            delayedJob.status = DelayedNotificationJobStatus.CANCELLED;
-            await delayedJob.save();
-        }
-
-        return result;
+        return { message: 'Rezervasyon başarıyla iptal edildi.' };
     }
 
     async bulkCancelReservations(dto: BulkCancelReservationDto, user: AuthUser) {
