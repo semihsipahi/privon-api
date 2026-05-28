@@ -224,6 +224,7 @@ export class RestaurantService extends ResourceService<
     _end?: number;
     date?: string;
     priceLevel?: number;
+    priceLevels?: string;
     cuisineTypes?: string;
     atmosphereTypes?: string;
     collectionTypes?: string;
@@ -248,6 +249,7 @@ export class RestaurantService extends ResourceService<
       _end = 10,
       date,
       priceLevel,
+      priceLevels,
       cuisineTypes,
       atmosphereTypes,
       collectionTypes,
@@ -314,7 +316,9 @@ export class RestaurantService extends ResourceService<
       matchStage.categories = { $in: categoryIds };
     }
 
-    if (priceLevel) {
+    if (priceLevels) {
+      matchStage.priceLevel = { $in: priceLevels.split(',').map(Number) };
+    } else if (priceLevel) {
       matchStage.priceLevel = priceLevel;
     }
 

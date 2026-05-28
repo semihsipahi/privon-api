@@ -45,6 +45,11 @@ export class RestaurantListQueryDto {
   @IsNumber()
   priceLevel?: number;
 
+  @ApiPropertyOptional({ description: 'Çoklu fiyat seviyesi filtresi (virgülle ayrılmış, örn: 1,2)', example: '1,2' })
+  @IsOptional()
+  @IsString()
+  priceLevels?: string;
+
   @ApiPropertyOptional({
     description: 'Kullanıcının enlem koordinatı (-90 ile 90 arası)',
     example: 41.0082,
