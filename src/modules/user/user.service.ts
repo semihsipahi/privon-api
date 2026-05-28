@@ -100,6 +100,7 @@ export class UserService extends ResourceService<
       registeredWithCode: user.registeredWithCode || null,
       referredBy: user.referredBy || null,
       createdAt: (user as any).createdAt,
+      birthDate: user.birthDate,
     };
 
     const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';
