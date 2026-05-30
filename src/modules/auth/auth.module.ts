@@ -12,6 +12,7 @@ import { RestaurantModule } from '../restaurant/restaurant.module';
 import { ReferralCodeModule } from '../referral-code/referral-code.module';
 import { WaitlistModule } from '../waitlist/waitlist.module';
 import { WhitelistModule } from '../whitelist/whitelist.module';
+import { TestAccountModule } from '../test-account/test-account.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { WhitelistModule } from '../whitelist/whitelist.module';
     ReferralCodeModule,
     WaitlistModule,
     WhitelistModule,
+    TestAccountModule,
     MailModule,
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),

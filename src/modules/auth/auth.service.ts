@@ -6,6 +6,7 @@ import { UserService } from 'src/modules/user/user.service';
 import { ReferralCodeService } from 'src/modules/referral-code/referral-code.service';
 import { WaitlistService } from 'src/modules/waitlist/waitlist.service';
 import { WhitelistService } from 'src/modules/whitelist/whitelist.service';
+import { TestAccountService } from 'src/modules/test-account/test-account.service';
 import * as bcrypt from 'bcrypt';
 import { User } from 'src/models/user.schema';
 import { Restaurant } from 'src/models/restaurant.schema';
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly referralCodeService: ReferralCodeService,
     private readonly waitlistService: WaitlistService,
     private readonly whitelistService: WhitelistService,
+    private readonly testAccountService: TestAccountService,
     private templateService: TemplateService,
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Restaurant.name) private readonly restaurantModel: Model<Restaurant>,
@@ -100,11 +102,19 @@ export class AuthService {
     return null;
   }
 
-  private generateVerificationCode(): string {
+  private generateVerificationCode(normalizedPhone?: string): string {
+    if (normalizedPhone && this.testAccountService.isTestPhone(normalizedPhone)) {
+      return this.testAccountService.getTestOtp();
+    }
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   private async sendSMS(phoneNumber: string, code: string): Promise<void> {
+    if (this.testAccountService.isTestPhone(phoneNumber)) {
+      this.logger.log(`[TEST_ACCOUNT] SMS skipped for ${phoneNumber} — OTP: ${code}`);
+      return;
+    }
+
     const url = 'https://api.toplusms.app/api/v1/otp';
     const body = {
       api_key: process.env.SMS_API_KEY,
@@ -229,7 +239,7 @@ export class AuthService {
       ],
     });
 
-    const verificationCode = this.generateVerificationCode();
+    const verificationCode = this.generateVerificationCode(phoneNumber);
     const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     user.verificationCode = verificationCode;
     user.codeExpiresAt = codeExpiresAt;
@@ -348,7 +358,7 @@ export class AuthService {
     }
 
     // Yeni kod oluştur
-    const verificationCode = this.generateVerificationCode();
+    const verificationCode = this.generateVerificationCode(user.phoneNumber);
     const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     user.verificationCode = verificationCode;
@@ -370,7 +380,7 @@ export class AuthService {
     }
 
     // Doğrulama kodu oluştur
-    const verificationCode = this.generateVerificationCode();
+    const verificationCode = this.generateVerificationCode(phoneNumber);
     const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 dakika
 
     user.verificationCode = verificationCode;
@@ -481,7 +491,7 @@ export class AuthService {
     if (user.status === UserStatus.Banned) {
       throw new CustomException('Hesabınız askıya alınmıştır. Destek ile iletişime geçin.', 403);
     }
-    const code = this.generateVerificationCode();
+    const code = this.generateVerificationCode(normalizedPhone);
     user.verificationCode = code;
     user.codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
@@ -512,7 +522,7 @@ export class AuthService {
     const user = await this.userModel.findById(userId);
     if (!user) throw new CustomException('Kullanıcı bulunamadı', 400);
 
-    const verificationCode = this.generateVerificationCode();
+    const verificationCode = this.generateVerificationCode(user.phoneNumber);
     const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     user.verificationCode = verificationCode;
@@ -569,7 +579,7 @@ export class AuthService {
     const conflict = await this.userModel.findOne({ phoneNumber: normalizedNew, _id: { $ne: userId } });
     if (conflict) throw new CustomException('Bu telefon numarası başka bir hesaba kayıtlı.', 409);
 
-    const code = this.generateVerificationCode();
+    const code = this.generateVerificationCode(normalizedNew);
     user.verificationCode = code;
     user.codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
