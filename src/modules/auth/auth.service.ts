@@ -404,7 +404,8 @@ export class AuthService {
   }
 
   async verifyResetCode(verifyResetCodeDto: VerifyResetCodeDto) {
-    const { phoneNumber, verificationCode } = verifyResetCodeDto;
+    const { verificationCode } = verifyResetCodeDto;
+    const phoneNumber = normalizePhone(verifyResetCodeDto.phoneNumber);
 
     const user = await this.userModel.findOne({
       phoneNumber,
