@@ -4,8 +4,12 @@ import { Model } from 'mongoose';
 import { CreateWaitlistDto } from 'src/dtos/create-waitlist.dto';
 import { ResourceService } from 'src/services/resource.service';
 import { Waitlist } from '../../models/waitlist.schema';
+import { User } from '../../models/user.schema';
 import { MailService } from '../mail/mail.service';
 import { normalizePhone } from 'src/helpers/phone.helper';
+import { maskName } from 'src/helpers/mask-name.util';
+import { Role } from 'src/common/enums/role.enum';
+import { UserStatus } from 'src/common/enums/user-status.enum';
 
 @Injectable()
 export class WaitlistService extends ResourceService<
@@ -18,6 +22,8 @@ export class WaitlistService extends ResourceService<
   constructor(
     @InjectModel(Waitlist.name)
     private waitlistModel: Model<Waitlist>,
+    @InjectModel(User.name)
+    private userModel: Model<User>,
     private readonly mailService: MailService,
   ) {
     super(waitlistModel);
@@ -145,6 +151,35 @@ export class WaitlistService extends ResourceService<
     if (statusNote !== undefined) update.statusNote = statusNote;
     const entry = await this.waitlistModel.findByIdAndUpdate(id, update, { new: true }).lean();
     if (!entry) throw new Error('Başvuru bulunamadı.');
+
+    // "Onaylandı" seçildiğinde kullanıcı hesabını otomatik oluştur
+    if (status === 'approved') {
+      const normalized = normalizePhone(entry.phoneNumber);
+      const exists = await this.userModel.findOne({ phoneNumber: normalized });
+      if (!exists) {
+        const fullName = `${entry.firstName} ${entry.lastName}`.trim();
+        const user = new this.userModel({
+          firstName: entry.firstName,
+          lastName: entry.lastName,
+          fullName,
+          maskedName: maskName(fullName),
+          phoneNumber: normalized,
+          email: entry.email,
+          birthDate: entry.birthDate,
+          role: Role.User,
+          status: UserStatus.Active,
+          isPhoneVerified: true,
+          isAdminCreated: true,
+        });
+        await user.save();
+        this.logger.log(`Waitlist onayı: kullanıcı oluşturuldu → ${normalized}`);
+        return { id: entry._id, status: entry.status, userCreated: true };
+      } else {
+        this.logger.log(`Waitlist onayı: kullanıcı zaten mevcut → ${normalized}`);
+        return { id: entry._id, status: entry.status, userCreated: false, message: 'Kullanıcı zaten mevcut.' };
+      }
+    }
+
     return { id: entry._id, status: entry.status };
   }
 }
