@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WaitlistService } from './waitlist.service';
 import { CreateWaitlistDto } from 'src/dtos/create-waitlist.dto';
+import { UpdateWaitlistStatusDto } from 'src/dtos';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'src/common/enums/role.enum';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -32,7 +33,7 @@ export class WaitlistController {
   @ApiOperation({ summary: 'Waitlist başvuru durumunu güncelle (SuperAdmin)' })
   async updateStatus(
     @Param('id') id: string,
-    @Body() dto: { status: 'pending' | 'suitable' | 'approved' | 'rejected'; statusNote?: string },
+    @Body() dto: UpdateWaitlistStatusDto,
   ) {
     return await this.waitlistService.updateStatus(id, dto.status, dto.statusNote);
   }

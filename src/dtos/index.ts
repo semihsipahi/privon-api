@@ -37,3 +37,4 @@ export * from './send-phone-update-otp.dto';
 export * from './verify-phone-update.dto';
 export * from './accept-legal.dto';
 export * from './create-admin-user.dto';
+export * from './update-waitlist-status.dto';
