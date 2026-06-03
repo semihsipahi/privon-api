@@ -155,7 +155,9 @@ export class WaitlistService extends ResourceService<
     // "Onaylandı" seçildiğinde kullanıcı hesabını otomatik oluştur
     if (status === 'approved') {
       const normalized = normalizePhone(entry.phoneNumber);
-      const exists = await this.userModel.findOne({ phoneNumber: normalized });
+      const orConditions: any[] = [{ phoneNumber: normalized }];
+      if (entry.email) orConditions.push({ email: entry.email });
+      const exists = await this.userModel.findOne({ $or: orConditions });
       if (!exists) {
         const fullName = `${entry.firstName} ${entry.lastName}`.trim();
         const user = new this.userModel({
