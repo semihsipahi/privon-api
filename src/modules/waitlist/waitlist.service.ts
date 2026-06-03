@@ -130,6 +130,12 @@ export class WaitlistService extends ResourceService<
     return { message: 'E-posta gönderildi' };
   }
 
+  async deleteOne(id: string) {
+    const result = await this.waitlistModel.findByIdAndDelete(id);
+    if (!result) throw new Error('Başvuru bulunamadı.');
+    return { message: 'Başvuru silindi.' };
+  }
+
   async updateStatus(
     id: string,
     status: 'pending' | 'suitable' | 'approved' | 'rejected',

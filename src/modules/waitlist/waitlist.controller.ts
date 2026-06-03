@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WaitlistService } from './waitlist.service';
 import { CreateWaitlistDto } from 'src/dtos/create-waitlist.dto';
@@ -35,6 +35,14 @@ export class WaitlistController {
     @Body() dto: { status: 'pending' | 'suitable' | 'approved' | 'rejected'; statusNote?: string },
   ) {
     return await this.waitlistService.updateStatus(id, dto.status, dto.statusNote);
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({ summary: 'Waitlist başvurusunu sil (SuperAdmin)' })
+  async delete(@Param('id') id: string) {
+    return await this.waitlistService.deleteOne(id);
   }
 
   @Post('send-mail')
