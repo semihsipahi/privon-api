@@ -155,18 +155,20 @@ export class WaitlistService extends ResourceService<
     // "Onaylandı" seçildiğinde kullanıcı hesabını otomatik oluştur
     if (status === 'approved') {
       const normalized = normalizePhone(entry.phoneNumber);
-      const orConditions: any[] = [{ phoneNumber: normalized }];
-      if (entry.email) orConditions.push({ email: entry.email });
-      const exists = await this.userModel.findOne({ $or: orConditions });
-      if (!exists) {
+      const phoneExists = await this.userModel.findOne({ phoneNumber: normalized });
+      if (!phoneExists) {
         const fullName = `${entry.firstName} ${entry.lastName}`.trim();
+        // Email başka kullanıcıda varsa emailsiz oluştur
+        const emailTaken = entry.email
+          ? await this.userModel.findOne({ email: entry.email })
+          : null;
         const user = new this.userModel({
           firstName: entry.firstName,
           lastName: entry.lastName,
           fullName,
           maskedName: maskName(fullName),
           phoneNumber: normalized,
-          email: entry.email,
+          email: emailTaken ? undefined : entry.email,
           birthDate: entry.birthDate,
           role: Role.User,
           status: UserStatus.Active,
@@ -178,7 +180,7 @@ export class WaitlistService extends ResourceService<
         return { id: entry._id, status: entry.status, userCreated: true };
       } else {
         this.logger.log(`Waitlist onayı: kullanıcı zaten mevcut → ${normalized}`);
-        return { id: entry._id, status: entry.status, userCreated: false, message: 'Kullanıcı zaten mevcut.' };
+        return { id: entry._id, status: entry.status, userCreated: false };
       }
     }
 
