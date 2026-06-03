@@ -196,8 +196,12 @@ export class UserService extends ResourceService<
     const updateData: any = {};
 
     if (data.fullName) {
-      updateData.fullName = data.fullName;
-      updateData.maskedName = maskName(data.fullName);
+      const trimmed = data.fullName.trim();
+      const parts = trimmed.split(/\s+/);
+      updateData.fullName = trimmed;
+      updateData.firstName = parts[0];
+      updateData.lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+      updateData.maskedName = maskName(trimmed);
     }
 
     if (data.imageUrl !== undefined) {

@@ -109,7 +109,12 @@ export class User extends Document {
 export const UserSchema = SchemaFactory.createForClass(User);
 
 UserSchema.pre('save', function (next) {
-  if (this.firstName || this.lastName) {
+  // Only auto-compute fullName when firstName or lastName are explicitly modified.
+  // This prevents overwriting a manually set fullName (e.g. from updateProfile) on unrelated saves.
+  if (
+    (this.isModified('firstName') || this.isModified('lastName')) &&
+    (this.firstName || this.lastName)
+  ) {
     this.fullName = `${this.firstName ?? ''} ${this.lastName ?? ''}`.trim();
   }
   next();
