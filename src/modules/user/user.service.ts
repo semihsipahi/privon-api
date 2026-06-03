@@ -235,6 +235,10 @@ export class UserService extends ResourceService<
     }
 
     if (data.email) {
+      const emailTaken = await this.userModel.findOne({ email: data.email, _id: { $ne: userId } });
+      if (emailTaken) {
+        throw new ConflictException('Bu e-posta adresi başka bir hesaba kayıtlı.');
+      }
       updateData.email = data.email;
     }
 
