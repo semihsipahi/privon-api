@@ -95,27 +95,37 @@ export class WaitlistService extends ResourceService<
     });
   }
 
-  async sendMail(dto: { email: string; code: string }) {
-    const { email, code } = dto;
+  async sendMail(dto: { email: string }) {
+    const { email } = dto;
     const waitlistEntry = await this.waitlistModel.findOne({ email });
     if (!waitlistEntry) {
       throw new Error('Waitlist kaydı bulunamadı');
     }
+    const firstName = waitlistEntry.firstName || '';
     const emailHtml = `
-            <h3>Waitlist Başvurunuz Onaylandı</h3>
-            <p><strong>Davet Kodu:</strong> ${code}</p>
-        `;
+      <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #1a1a1a;">
+        <h2 style="letter-spacing: 0.15em; font-size: 22px; margin-bottom: 8px;">PRIVON</h2>
+        <p style="font-size: 15px; line-height: 1.7; color: #444;">
+          ${firstName ? `Merhaba ${firstName},` : 'Merhaba,'}<br/><br/>
+          PRIVON üyeliğiniz onaylandı. Hesabınız oluşturuldu.
+        </p>
+        <p style="font-size: 15px; line-height: 1.7; color: #444;">
+          Uygulamayı App Store veya Google Play üzerinden indirip kayıtlı telefon numaranızla giriş yapabilirsiniz.
+          Doğrulama kodunu aldıktan sonra şifrenizi oluşturun ve keşfetmeye başlayın.
+        </p>
+        <p style="font-size: 13px; color: #888; margin-top: 32px;">PRIVON — The new standard.</p>
+      </div>
+    `;
     try {
       await this.mailService.sendEmail({
         account: 'info',
         to: email,
-        subject: 'Waitlist Başvurunuz Onaylandı',
+        subject: 'PRIVON — Hesabınız Hazır',
         html: emailHtml,
       });
-      this.logger.log('Waitlist bilgilendirme e-postası gönderildi.');
+      this.logger.log('Bilgilendirme e-postası gönderildi.');
     } catch (error) {
       this.logger.error('Waitlist email gönderilemedi:', error);
-      // Email hatası kaydı engellememeli
     }
     return { message: 'E-posta gönderildi' };
   }

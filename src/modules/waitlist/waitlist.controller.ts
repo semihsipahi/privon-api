@@ -41,7 +41,7 @@ export class WaitlistController {
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)
   @ApiOperation({ summary: 'Waitlist başvurularına mail gönder (SuperAdmin)' })
-  async sendMail(@Body() dto: { email: string; code: string }) {
+  async sendMail(@Body() dto: { email: string }) {
     return await this.waitlistService.sendMail(dto);
   }
 }
