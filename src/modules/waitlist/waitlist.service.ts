@@ -119,4 +119,16 @@ export class WaitlistService extends ResourceService<
     }
     return { message: 'E-posta gönderildi' };
   }
+
+  async updateStatus(
+    id: string,
+    status: 'pending' | 'suitable' | 'approved' | 'rejected',
+    statusNote?: string,
+  ) {
+    const update: any = { status };
+    if (statusNote !== undefined) update.statusNote = statusNote;
+    const entry = await this.waitlistModel.findByIdAndUpdate(id, update, { new: true }).lean();
+    if (!entry) throw new Error('Başvuru bulunamadı.');
+    return { id: entry._id, status: entry.status };
+  }
 }

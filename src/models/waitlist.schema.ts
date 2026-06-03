@@ -44,6 +44,15 @@ export class Waitlist extends Document {
 
     @Prop({ default: false })
     consentToCommunications?: boolean;
+
+    @Prop({
+        enum: ['pending', 'suitable', 'approved', 'rejected'],
+        default: 'pending',
+    })
+    status: 'pending' | 'suitable' | 'approved' | 'rejected';
+
+    @Prop()
+    statusNote?: string;
 }
 
 export const WaitlistSchema = SchemaFactory.createForClass(Waitlist);
