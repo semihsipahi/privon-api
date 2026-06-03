@@ -49,7 +49,7 @@ export class AuthService {
   async checkPhone(
     phoneNumber: string,
   ): Promise<{
-    status: 'new' | 'existing' | 'waitlist' | 'banned' | 'not_allowed';
+    status: 'new' | 'existing' | 'invited' | 'waitlist' | 'banned' | 'not_allowed';
     accessToken?: string;
     firstName?: string;
     lastName?: string;
@@ -84,6 +84,16 @@ export class AuthService {
 
     if (user.status === UserStatus.Banned) {
       return { status: 'banned' };
+    }
+
+    // Admin tarafından oluşturulan ve henüz şifresi olmayan kullanıcı — ilk kurulum akışı
+    if (!user.password) {
+      return {
+        status: 'invited',
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      };
     }
 
     return { status: 'existing' };
@@ -610,5 +620,23 @@ export class AuthService {
     await user.save();
 
     return { message: 'Telefon numaranız başarıyla güncellendi.' };
+  }
+
+  async acceptLegal(
+    userId: string,
+    acceptedTerms: boolean,
+    acceptedPrivacy: boolean,
+    acceptedMarketing?: boolean,
+  ) {
+    if (!acceptedTerms || !acceptedPrivacy) {
+      throw new CustomException('Kullanım Şartları ve Aydınlatma Metni onayı zorunludur.', 400);
+    }
+    const now = new Date();
+    await this.userModel.findByIdAndUpdate(userId, {
+      acceptedTermsAt: now,
+      acceptedPrivacyAt: now,
+      ...(acceptedMarketing !== undefined && { acceptedMarketing }),
+    });
+    return { message: 'Belgeler başarıyla onaylandı.' };
   }
 }

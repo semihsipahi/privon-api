@@ -6,7 +6,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto'; // anonymizeUser için
-import { CreateUserDto, UpdateUserDto } from 'src/dtos';
+import { CreateUserDto, UpdateUserDto, CreateAdminUserDto } from 'src/dtos';
 import { ResourceService } from 'src/services/resource.service';
 import { maskName } from 'src/helpers/mask-name.util';
 import { normalizePhone } from 'src/helpers/phone.helper';
@@ -58,6 +58,30 @@ export class UserService extends ResourceService<
     return super.create(userData as any, session);
   }
 
+  async adminCreateUser(dto: CreateAdminUserDto) {
+    const normalized = normalizePhone(dto.phoneNumber);
+
+    const existing = await this.userModel.findOne({ phoneNumber: normalized });
+    if (existing) throw new ConflictException('Bu telefon numarası zaten kayıtlı.');
+
+    const fullName = `${dto.firstName} ${dto.lastName}`.trim();
+    const user = new this.userModel({
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      fullName,
+      maskedName: maskName(fullName),
+      phoneNumber: normalized,
+      email: dto.email,
+      birthDate: dto.birthDate,
+      role: Role.User,
+      status: UserStatus.Active,
+      isPhoneVerified: true,
+      isAdminCreated: true,
+    });
+    await user.save();
+    return { id: user._id, phoneNumber: user.phoneNumber, fullName: user.fullName };
+  }
+
   async findByEmail(email: string): Promise<User> {
     return this.userModel.findOne({ email }).exec();
   }
@@ -101,6 +125,8 @@ export class UserService extends ResourceService<
       referredBy: user.referredBy || null,
       createdAt: (user as any).createdAt,
       birthDate: user.birthDate,
+      isAdminCreated: user.isAdminCreated || false,
+      legalAccepted: !!(user as any).acceptedTermsAt && !!(user as any).acceptedPrivacyAt,
     };
 
     const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';

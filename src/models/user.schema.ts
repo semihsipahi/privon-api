@@ -23,6 +23,15 @@ export class User extends Document {
   @Prop({ default: false })
   acceptedMarketing: boolean;
 
+  @Prop({ default: false })
+  isAdminCreated: boolean;
+
+  @Prop()
+  acceptedTermsAt: Date;
+
+  @Prop()
+  acceptedPrivacyAt: Date;
+
   @Prop({ unique: true, sparse: true })
   email: string;
 

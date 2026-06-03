@@ -16,6 +16,7 @@ import {
   VerifyLoginOtpDto,
   SendPhoneUpdateOtpDto,
   VerifyPhoneUpdateDto,
+  AcceptLegalDto,
 } from 'src/dtos';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -103,6 +104,18 @@ export class AuthController {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Kullanım Şartları ve Aydınlatma Metni onayı (JWT gerekli)' })
+  @Post('accept-legal')
+  async acceptLegal(@Body() dto: AcceptLegalDto, @Req() req: any) {
+    return this.authService.acceptLegal(
+      req.user.userId,
+      dto.acceptedTerms,
+      dto.acceptedPrivacy,
+      dto.acceptedMarketing,
+    );
+  }
 
   @ApiBearerAuth()
   @Post('change-password')

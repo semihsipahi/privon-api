@@ -23,7 +23,7 @@ import {
   ApiTags,
   ApiQuery,
 } from '@nestjs/swagger';
-import { CreateUserDto, UpdateProfileDto, UpdateUserDto, ChangeUserStatusDto } from 'src/dtos';
+import { CreateUserDto, UpdateProfileDto, UpdateUserDto, ChangeUserStatusDto, CreateAdminUserDto } from 'src/dtos';
 import { CustomException } from 'src/common/exceptions/custom.exception';
 
 @ApiTags('User')
@@ -163,6 +163,14 @@ export class UserController {
       throw new CustomException('Süper admin eklenemez', 400);
     }
     return await this.userService.create(createUserDto);
+  }
+
+  @Post('admin-create')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({ summary: 'Admin: Telefon numarasıyla kullanıcı oluştur (şifresiz, ilk girişte kurulum)' })
+  async adminCreate(@Body() dto: CreateAdminUserDto) {
+    return await this.userService.adminCreateUser(dto);
   }
 
   /**
