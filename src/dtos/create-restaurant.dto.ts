@@ -24,6 +24,22 @@ export class VenueAreaImageDto {
   imageUrl: string;
 }
 
+export class AwardDto {
+  @ApiProperty({ description: 'Ödül ikon URL (Michelin yıldızı PNG vs.)' })
+  @IsString()
+  iconUrl: string;
+
+  @ApiPropertyOptional({ description: 'Ödül adı (örn. Michelin Rehberi)', default: 'Michelin Rehberi' })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiPropertyOptional({ description: 'Yıl', default: new Date().getFullYear() })
+  @IsNumber()
+  @IsOptional()
+  year?: number;
+}
+
 export class LocationDto {
   @ApiPropertyOptional({ description: 'Restoran adresi' })
   @IsString({ message: 'Adres metin formatında olmalıdır' })
@@ -195,11 +211,12 @@ export class CreateRestaurantDto {
   @IsOptional()
   feedVideos?: string[];
 
-  @ApiPropertyOptional({ description: 'Ödüller listesi (isim veya URL dizisi)' })
+  @ApiPropertyOptional({ description: 'Ödüller listesi', type: [AwardDto] })
   @IsArray({ message: 'Ödüller bir liste olmalıdır' })
-  @IsString({ each: true, message: 'Her bir ödül metin olmalıdır' })
+  @ValidateNested({ each: true })
+  @Type(() => AwardDto)
   @IsOptional()
-  awards?: string[];
+  awards?: AwardDto[];
 
   @ApiPropertyOptional({ description: 'Mutfak türleri (value listesi)', type: [String] })
   @IsArray({ message: 'Mutfak türleri liste olmalıdır' })

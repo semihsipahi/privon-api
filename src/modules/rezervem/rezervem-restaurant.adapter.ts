@@ -1,4 +1,5 @@
 import { RezervemVenue } from '../../models/rezervem-venue.schema';
+import { AwardDto, deriveAwards } from './rezervem-category-mapper';
 
 /**
  * Rezervem cache dokümanını, mobil uygulamanın beklediği ApiRestaurant
@@ -55,7 +56,16 @@ export function mapRezervemToApiRestaurant(
       address: venue.address ?? '',
     },
     workingHours: [],
-    awards: venue.badges ?? [],
+    awards: venue.badges?.length
+      ? venue.badges.map(badge => ({ iconUrl: '', name: badge, year: new Date().getFullYear() } as AwardDto))
+      : deriveAwards({
+          slug: venue.slug,
+          name: venue.name,
+          displayName: venue.displayName,
+          tags: venue.tags,
+          hasTastingMenu: venue.hasTastingMenu,
+          areaTitles: (venue.areas ?? []).map(a => a.title),
+        }),
     cuisineTypes,
     atmosphereTypes: [],
     description: venue.address ?? '',

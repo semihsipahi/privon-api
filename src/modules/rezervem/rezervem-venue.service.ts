@@ -519,7 +519,15 @@ export class RezervemVenueService implements OnModuleInit {
       email: dto.email || undefined,
       website: dto.website || undefined,
       instagramUrl: dto.instagramUrl || undefined,
-      awards: dto.awards ?? venue.badges ?? [],
+      awards: dto.awards?.length
+        ? dto.awards.map(a => ({
+            iconUrl: a.iconUrl,
+            name: a.name || 'Michelin Rehberi',
+            year: a.year ?? new Date().getFullYear(),
+          }))
+        : venue.badges?.length
+          ? venue.badges.map(b => ({ iconUrl: '', name: b, year: new Date().getFullYear() }))
+          : [],
       cuisineTypes: dto.cuisineTypes ?? (venue.tags ?? []).map((t) => t.title).filter(Boolean),
       atmosphereTypes: [],
       workingHours: (dto.workingHours && dto.workingHours.length > 0)

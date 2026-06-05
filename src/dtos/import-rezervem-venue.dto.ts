@@ -11,6 +11,17 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
+class ImportAwardDto {
+  @IsString()
+  iconUrl: string;
+
+  @IsOptional() @IsString()
+  name?: string;
+
+  @IsOptional() @IsInt()
+  year?: number;
+}
+
 class ImportWorkingPeriodDto {
   @IsOptional() @IsString() openingTime?: string;
   @IsOptional() @IsString() closingTime?: string;
@@ -77,11 +88,12 @@ export class ImportRezervemVenueDto {
   @IsString()
   instagramUrl?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({ type: [ImportAwardDto] })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  awards?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => ImportAwardDto)
+  awards?: ImportAwardDto[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()

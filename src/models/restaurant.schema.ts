@@ -55,6 +55,18 @@ export class WorkingHours {
   isClosed: boolean;
 }
 
+@Schema({ _id: false })
+export class Award {
+  @Prop({ required: true })
+  iconUrl: string;
+
+  @Prop({ required: true, default: 'Michelin Rehberi' })
+  name: string;
+
+  @Prop({ default: new Date().getFullYear() })
+  year: number;
+}
+
 @Schema({ timestamps: true })
 export class Restaurant extends Document {
   @Prop({
@@ -124,8 +136,8 @@ export class Restaurant extends Document {
   @Prop({ type: [WorkingHours], default: [] })
   workingHours: WorkingHours[];
 
-  @Prop({ type: [String], default: [] })
-  awards: string[];
+  @Prop({ type: [Award], default: [] })
+  awards: Award[];
 
   @Prop({ type: [String], default: [] })
   cuisineTypes: string[];

@@ -134,9 +134,14 @@ export function mapVenueToCategory(
   return { categoryKey: fallback, score: 0, matchedKeywords: [] };
 }
 
+export interface AwardDto {
+  iconUrl: string;
+  name: string;
+  year?: number;
+}
+
 /**
- * Mekan badge'leri — kart üzerinde gösterilecek küçük etiketler.
- * Mobil tarafında `restaurant.awards: string[]` olarak okunur.
+ * Mekan badge'leri — RezervemVenue cache'inde saklanan basit string etiketler.
  */
 export function deriveBadges(input: MappingInput): string[] {
   const badges: string[] = [];
@@ -150,4 +155,17 @@ export function deriveBadges(input: MappingInput): string[] {
   if (text.includes('chef') || text.includes('şef')) badges.push("Chef's Table");
 
   return Array.from(new Set(badges));
+}
+
+/**
+ * Mekan ödülleri — kart ve detay sayfasında gösterilecek yapılandırılmış obje dizisi.
+ * Mobil tarafında `restaurant.awards: Award[]` olarak okunur.
+ */
+export function deriveAwards(input: MappingInput): AwardDto[] {
+  const currentYear = new Date().getFullYear();
+  return deriveBadges(input).map(badge => ({
+    iconUrl: '',
+    name: badge,
+    year: currentYear,
+  }));
 }
