@@ -22,6 +22,13 @@ export class BookingController {
     this.logger.log(`[FLOW] ① BOOTSTRAP slug=${slug}`);
     const raw: any = await this.bookingService.getBootstrap(slug);
     const result = Array.isArray(raw?.paxOptions) ? raw : this.mapToBookingBootstrap(slug, raw);
+
+    // Service her iki yolda da termsAndConditions inject eder; 
+    // mapToBookingBootstrap yeni obje döndüğü için burada da kontrol et
+    if (!result?.policies?.termsAndConditions && raw?.policies?.termsAndConditions) {
+      result.policies = { ...(result.policies ?? {}), termsAndConditions: raw.policies.termsAndConditions };
+    }
+
     this.logger.log(`[FLOW] ① BOOTSTRAP slug=${slug} → paxOptions=${JSON.stringify((result as any).paxOptions)} flow=${JSON.stringify((result as any).bookingFlow?.steps ?? [])}`);
     return result;
   }

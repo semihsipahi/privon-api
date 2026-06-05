@@ -304,6 +304,15 @@ Rezervem areas endpoint requires a `shift` parameter (0=Breakfast, 1=Lunch, 2=Di
 - **Never remove or rename `rezervemSlug`** on the Restaurant schema — it is the link between our DB and Rezervem's booking API.
 - `USE_MOCK_REZERVEM=false` in production. Mocks only work for `privon-bosphorus` and `privon-galata` slugs.
 
+### Restaurant Schema — Terms & Conditions
+
+The `restaurant.schema.ts` has a `termsAndConditions?: string` field (added for Rezervem restaurants). This field:
+- Is set during **venue import** via `ImportRezervemVenueDto.termsAndConditions`
+- Can be edited from **admin panel** (Rezervem Ayarları tab)
+- Is injected into the **bootstrap response** at `GET /booking/venues/:slug/bootstrap` under `policies.termsAndConditions`
+- The mobile app reads this from `bootstrap.policies.termsAndConditions` and displays it in the review step
+- The field is stored on the `Restaurant` document (not on `rezervem_venues` cache)
+
 ### Coolify deployment
 - Coolify watches `PRIVONco/privon-api` (origin remote). **Every push must go to both remotes:**
   ```bash

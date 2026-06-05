@@ -24,12 +24,28 @@ export class BookingService {
    */
   async getBootstrap(slug: string): Promise<object> {
     const cached = await this.venueService.findBySlug(slug);
+    let result: any;
     if (cached) {
       this.logger.log(`Bootstrap: cache hit for ${slug}`);
-      return this.buildBootstrapFromCache(cached);
+      result = this.buildBootstrapFromCache(cached);
+    } else {
+      this.logger.log(`Bootstrap: cache miss for ${slug}, falling back to API`);
+      result = await this.rezervemHttp.getBootstrap(slug);
     }
-    this.logger.log(`Bootstrap: cache miss for ${slug}, falling back to API`);
-    return this.rezervemHttp.getBootstrap(slug);
+
+    // Restaurant'dan termsAndConditions al ve policies'e inject et
+    const restaurant = await this.restaurantModel
+      .findOne({ rezervemSlug: slug })
+      .select('termsAndConditions')
+      .lean();
+    if (restaurant?.termsAndConditions) {
+      result.policies = {
+        ...(result.policies ?? {}),
+        termsAndConditions: restaurant.termsAndConditions,
+      };
+    }
+
+    return result;
   }
 
   private buildBootstrapFromCache(venue: any): object {

@@ -121,4 +121,9 @@ export class ImportRezervemVenueDto {
   @IsString()
   district?: string;
 
+  @ApiPropertyOptional({ description: 'Şartlar ve koşullar metni (Rezervem restoranları için)' })
+  @IsOptional()
+  @IsString()
+  termsAndConditions?: string;
+
 }

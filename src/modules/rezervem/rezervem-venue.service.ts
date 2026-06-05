@@ -529,6 +529,7 @@ export class RezervemVenueService implements OnModuleInit {
           ? venue.badges.map(b => ({ iconUrl: '', name: b, year: new Date().getFullYear() }))
           : [],
       cuisineTypes: dto.cuisineTypes ?? (venue.tags ?? []).map((t) => t.title).filter(Boolean),
+      termsAndConditions: dto.termsAndConditions ?? '',
       atmosphereTypes: [],
       workingHours: (dto.workingHours && dto.workingHours.length > 0)
         ? dto.workingHours

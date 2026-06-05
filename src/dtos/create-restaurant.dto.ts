@@ -195,6 +195,11 @@ export class CreateRestaurantDto {
   @IsOptional()
   campaignTerms?: string;
 
+  @ApiPropertyOptional({ description: 'Şartlar ve koşullar metni (Rezervem restoranları için)' })
+  @IsString({ message: 'Şartlar ve koşullar metin formatında olmalıdır' })
+  @IsOptional()
+  termsAndConditions?: string;
+
   @ApiPropertyOptional({
     description: 'Çalışma saatleri',
     type: [WorkingHoursDto],
