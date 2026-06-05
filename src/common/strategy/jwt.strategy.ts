@@ -24,21 +24,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    const user = await this.userModel.findById(payload.sub).select('status role email restaurantId');
+    const user = await this.userModel.findById(payload.sub).select('status role email restaurantId reservationBanExpiresAt');
 
     if (!user) {
       throw new UnauthorizedException('Kullanıcı bulunamadı.');
     }
 
     if (user.status !== UserStatus.Active) {
-      throw new UnauthorizedException('Hesabınız aktif değil (Yasaklı veya Pasif).');
+      if (user.reservationBanExpiresAt && user.reservationBanExpiresAt < new Date()) {
+        user.status = UserStatus.Active;
+        user.reservationBanExpiresAt = null;
+        await user.save();
+      } else {
+        throw new UnauthorizedException('Hesabınız aktif değil (Yasaklı veya Pasif).');
+      }
     }
 
     return {
       userId: payload.sub,
       email: user.email,
-      role: user.role, // Use role from DB to ensure up-to-date role
-      restaurantId: payload.restaurantId, // Keep strictly from payload or verify? usually payload is enough but checking DB is safer if we want instant revocation
+      role: user.role,
+      restaurantId: payload.restaurantId,
     };
   }
 }

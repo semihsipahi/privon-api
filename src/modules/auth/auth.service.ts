@@ -55,6 +55,7 @@ export class AuthService {
     lastName?: string;
     email?: string;
     birthDate?: string;
+    reservationBanExpiresAt?: string | null;
   }> {
     phoneNumber = normalizePhone(phoneNumber);
     const user = await this.userModel.findOne({ phoneNumber });
@@ -82,8 +83,9 @@ export class AuthService {
       return { status: 'not_allowed' };
     }
 
+    await this.userService.autoRestoreIfExpired(user);
     if (user.status === UserStatus.Banned) {
-      return { status: 'banned' };
+      return { status: 'banned', reservationBanExpiresAt: user.reservationBanExpiresAt?.toISOString() ?? null };
     }
 
     // Admin tarafından oluşturulan ve henüz şifresi olmayan kullanıcı — ilk kurulum akışı
@@ -346,6 +348,7 @@ export class AuthService {
       );
     }
 
+    await this.userService.autoRestoreIfExpired(user);
     if (user.status !== UserStatus.Active) {
       throw new UnauthorizedException('Hesabınız aktif değil (Yasaklı veya Pasif).');
     }
@@ -499,6 +502,7 @@ export class AuthService {
     if (!user) {
       throw new CustomException('Bu telefon numarasıyla kayıtlı bir hesap bulunamadı.', 400);
     }
+    await this.userService.autoRestoreIfExpired(user);
     if (user.status === UserStatus.Banned) {
       throw new CustomException('Hesabınız askıya alınmıştır. Destek ile iletişime geçin.', 403);
     }

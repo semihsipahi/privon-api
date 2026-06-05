@@ -420,6 +420,7 @@ export class UserService extends ResourceService<
 
     const user = await this.userModel.findByIdAndUpdate(userId, {
       reservationBanExpiresAt: banExpiresAt,
+      status: UserStatus.Banned,
     }, {
       new: true,
     });
@@ -434,7 +435,8 @@ export class UserService extends ResourceService<
   async unbanUser(userId: string) {
     const user = await this.userModel.findByIdAndUpdate(userId, {
       reservationBanExpiresAt: null,
-      noShowDates: [], // No-show geçmişini sıfırla
+      noShowDates: [],
+      status: UserStatus.Active,
     }, {
       new: true,
     });
@@ -444,6 +446,18 @@ export class UserService extends ResourceService<
     }
 
     return user;
+  }
+
+  async autoRestoreIfExpired(user: any): Promise<void> {
+    if (
+      user.status === UserStatus.Banned &&
+      user.reservationBanExpiresAt &&
+      user.reservationBanExpiresAt < new Date()
+    ) {
+      user.status = UserStatus.Active;
+      user.reservationBanExpiresAt = null;
+      await user.save();
+    }
   }
 
   // ─── KVKK / GDPR — Hesap Anonimleştirme ─────────────────────────────────────
