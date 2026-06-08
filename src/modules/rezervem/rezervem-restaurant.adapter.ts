@@ -30,7 +30,8 @@ export function mapRezervemToApiRestaurant(
 
   const photos = (venue.photos ?? []).filter(Boolean);
   const realCover = venue.coverPhoto || photos[0] || venue.logoUrl || '';
-  const cover = usePlaceholder || !realCover ? placeholderFor(venue.slug) : realCover;
+  const cover =
+    usePlaceholder || !realCover ? placeholderFor(venue.slug) : realCover;
 
   const imagesOut = listView
     ? [cover]
@@ -57,14 +58,21 @@ export function mapRezervemToApiRestaurant(
     },
     workingHours: [],
     awards: venue.badges?.length
-      ? venue.badges.map(badge => ({ iconUrl: '', name: badge, year: new Date().getFullYear() } as AwardDto))
+      ? venue.badges.map(
+          (badge) =>
+            ({
+              iconUrl: '',
+              name: badge,
+              year: new Date().getFullYear(),
+            }) as AwardDto,
+        )
       : deriveAwards({
           slug: venue.slug,
           name: venue.name,
           displayName: venue.displayName,
           tags: venue.tags,
           hasTastingMenu: venue.hasTastingMenu,
-          areaTitles: (venue.areas ?? []).map(a => a.title),
+          areaTitles: (venue.areas ?? []).map((a) => a.title),
         }),
     cuisineTypes,
     atmosphereTypes: [],
