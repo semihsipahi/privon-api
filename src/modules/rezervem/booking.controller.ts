@@ -57,6 +57,10 @@ export class BookingController {
       holdTtlSeconds: 600,
       policies: {},
       paymentPreview: raw?.paymentPreview ?? null,
+      tastingMenu: raw?.tastingMenu ?? null,
+      uiHints: raw?.uiHints ?? {},
+      genderPolicy: raw?.genderPolicy ?? false,
+      leadTimes: raw?.leadTimes ?? null,
     };
   }
 
@@ -139,7 +143,7 @@ export class BookingController {
   async confirmHold(
     @Param('holdId') holdId: string,
     @Body() body: {
-      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number };
+      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number; needInvoice?: boolean; company?: { title?: string; address?: string; taxOffice?: string; taxNumber?: string } };
       firstName?: string; lastName?: string; phone?: string; email?: string; note?: string; femaleCount?: number;
       bookingMeta?: { pax: number; date: string; time: string; areaName?: string };
     },
@@ -154,6 +158,8 @@ export class BookingController {
       email: body.email,
       note: body.note,
       femaleCount: body.femaleCount,
+      needInvoice: body.guestInfo?.needInvoice,
+      company: body.guestInfo?.company,
     };
     const result = await this.bookingService.confirmHold(holdId, guest);
     const r = result as any;
@@ -187,7 +193,7 @@ export class BookingController {
     @Param('holdId') holdId: string,
     @Body() body: {
       paymentCompleted: boolean;
-      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number };
+      guestInfo?: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number; needInvoice?: boolean; company?: { title?: string; address?: string; taxOffice?: string; taxNumber?: string } };
       firstName?: string; lastName?: string; phone?: string; email?: string; note?: string; femaleCount?: number;
       bookingMeta?: { pax: number; date: string; time: string; areaName?: string };
     },
@@ -202,6 +208,8 @@ export class BookingController {
       email: body.email,
       note: body.note,
       femaleCount: body.femaleCount,
+      needInvoice: body.guestInfo?.needInvoice,
+      company: body.guestInfo?.company,
     };
     const result = await this.bookingService.finalizeHold(holdId, body.paymentCompleted, guest);
     const rf = result as any;

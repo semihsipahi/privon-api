@@ -46,6 +46,9 @@ export class RezervemVenue extends Document {
   paymentPreview: any;
 
   @Prop({ type: Object })
+  tastingMenu: any;
+
+  @Prop({ type: Object })
   bookingFlow: any;
 
   @Prop({ type: [Object], default: [] })

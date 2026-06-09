@@ -36,6 +36,7 @@ export interface RezervemBootstrapResponse {
   bookingFlow?: any;
   genderPolicy?: boolean;
   paymentPreview?: any;
+  tastingMenu?: { available: boolean } | null;
   uiHints?: any;
   policies?: {
     cancellationPolicy?: any;
@@ -281,7 +282,12 @@ export class RezervemHttpService {
         .filter((a: any) => a.type === 'HOLIDAY')
         .map((a: any) => a.date as string)
         .filter(Boolean);
-      return { slug, pax, availableDates, lowStockDates, holidayDates };
+      const dateDetails = raw.dates.map((d: any) => ({
+        date: d.date,
+        hasTastingMenu: d.hasTastingMenu ?? false,
+        paymentInfo: d.paymentInfo ?? null,
+      }));
+      return { slug, pax, availableDates, lowStockDates, holidayDates, dateDetails };
     }
     this.logger.warn(`[Rezervem] unexpected dates response: ${JSON.stringify(raw)?.slice(0, 200)}`);
     return { slug, pax, availableDates: [], lowStockDates: [], holidayDates: [] };
@@ -295,21 +301,31 @@ export class RezervemHttpService {
           .filter(Boolean)
       : [];
     if (Array.isArray(raw?.shifts)) {
-      const slots: { time: string; available: boolean; shiftId: number }[] = [];
+      const slots: { time: string; available: boolean; shiftId: number; isSessionBased: boolean }[] = [];
+      const shifts: { shiftId: number; shiftName: string; hasTastingMenu: boolean; paymentInfo: any; isSessionBased: boolean }[] = [];
       for (const shift of raw.shifts) {
+        const isSessionBased = shift.isSessionBased === true;
+        shifts.push({
+          shiftId: shift.shift,
+          shiftName: shift.shiftName ?? '',
+          hasTastingMenu: shift.hasTastingMenu ?? false,
+          paymentInfo: shift.paymentInfo ?? null,
+          isSessionBased,
+        });
         for (const t of shift.times ?? []) {
           const available = t.status === 'AVAILABLE' || t.status === 'LIMITED';
-          slots.push({ time: t.time ?? t.displayTime, available, shiftId: shift.shift });
+          slots.push({ time: t.time ?? t.displayTime, available, shiftId: shift.shift, isSessionBased });
         }
       }
       this.logger.log(`[Rezervem] transformTimes: ${slots.length} slots from ${raw.shifts.length} shifts`);
-      return { slug, pax, date, slots, alternativeDates };
+      return { slug, pax, date, slots, shifts, alternativeDates };
     }
     // Direct array of time slots — no shift info available, shiftId omitted
     if (Array.isArray(raw)) {
       const slots = raw.map((t: any) => ({
         time: t.time ?? t.displayTime,
         available: t.status === 'AVAILABLE' || t.status === 'LIMITED' || t.available === true,
+        isSessionBased: false,
       }));
       return { slug, pax, date, slots, alternativeDates };
     }
@@ -525,7 +541,7 @@ export class RezervemHttpService {
 
   async confirmHold(
     holdId: string,
-    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number },
+    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number; needInvoice?: boolean; company?: { title?: string; address?: string; taxOffice?: string; taxNumber?: string } },
   ): Promise<object> {
     if (!holdId.includes('::')) {
       throw new Error('Geçersiz rezervasyon oturumu. Lütfen tekrar deneyin.');
@@ -544,7 +560,7 @@ export class RezervemHttpService {
     else if (phone.startsWith('90') && phone.length === 12) phone = phone.slice(2);
     if (phone.startsWith('0')) phone = phone.slice(1);
 
-    const model = {
+    const model: any = {
       client: {
         firstName,
         lastName,
@@ -556,10 +572,19 @@ export class RezervemHttpService {
       note: guestInfo.note ?? '',
       hasCakeDelivery: false,
       hasFlowerDelivery: false,
-      needInvoice: false,
+      needInvoice: guestInfo.needInvoice === true,
     };
 
-    this.logger.log(`[Rezervem] confirmHold slug=${slug} sessionId=${sessionId}`);
+    if (guestInfo.needInvoice && guestInfo.company) {
+      model.company = {
+        title: guestInfo.company.title ?? '',
+        address: guestInfo.company.address ?? '',
+        taxOffice: guestInfo.company.taxOffice ?? '',
+        taxNumber: guestInfo.company.taxNumber ?? '',
+      };
+    }
+
+    this.logger.log(`[Rezervem] confirmHold slug=${slug} sessionId=${sessionId} needInvoice=${model.needInvoice}`);
     const raw = await this.post(`/v1/venues/${slug}/checkout/confirm?responseMode=v1`, { sessionId, model });
     return this.transformConfirmResponse(raw, holdId);
   }
@@ -577,7 +602,7 @@ export class RezervemHttpService {
   async finalizeHold(
     holdId: string,
     paymentCompleted: boolean,
-    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number },
+    guestInfo: { firstName: string; lastName: string; phone: string; email?: string; note?: string; femaleCount?: number; needInvoice?: boolean; company?: { title?: string; address?: string; taxOffice?: string; taxNumber?: string } },
   ): Promise<object> {
     if (!holdId.includes('::')) {
       throw new Error('Geçersiz rezervasyon oturumu. Lütfen tekrar deneyin.');
@@ -591,7 +616,7 @@ export class RezervemHttpService {
     else if (phone.startsWith('90') && phone.length === 12) phone = phone.slice(2);
     if (phone.startsWith('0')) phone = phone.slice(1);
 
-    const model = {
+    const model: any = {
       client: {
         firstName: guestInfo.firstName,
         lastName: guestInfo.lastName,
@@ -603,8 +628,17 @@ export class RezervemHttpService {
       note: guestInfo.note ?? '',
       hasCakeDelivery: false,
       hasFlowerDelivery: false,
-      needInvoice: false,
+      needInvoice: guestInfo.needInvoice === true,
     };
+
+    if (guestInfo.needInvoice && guestInfo.company) {
+      model.company = {
+        title: guestInfo.company.title ?? '',
+        address: guestInfo.company.address ?? '',
+        taxOffice: guestInfo.company.taxOffice ?? '',
+        taxNumber: guestInfo.company.taxNumber ?? '',
+      };
+    }
 
     this.logger.log(`[Rezervem] finalizeHold slug=${slug} sessionId=${sessionId} paymentCompleted=${paymentCompleted}`);
     const raw = await this.post(`/v1/venues/${slug}/checkout/finalize`, {

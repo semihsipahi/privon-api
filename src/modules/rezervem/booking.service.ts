@@ -69,6 +69,7 @@ export class BookingService {
       policies: venue.policies ?? {},
       genderPolicy: venue.genderPolicy ?? false,
       paymentPreview: venue.paymentPreview ?? null,
+      tastingMenu: venue.tastingMenu ?? null,
       uiHints: venue.uiHints ?? {},
       leadTimes: venue.leadTimes ?? null,
     };
