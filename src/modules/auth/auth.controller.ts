@@ -17,6 +17,10 @@ import {
   SendPhoneUpdateOtpDto,
   VerifyPhoneUpdateDto,
   AcceptLegalDto,
+  AcceptLegalV2Dto,
+  AcceptExplicitConsentDto,
+  AcceptCookiesDto,
+  AcceptCommercialConsentDto,
 } from 'src/dtos';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -106,14 +110,50 @@ export class AuthController {
   // ─────────────────────────────────────────────────────────────────────────────
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Kullanım Şartları ve Aydınlatma Metni onayı (JWT gerekli)' })
+  @ApiOperation({ summary: 'Kullanım Şartları ve Aydınlatma Metni onayı (versiyonlu, JWT gerekli)' })
   @Post('accept-legal')
-  async acceptLegal(@Body() dto: AcceptLegalDto, @Req() req: any) {
+  async acceptLegal(@Body() dto: AcceptLegalV2Dto, @Req() req: any) {
     return this.authService.acceptLegal(
       req.user.userId,
       dto.acceptedTerms,
       dto.acceptedPrivacy,
+      dto.acceptedTermsVersion,
+      dto.acceptedPrivacyVersion,
       dto.acceptedMarketing,
+    );
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Açık Rıza Metni onayı (JWT gerekli)' })
+  @Post('accept-explicit-consent')
+  async acceptExplicitConsent(@Body() dto: AcceptExplicitConsentDto, @Req() req: any) {
+    return this.authService.acceptExplicitConsent(
+      req.user.userId,
+      dto.accepted,
+      dto.version,
+    );
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Çerez Politikası onayı (JWT gerekli)' })
+  @Post('accept-cookies')
+  async acceptCookies(@Body() dto: AcceptCookiesDto, @Req() req: any) {
+    return this.authService.acceptCookies(
+      req.user.userId,
+      dto.accepted,
+      dto.version,
+      dto.preferences,
+    );
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Ticari Elektronik İleti Onayı (JWT gerekli)' })
+  @Post('accept-commercial-consent')
+  async acceptCommercialConsent(@Body() dto: AcceptCommercialConsentDto, @Req() req: any) {
+    return this.authService.acceptCommercialConsent(
+      req.user.userId,
+      dto.accepted,
+      dto.version,
     );
   }
 

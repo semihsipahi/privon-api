@@ -30,7 +30,34 @@ export class User extends Document {
   acceptedTermsAt: Date;
 
   @Prop()
+  acceptedTermsVersion: number;
+
+  @Prop()
   acceptedPrivacyAt: Date;
+
+  @Prop()
+  acceptedPrivacyVersion: number;
+
+  @Prop()
+  acceptedExplicitConsentAt: Date;
+
+  @Prop()
+  acceptedExplicitConsentVersion: number;
+
+  @Prop()
+  acceptedCookiePolicyAt: Date;
+
+  @Prop()
+  acceptedCookiePolicyVersion: number;
+
+  @Prop({ type: [String], default: [] })
+  cookiePreferences: string[];
+
+  @Prop()
+  acceptedCommercialConsentAt: Date;
+
+  @Prop()
+  acceptedCommercialConsentVersion: number;
 
   @Prop({ unique: true, sparse: true })
   email: string;

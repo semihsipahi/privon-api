@@ -7,6 +7,7 @@ import { ReferralCodeService } from 'src/modules/referral-code/referral-code.ser
 import { WaitlistService } from 'src/modules/waitlist/waitlist.service';
 import { WhitelistService } from 'src/modules/whitelist/whitelist.service';
 import { TestAccountService } from 'src/modules/test-account/test-account.service';
+import { LegalService } from 'src/modules/legal/legal.service';
 import * as bcrypt from 'bcrypt';
 import { User } from 'src/models/user.schema';
 import { Restaurant } from 'src/models/restaurant.schema';
@@ -41,6 +42,7 @@ export class AuthService {
     private readonly waitlistService: WaitlistService,
     private readonly whitelistService: WhitelistService,
     private readonly testAccountService: TestAccountService,
+    private readonly legalService: LegalService,
     private templateService: TemplateService,
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Restaurant.name) private readonly restaurantModel: Model<Restaurant>,
@@ -631,6 +633,8 @@ export class AuthService {
     userId: string,
     acceptedTerms: boolean,
     acceptedPrivacy: boolean,
+    acceptedTermsVersion: number,
+    acceptedPrivacyVersion: number,
     acceptedMarketing?: boolean,
   ) {
     if (!acceptedTerms || !acceptedPrivacy) {
@@ -639,9 +643,50 @@ export class AuthService {
     const now = new Date();
     await this.userModel.findByIdAndUpdate(userId, {
       acceptedTermsAt: now,
+      acceptedTermsVersion,
       acceptedPrivacyAt: now,
+      acceptedPrivacyVersion,
       ...(acceptedMarketing !== undefined && { acceptedMarketing }),
     });
     return { message: 'Belgeler başarıyla onaylandı.' };
+  }
+
+  async acceptExplicitConsent(userId: string, accepted: boolean, version: number) {
+    if (!accepted) {
+      throw new CustomException('Açık Rıza Metni onayı zorunludur.', 400);
+    }
+    const now = new Date();
+    await this.userModel.findByIdAndUpdate(userId, {
+      acceptedExplicitConsentAt: now,
+      acceptedExplicitConsentVersion: version,
+    });
+    return { message: 'Açık Rıza Metni başarıyla onaylandı.' };
+  }
+
+  async acceptCookies(
+    userId: string,
+    accepted: boolean,
+    version: number,
+    preferences: string[],
+  ) {
+    if (!accepted) {
+      throw new CustomException('Çerez Politikası onayı zorunludur.', 400);
+    }
+    const now = new Date();
+    await this.userModel.findByIdAndUpdate(userId, {
+      acceptedCookiePolicyAt: now,
+      acceptedCookiePolicyVersion: version,
+      cookiePreferences: preferences,
+    });
+    return { message: 'Çerez Politikası başarıyla onaylandı.' };
+  }
+
+  async acceptCommercialConsent(userId: string, accepted: boolean, version: number) {
+    const now = new Date();
+    await this.userModel.findByIdAndUpdate(userId, {
+      acceptedCommercialConsentAt: accepted ? now : null,
+      acceptedCommercialConsentVersion: accepted ? version : null,
+    });
+    return { message: accepted ? 'Ticari Elektronik İleti Onayı verildi.' : 'Ticari Elektronik İleti Onayı kaldırıldı.' };
   }
 }

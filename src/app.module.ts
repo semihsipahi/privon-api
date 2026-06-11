@@ -28,6 +28,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { FilterOptionModule } from './modules/filter-option/filter-option.module';
 import { RezervemModule } from './modules/rezervem/rezervem.module';
 import { TastingMenuModule } from './modules/tasting-menu/tasting-menu.module';
+import { LegalModule } from './modules/legal/legal.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -77,6 +78,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     FilterOptionModule,
     RezervemModule,
     TastingMenuModule,
+    LegalModule,
   ],
   controllers: [AppController],
   providers: [

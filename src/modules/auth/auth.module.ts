@@ -13,10 +13,12 @@ import { ReferralCodeModule } from '../referral-code/referral-code.module';
 import { WaitlistModule } from '../waitlist/waitlist.module';
 import { WhitelistModule } from '../whitelist/whitelist.module';
 import { TestAccountModule } from '../test-account/test-account.module';
+import { LegalModule } from '../legal/legal.module';
 
 @Module({
   imports: [
     forwardRef(() => UserModule),
+    LegalModule,
     RestaurantModule,
     ReferralCodeModule,
     WaitlistModule,
