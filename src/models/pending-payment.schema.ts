@@ -9,6 +9,9 @@ export class PendingPayment extends Document {
   @Prop({ required: true })
   slug: string;
 
+  @Prop()
+  userId?: string;
+
   @Prop({ type: Object, required: true })
   guestInfo: {
     firstName: string;

@@ -284,7 +284,12 @@ export class BookingController {
       needInvoice: body.guestInfo?.needInvoice,
       company: body.guestInfo?.company,
     };
-    const result = await this.bookingService.confirmHold(holdId, guest);
+    const result = await this.bookingService.confirmHold(
+      holdId,
+      guest,
+      req.user?.userId,
+      body.bookingMeta,
+    );
     const r = result as any;
     this.logger.log(
       `[FLOW] ⑥ CONFIRM slug=${slug} → status=${r.status} code=${r.confirmationCode || '-'} paymentRequired=${r.paymentRequired ?? false} paymentType=${r.paymentType || '-'}`,

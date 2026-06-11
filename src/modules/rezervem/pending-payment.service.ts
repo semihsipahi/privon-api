@@ -15,6 +15,7 @@ export class PendingPaymentService {
   async create(data: {
     sessionId: string;
     slug: string;
+    userId?: string;
     guestInfo: any;
     bookingMeta?: any;
     status?: string;
@@ -23,6 +24,7 @@ export class PendingPaymentService {
     return this.model.create({
       sessionId: data.sessionId,
       slug: data.slug,
+      userId: data.userId,
       guestInfo: data.guestInfo,
       bookingMeta: data.bookingMeta,
       status: data.status ?? 'pending',

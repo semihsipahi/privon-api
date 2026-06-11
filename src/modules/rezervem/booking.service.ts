@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RezervemHttpService } from './rezervem-http.service';
@@ -165,6 +165,13 @@ export class BookingService {
         taxNumber?: string;
       };
     },
+    userId?: string,
+    bookingMeta?: {
+      pax: number;
+      date: string;
+      time: string;
+      areaName?: string;
+    },
   ) {
     const result: any = await this.rezervemHttp.confirmHold(holdId, guestInfo);
 
@@ -177,7 +184,9 @@ export class BookingService {
           .create({
             sessionId,
             slug: holdId.split('::')[0],
+            userId,
             guestInfo,
+            bookingMeta,
             status: 'pending',
           })
           .catch((err) =>
@@ -300,6 +309,29 @@ export class BookingService {
       this.logger.log(
         `[payment/callback] sessionId=${sessionId} → Finalized, code=${(finalResult as any)?.confirmationCode ?? '-'}`,
       );
+
+      // Save reservation to MongoDB after successful payment
+      if (pending.userId && pending.bookingMeta) {
+        try {
+          await this.saveRezervemReservation(pending.userId, slug, {
+            pax: pending.bookingMeta.pax,
+            date: pending.bookingMeta.date,
+            time: pending.bookingMeta.time,
+            areaName: pending.bookingMeta.areaName,
+            note: pending.guestInfo.note,
+            confirmationCode: (finalResult as any)?.confirmationCode,
+            rezervemId: (finalResult as any)?.reservationId,
+          });
+          this.logger.log(
+            `[payment/callback] sessionId=${sessionId} → reservation saved to DB`,
+          );
+        } catch (saveErr: any) {
+          this.logger.error(
+            `[payment/callback] sessionId=${sessionId} → DB save failed: ${saveErr.message}`,
+          );
+        }
+      }
+
       return {
         success: true,
         message: 'Ödemeniz alındı, rezervasyonunuz onaylandı.',
@@ -338,10 +370,12 @@ export class BookingService {
       .select('_id')
       .lean();
     if (!restaurant) {
-      this.logger.warn(
-        `saveRezervemReservation: restaurant not found for slug=${slug}`,
+      this.logger.error(
+        `saveRezervemReservation: restaurant not found for slug=${slug} — rezervasyon Rezervemde olustu ama MongoDB ye kaydedilemedi. Admin panelden restoranin rezervemSlug alanini kontrol edin.`,
       );
-      return null;
+      throw new NotFoundException(
+        `Restoran slug=${slug} bulunamadi. DB kaydi atlandi.`,
+      );
     }
     return this.reservationService.saveRezervemReservation(userId, {
       restaurantId: restaurant._id.toString(),
