@@ -17,6 +17,13 @@ export class LegalService {
     return this.legalDocumentModel.find().sort({ type: 1, version: -1 }).exec();
   }
 
+  async findActiveTypes(): Promise<LegalDocType[]> {
+    const docs = await this.legalDocumentModel
+      .distinct('type', { isActive: true })
+      .exec();
+    return docs as LegalDocType[];
+  }
+
   async findActiveByType(type: LegalDocType): Promise<LegalDocument> {
     const doc = await this.legalDocumentModel
       .findOne({ type, isActive: true })

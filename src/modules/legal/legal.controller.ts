@@ -124,6 +124,13 @@ class UpdateLegalDocumentDto {
 export class LegalController {
   constructor(private readonly legalService: LegalService) {}
 
+  @Public()
+  @Get('documents/types')
+  @ApiOperation({ summary: 'Aktif belge türlerini listele (Public)' })
+  async findActiveTypes() {
+    return this.legalService.findActiveTypes();
+  }
+
   @Get('documents')
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)
