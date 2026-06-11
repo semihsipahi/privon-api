@@ -7,7 +7,12 @@ export class RolesGuard implements CanActivate {
   private readonly roleCompatibilityMap: Record<Role, Role[]> = {
     [Role.SuperAdmin]: [Role.SuperAdmin],
     [Role.RestaurantOwner]: [Role.RestaurantOwner],
-    [Role.User]: [Role.User, Role.TrialUser, Role.PremiumUser, Role.RestaurantOwner],
+    [Role.User]: [
+      Role.User,
+      Role.TrialUser,
+      Role.PremiumUser,
+      Role.RestaurantOwner,
+    ],
     [Role.PremiumUser]: [Role.PremiumUser],
     [Role.TrialUser]: [Role.TrialUser],
   };
@@ -20,8 +25,9 @@ export class RolesGuard implements CanActivate {
   }
 
   private hasRequiredRole(userRole: Role, requiredRole: Role): boolean {
-    const compatibleRoles =
-      this.roleCompatibilityMap[requiredRole] || [requiredRole];
+    const compatibleRoles = this.roleCompatibilityMap[requiredRole] || [
+      requiredRole,
+    ];
     return compatibleRoles.includes(userRole);
   }
 
@@ -37,7 +43,9 @@ export class RolesGuard implements CanActivate {
     const userRoles = this.toRoleList(user?.role as Role | Role[] | undefined);
 
     return requiredRoles.some((requiredRole) =>
-      userRoles.some((userRole) => this.hasRequiredRole(userRole, requiredRole)),
+      userRoles.some((userRole) =>
+        this.hasRequiredRole(userRole, requiredRole),
+      ),
     );
   }
 }

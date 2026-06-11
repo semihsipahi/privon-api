@@ -25,15 +25,15 @@ export function parseRefineFilters(
 
     // Refine operator mapping
     const operatorSuffixes = {
-      '_ne': '$ne',
-      '_lt': '$lt',
-      '_lte': '$lte',
-      '_gt': '$gt',
-      '_gte': '$gte',
-      '_like': '$regex',
+      _ne: '$ne',
+      _lt: '$lt',
+      _lte: '$lte',
+      _gt: '$gt',
+      _gte: '$gte',
+      _like: '$regex',
     };
 
-    Object.keys(queryParams).forEach(key => {
+    Object.keys(queryParams).forEach((key) => {
       // Pagination, sort ve diğer meta parametreleri atla
       if (['_start', '_end', '_sort', '_order'].includes(key)) {
         return;
@@ -43,7 +43,7 @@ export function parseRefineFilters(
 
       // q parametresi - full text search
       if (key === 'q') {
-        mongoQuery.$or = searchFields.map(field => ({
+        mongoQuery.$or = searchFields.map((field) => ({
           [field]: { $regex: value, $options: 'i' },
         }));
         return;

@@ -11,7 +11,11 @@ export class ReferralCode extends Document {
   @Prop({ required: true, enum: ReferralCodeType })
   type: ReferralCodeType;
 
-  @Prop({ required: true, enum: ReferralCodeStatus, default: ReferralCodeStatus.Active })
+  @Prop({
+    required: true,
+    enum: ReferralCodeStatus,
+    default: ReferralCodeStatus.Active,
+  })
   status: ReferralCodeStatus;
 
   @Prop()
@@ -29,7 +33,10 @@ export class ReferralCode extends Document {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   createdBy: MongooseSchema.Types.ObjectId;
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }], default: [] })
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }],
+    default: [],
+  })
   usedBy: MongooseSchema.Types.ObjectId[];
 }
 

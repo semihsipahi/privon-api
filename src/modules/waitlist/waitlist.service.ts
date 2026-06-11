@@ -37,7 +37,9 @@ export class WaitlistService extends ResourceService<
       $or: [{ email: dto.email }, { phoneNumber: dto.phoneNumber }],
     });
     if (existing) {
-      throw new ConflictException('Bu e-posta veya telefon numarası zaten kayıtlı.');
+      throw new ConflictException(
+        'Bu e-posta veya telefon numarası zaten kayıtlı.',
+      );
     }
 
     let waitlistEntry: Waitlist;
@@ -149,13 +151,17 @@ export class WaitlistService extends ResourceService<
   ) {
     const update: any = { status };
     if (statusNote !== undefined) update.statusNote = statusNote;
-    const entry = await this.waitlistModel.findByIdAndUpdate(id, update, { new: true }).lean();
+    const entry = await this.waitlistModel
+      .findByIdAndUpdate(id, update, { new: true })
+      .lean();
     if (!entry) throw new Error('Başvuru bulunamadı.');
 
     // "Onaylandı" seçildiğinde kullanıcı hesabını otomatik oluştur
     if (status === 'approved') {
       const normalized = normalizePhone(entry.phoneNumber);
-      const phoneExists = await this.userModel.findOne({ phoneNumber: normalized });
+      const phoneExists = await this.userModel.findOne({
+        phoneNumber: normalized,
+      });
       if (!phoneExists) {
         const fullName = `${entry.firstName} ${entry.lastName}`.trim();
         // Email başka kullanıcıda varsa emailsiz oluştur
@@ -176,10 +182,14 @@ export class WaitlistService extends ResourceService<
           isAdminCreated: true,
         });
         await user.save();
-        this.logger.log(`Waitlist onayı: kullanıcı oluşturuldu → ${normalized}`);
+        this.logger.log(
+          `Waitlist onayı: kullanıcı oluşturuldu → ${normalized}`,
+        );
         return { id: entry._id, status: entry.status, userCreated: true };
       } else {
-        this.logger.log(`Waitlist onayı: kullanıcı zaten mevcut → ${normalized}`);
+        this.logger.log(
+          `Waitlist onayı: kullanıcı zaten mevcut → ${normalized}`,
+        );
         return { id: entry._id, status: entry.status, userCreated: false };
       }
     }

@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { FilterOption, FilterOptionSchema } from '../../models/filter-option.schema';
+import {
+  FilterOption,
+  FilterOptionSchema,
+} from '../../models/filter-option.schema';
 import { FilterOptionController } from './filter-option.controller';
 import { FilterOptionService } from './filter-option.service';
 

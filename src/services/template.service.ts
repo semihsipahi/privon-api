@@ -13,16 +13,21 @@ export class TemplateService {
   }
 
   private loadTemplates() {
-    const templatesDir = path.join(process.cwd(), 'src', 'helpers','mail-html-contents');
+    const templatesDir = path.join(
+      process.cwd(),
+      'src',
+      'helpers',
+      'mail-html-contents',
+    );
     const templateFiles = fs.readdirSync(templatesDir);
-    
+
     templateFiles
-      .filter(file => file.endsWith('.hbs'))
-      .forEach(file => {
+      .filter((file) => file.endsWith('.hbs'))
+      .forEach((file) => {
         const templateName = file.replace('.hbs', '');
         const templatePath = path.join(templatesDir, file);
         const templateContent = fs.readFileSync(templatePath, 'utf8');
-        
+
         this.templates.set(templateName, Handlebars.compile(templateContent));
       });
   }
@@ -33,7 +38,7 @@ export class TemplateService {
 
   render(templateName: string, data: any): string {
     const template = this.templates.get(templateName);
-    
+
     if (!template) {
       throw new Error(`Template '${templateName}' bulunamadı`);
     }

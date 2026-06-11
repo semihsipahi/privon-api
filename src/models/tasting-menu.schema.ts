@@ -10,11 +10,16 @@ export class TastingMenuCourse {
   description?: string;
 }
 
-export const TastingMenuCourseSchema = SchemaFactory.createForClass(TastingMenuCourse);
+export const TastingMenuCourseSchema =
+  SchemaFactory.createForClass(TastingMenuCourse);
 
 @Schema({ timestamps: true })
 export class TastingMenu extends Document {
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Restaurant', required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'Restaurant',
+    required: true,
+  })
   restaurantId: MongooseSchema.Types.ObjectId;
 
   @Prop({ required: true })

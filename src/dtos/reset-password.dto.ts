@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, Length, Matches, MinLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  Length,
+  Matches,
+  MinLength,
+} from 'class-validator';
 
 export class ForgotPasswordDto {
   @ApiProperty({
@@ -10,7 +16,8 @@ export class ForgotPasswordDto {
   @IsString({ message: 'Telefon numarası bir metin olmalıdır.' })
   @IsNotEmpty({ message: 'Telefon numarası boş bırakılamaz.' })
   @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
+    message:
+      'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
   })
   phoneNumber: string;
 }
@@ -24,7 +31,8 @@ export class VerifyResetCodeDto {
   @IsString({ message: 'Telefon numarası bir metin olmalıdır.' })
   @IsNotEmpty({ message: 'Telefon numarası boş bırakılamaz.' })
   @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
+    message:
+      'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
   })
   phoneNumber: string;
 
@@ -41,7 +49,8 @@ export class VerifyResetCodeDto {
 
 export class ResetPasswordDto {
   @ApiProperty({
-    description: 'Şifre sıfırlama tokenı (verify-reset-code endpointinden döner)',
+    description:
+      'Şifre sıfırlama tokenı (verify-reset-code endpointinden döner)',
     required: true,
   })
   @IsString({ message: 'Token bir metin olmalıdır.' })

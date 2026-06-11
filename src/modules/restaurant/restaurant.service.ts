@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
@@ -62,14 +66,21 @@ export class RestaurantService extends ResourceService<
   ): Promise<{ _id: string; name: string } | null> {
     if (!id || !Types.ObjectId.isValid(id)) return null;
     const cat = await this.categoryModel.findById(id).select('name').lean();
-    return cat ? { _id: String((cat as any)._id), name: (cat as any).name } : null;
+    return cat
+      ? { _id: String((cat as any)._id), name: (cat as any).name }
+      : null;
   }
 
   private async resolveCategoryByName(
     name: string,
   ): Promise<{ _id: string; name: string } | null> {
-    const cat = await this.categoryModel.findOne({ name }).select('name').lean();
-    return cat ? { _id: String((cat as any)._id), name: (cat as any).name } : null;
+    const cat = await this.categoryModel
+      .findOne({ name })
+      .select('name')
+      .lean();
+    return cat
+      ? { _id: String((cat as any)._id), name: (cat as any).name }
+      : null;
   }
 
   async getPublicRestaurantsListFromRezervem(filters: {
@@ -89,11 +100,17 @@ export class RestaurantService extends ResourceService<
       if (!category) return { data: [], total: 0 };
 
       const [venues, total] = await Promise.all([
-        this.rezervemVenueService.findActiveByCategoryKey(category.name, limit, start),
+        this.rezervemVenueService.findActiveByCategoryKey(
+          category.name,
+          limit,
+          start,
+        ),
         this.rezervemVenueService.countActiveByCategoryKey(category.name),
       ]);
       return {
-        data: venues.map((v) => mapRezervemToApiRestaurant(v as any, category, true)),
+        data: venues.map((v) =>
+          mapRezervemToApiRestaurant(v as any, category, true),
+        ),
         total,
       };
     }
@@ -107,7 +124,9 @@ export class RestaurantService extends ResourceService<
     // Kategori bilgisini her venue için ayrıca çöz
     const data = await Promise.all(
       venues.map(async (v: any) => {
-        const cat = v.categoryKey ? await this.resolveCategoryByName(v.categoryKey) : null;
+        const cat = v.categoryKey
+          ? await this.resolveCategoryByName(v.categoryKey)
+          : null;
         return mapRezervemToApiRestaurant(v, cat, true);
       }),
     );
@@ -133,11 +152,9 @@ export class RestaurantService extends ResourceService<
     id: string,
     venueAreaImages: { areaId: string; areaName: string; imageUrl: string }[],
   ): Promise<any> {
-    const restaurant = await this.restaurantModel.findByIdAndUpdate(
-      id,
-      { $set: { venueAreaImages } },
-      { new: true },
-    ).lean();
+    const restaurant = await this.restaurantModel
+      .findByIdAndUpdate(id, { $set: { venueAreaImages } }, { new: true })
+      .lean();
 
     if (!restaurant) {
       throw new NotFoundException('Restoran bulunamadı');
@@ -147,19 +164,29 @@ export class RestaurantService extends ResourceService<
   }
 
   async delete(id: string) {
-    const restaurant = await this.restaurantModel.findById(id).select('rezervemSlug').lean();
+    const restaurant = await this.restaurantModel
+      .findById(id)
+      .select('rezervemSlug')
+      .lean();
     const result = await this.restaurantModel.findByIdAndDelete(id);
     if ((restaurant as any)?.rezervemSlug) {
-      await this.rezervemVenueService.setAdminExcluded((restaurant as any).rezervemSlug, true);
+      await this.rezervemVenueService.setAdminExcluded(
+        (restaurant as any).rezervemSlug,
+        true,
+      );
     }
     return result;
   }
 
   async create(data: CreateRestaurantDto, session?: any) {
     if (data.phone) {
-      const existingRestaurant = await this.restaurantModel.findOne({ phone: data.phone });
+      const existingRestaurant = await this.restaurantModel.findOne({
+        phone: data.phone,
+      });
       if (existingRestaurant) {
-        throw new BadRequestException('Bu telefon numarası ile kayıtlı bir restoran zaten var.');
+        throw new BadRequestException(
+          'Bu telefon numarası ile kayıtlı bir restoran zaten var.',
+        );
       }
     }
     return super.create(data, session);
@@ -208,7 +235,7 @@ export class RestaurantService extends ResourceService<
         ...restaurant,
         distance,
         isFavorite,
-      }
+      },
     };
   }
 
@@ -312,7 +339,9 @@ export class RestaurantService extends ResourceService<
     }
 
     if (categories) {
-      const categoryIds = categories.split(',').map(id => new Types.ObjectId(id.trim()));
+      const categoryIds = categories
+        .split(',')
+        .map((id) => new Types.ObjectId(id.trim()));
       matchStage.categories = { $in: categoryIds };
     }
 
@@ -323,14 +352,20 @@ export class RestaurantService extends ResourceService<
     }
 
     if (cuisineTypes) {
-      matchStage.cuisineTypes = { $in: cuisineTypes.split(',').map((t) => t.trim()) };
+      matchStage.cuisineTypes = {
+        $in: cuisineTypes.split(',').map((t) => t.trim()),
+      };
     }
 
     if (atmosphereTypes) {
-      matchStage.atmosphereTypes = { $in: atmosphereTypes.split(',').map((t) => t.trim()) };
+      matchStage.atmosphereTypes = {
+        $in: atmosphereTypes.split(',').map((t) => t.trim()),
+      };
     }
     if (collectionTypes) {
-      matchStage.collectionTypes = { $in: collectionTypes.split(',').map((t) => t.trim()) };
+      matchStage.collectionTypes = {
+        $in: collectionTypes.split(',').map((t) => t.trim()),
+      };
     }
 
     if (Object.keys(matchStage).length > 0) {
@@ -439,12 +474,12 @@ export class RestaurantService extends ResourceService<
         location: 1,
         distance: hasUserLocation
           ? {
-            $cond: {
-              if: { $gt: ['$distance', 0] },
-              then: { $round: [{ $divide: ['$distance', 1000] }, 2] },
-              else: null,
-            },
-          }
+              $cond: {
+                if: { $gt: ['$distance', 0] },
+                then: { $round: [{ $divide: ['$distance', 1000] }, 2] },
+                else: null,
+              },
+            }
           : null,
         workingHours: 1,
         cuisineTypes: 1,
@@ -538,8 +573,11 @@ export class RestaurantService extends ResourceService<
     };
   }
 
-
-  async getStats(restaurantId: string, reservationDate?: string, salesDate?: string) {
+  async getStats(
+    restaurantId: string,
+    reservationDate?: string,
+    salesDate?: string,
+  ) {
     const now = new Date(Date.now() + 3 * 60 * 60 * 1000); // UTC+3
     const today = reservationDate || now.toISOString().split('T')[0];
     const currentMonth = salesDate || now.toISOString().slice(0, 7);
@@ -555,51 +593,69 @@ export class RestaurantService extends ResourceService<
 
     const restaurantObjectId = new Types.ObjectId(restaurantId);
 
-    const [
-      todayCount,
-      yesterdayCount,
-      turnoverResults,
-      ratingResults,
-    ] = await Promise.all([
-      this.reservationModel.countDocuments({ restaurant: restaurantObjectId, date: today }),
-      this.reservationModel.countDocuments({ restaurant: restaurantObjectId, date: yesterdayStr }),
+    const [todayCount, yesterdayCount, turnoverResults, ratingResults] =
+      await Promise.all([
+        this.reservationModel.countDocuments({
+          restaurant: restaurantObjectId,
+          date: today,
+        }),
+        this.reservationModel.countDocuments({
+          restaurant: restaurantObjectId,
+          date: yesterdayStr,
+        }),
 
-      this.reservationModel.aggregate([
-        {
-          $match: {
-            restaurant: restaurantObjectId,
-            date: { $regex: `^(${currentMonth}|${prevMonth})` },
-            status: { $in: ['seated', 'completed'] },
+        this.reservationModel.aggregate([
+          {
+            $match: {
+              restaurant: restaurantObjectId,
+              date: { $regex: `^(${currentMonth}|${prevMonth})` },
+              status: { $in: ['seated', 'completed'] },
+            },
           },
-        },
-        {
-          $group: {
-            _id: { $substr: ['$date', 0, 7] },
-            total: { $sum: '$finalAmount' },
+          {
+            $group: {
+              _id: { $substr: ['$date', 0, 7] },
+              total: { $sum: '$finalAmount' },
+            },
           },
-        },
-      ]),
+        ]),
 
-      this.reviewModel.aggregate([
-        { $match: { restaurant: restaurantObjectId, isActive: true } },
-        {
-          $facet: {
-            overall: [{ $group: { _id: null, avg: { $avg: '$rating' } } }],
-            currentMonth: [
-              { $match: { createdAt: { $gte: new Date(`${currentMonth}-01`), $lt: nextMonthStart } } },
-              { $group: { _id: null, avg: { $avg: '$rating' } } },
-            ],
-            prevMonth: [
-              { $match: { createdAt: { $gte: prevMonthStart, $lt: new Date(`${currentMonth}-01`) } } },
-              { $group: { _id: null, avg: { $avg: '$rating' } } },
-            ],
+        this.reviewModel.aggregate([
+          { $match: { restaurant: restaurantObjectId, isActive: true } },
+          {
+            $facet: {
+              overall: [{ $group: { _id: null, avg: { $avg: '$rating' } } }],
+              currentMonth: [
+                {
+                  $match: {
+                    createdAt: {
+                      $gte: new Date(`${currentMonth}-01`),
+                      $lt: nextMonthStart,
+                    },
+                  },
+                },
+                { $group: { _id: null, avg: { $avg: '$rating' } } },
+              ],
+              prevMonth: [
+                {
+                  $match: {
+                    createdAt: {
+                      $gte: prevMonthStart,
+                      $lt: new Date(`${currentMonth}-01`),
+                    },
+                  },
+                },
+                { $group: { _id: null, avg: { $avg: '$rating' } } },
+              ],
+            },
           },
-        },
-      ]),
-    ]);
+        ]),
+      ]);
 
-    const currentTurnover = turnoverResults.find(r => r._id === currentMonth)?.total || 0;
-    const prevTurnover = turnoverResults.find(r => r._id === prevMonth)?.total || 0;
+    const currentTurnover =
+      turnoverResults.find((r) => r._id === currentMonth)?.total || 0;
+    const prevTurnover =
+      turnoverResults.find((r) => r._id === prevMonth)?.total || 0;
 
     const overallRating = +(ratingResults[0]?.overall[0]?.avg?.toFixed(1) || 0);
     const currentMonthRating = ratingResults[0]?.currentMonth[0]?.avg || 0;
@@ -610,7 +666,8 @@ export class RestaurantService extends ResourceService<
       return curr > 0 ? 100 : 0;
     };
 
-    const getTrend = (change: number) => change > 0 ? 'up' : change < 0 ? 'down' : 'stable';
+    const getTrend = (change: number) =>
+      change > 0 ? 'up' : change < 0 ? 'down' : 'stable';
 
     const dailyChange = calcChange(todayCount, yesterdayCount);
     const turnoverChange = calcChange(currentTurnover, prevTurnover);
@@ -680,72 +737,98 @@ export class RestaurantService extends ResourceService<
     const now = new Date();
     const currentMonthStr = now.toISOString().slice(0, 7); // "YYYY-MM"
 
-    const [restaurant, stats, latestReservations, totalHistory] = await Promise.all([
-      // İşletme temel bilgileri
-      this.restaurantModel.findById(restaurantId)
-        .populate('owner', 'fullName email phoneNumber')
-        .populate('categories', 'name')
-        .lean(),
+    const [restaurant, stats, latestReservations, totalHistory] =
+      await Promise.all([
+        // İşletme temel bilgileri
+        this.restaurantModel
+          .findById(restaurantId)
+          .populate('owner', 'fullName email phoneNumber')
+          .populate('categories', 'name')
+          .lean(),
 
-      // Finansal ve rezervasyon istatistikleri
-      this.reservationModel.aggregate([
-        { $match: { restaurant: restaurantObjectId, status: { $ne: ReservationStatus.REJECTED } } },
-        {
-          $group: {
-            _id: null,
-            totalReservations: { $sum: 1 },
-            totalTurnover: { 
-              $sum: { $cond: [{ $eq: ['$status', ReservationStatus.COMPLETED] }, '$finalAmount', 0] }
+        // Finansal ve rezervasyon istatistikleri
+        this.reservationModel.aggregate([
+          {
+            $match: {
+              restaurant: restaurantObjectId,
+              status: { $ne: ReservationStatus.REJECTED },
             },
-            monthlyReservations: {
-              $sum: {
-                $cond: [
-                  { $regexMatch: { input: '$date', regex: `^${currentMonthStr}` } },
-                  1,
-                  0
-                ]
-              }
+          },
+          {
+            $group: {
+              _id: null,
+              totalReservations: { $sum: 1 },
+              totalTurnover: {
+                $sum: {
+                  $cond: [
+                    { $eq: ['$status', ReservationStatus.COMPLETED] },
+                    '$finalAmount',
+                    0,
+                  ],
+                },
+              },
+              monthlyReservations: {
+                $sum: {
+                  $cond: [
+                    {
+                      $regexMatch: {
+                        input: '$date',
+                        regex: `^${currentMonthStr}`,
+                      },
+                    },
+                    1,
+                    0,
+                  ],
+                },
+              },
+              monthlyTurnover: {
+                $sum: {
+                  $cond: [
+                    {
+                      $and: [
+                        {
+                          $regexMatch: {
+                            input: '$date',
+                            regex: `^${currentMonthStr}`,
+                          },
+                        },
+                        { $eq: ['$status', ReservationStatus.COMPLETED] },
+                      ],
+                    },
+                    '$finalAmount',
+                    0,
+                  ],
+                },
+              },
             },
-            monthlyTurnover: {
-              $sum: {
-                $cond: [
-                  { 
-                    $and: [
-                      { $regexMatch: { input: '$date', regex: `^${currentMonthStr}` } },
-                      { $eq: ['$status', ReservationStatus.COMPLETED] }
-                    ]
-                  },
-                  '$finalAmount',
-                  0
-                ]
-              }
-            }
-          }
-        }
-      ]),
+          },
+        ]),
 
-      // Son rezervasyonlar (paginated)
-      this.reservationModel.find({ restaurant: restaurantObjectId })
-        .populate('customer', 'fullName phoneNumber')
-        .populate('slot', 'time discount')
-        .sort({ date: -1, createdAt: -1 })
-        .skip(_start)
-        .limit(limit)
-        .lean(),
+        // Son rezervasyonlar (paginated)
+        this.reservationModel
+          .find({ restaurant: restaurantObjectId })
+          .populate('customer', 'fullName phoneNumber')
+          .populate('slot', 'time discount')
+          .sort({ date: -1, createdAt: -1 })
+          .skip(_start)
+          .limit(limit)
+          .lean(),
 
-      // Toplam geçmiş sayısı
-      this.reservationModel.countDocuments({ restaurant: restaurantObjectId })
-    ]);
+        // Toplam geçmiş sayısı
+        this.reservationModel.countDocuments({
+          restaurant: restaurantObjectId,
+        }),
+      ]);
 
     if (!restaurant) {
       throw new NotFoundException('İşletme bulunamadı');
     }
 
-    const aggregatedStats = stats[0] || { 
-      totalReservations: 0, 
-      totalTurnover: 0, 
-      monthlyReservations: 0, 
-      monthlyTurnover: 0 
+    const aggregatedStats = stats[0] || {
+      totalReservations: 0,
+      totalTurnover: 0,
+      monthlyReservations: 0,
+      monthlyTurnover: 0,
     };
 
     return {
@@ -776,8 +859,8 @@ export class RestaurantService extends ResourceService<
           personCount: res.personCount,
           time: res.slot?.time || '',
         })),
-        total: totalHistory
-      }
+        total: totalHistory,
+      },
     };
   }
 }

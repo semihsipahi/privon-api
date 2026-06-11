@@ -3,7 +3,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { RestaurantService } from './restaurant.service';
 import { RestaurantController } from './restaurant.controller';
 import { Restaurant, RestaurantSchema } from '../../models/restaurant.schema';
-import { Reservation, ReservationSchema } from '../../models/reservation.schema';
+import {
+  Reservation,
+  ReservationSchema,
+} from '../../models/reservation.schema';
 import { Review, ReviewSchema } from '../../models/review.schema';
 import {
   RestaurantCategory,

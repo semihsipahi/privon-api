@@ -25,7 +25,10 @@ import {
   ApiTags,
   ApiQuery,
 } from '@nestjs/swagger';
-import { CreateRestaurantDto, VenueAreaImageDto } from 'src/dtos/create-restaurant.dto';
+import {
+  CreateRestaurantDto,
+  VenueAreaImageDto,
+} from 'src/dtos/create-restaurant.dto';
 import { UpdateRestaurantDto } from 'src/dtos/update-restaurant.dto';
 import { LocationQueryDto } from 'src/dtos/location-query.dto';
 import { RestaurantListQueryDto } from 'src/dtos/restaurant-list-query.dto';
@@ -36,7 +39,7 @@ export class RestaurantController {
   constructor(
     private readonly restaurantService: RestaurantService,
     private readonly userService: UserService,
-  ) { }
+  ) {}
 
   @Get()
   @ApiBearerAuth()
@@ -82,16 +85,32 @@ export class RestaurantController {
   @ApiOperation({
     summary: 'Restoran istatistiklerini getir',
   })
-  @ApiQuery({ name: 'restaurantId', required: false, description: 'Restoran ID (SuperAdmin için)' })
-  @ApiQuery({ name: 'reservationDate', required: false, description: 'Günlük rezervasyon tarihi (YYYY-MM-DD)' })
-  @ApiQuery({ name: 'salesDate', required: false, description: 'Aylık ciro ayı (YYYY-MM)' })
+  @ApiQuery({
+    name: 'restaurantId',
+    required: false,
+    description: 'Restoran ID (SuperAdmin için)',
+  })
+  @ApiQuery({
+    name: 'reservationDate',
+    required: false,
+    description: 'Günlük rezervasyon tarihi (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'salesDate',
+    required: false,
+    description: 'Aylık ciro ayı (YYYY-MM)',
+  })
   async getStats(
     @Req() req: any,
     @Query('restaurantId') restaurantId?: string,
     @Query('reservationDate') reservationDate?: string,
     @Query('salesDate') salesDate?: string,
   ) {
-    return await this.restaurantService.getStats(req.user.role === Role.SuperAdmin ? restaurantId : req.user.restaurantId, reservationDate, salesDate);
+    return await this.restaurantService.getStats(
+      req.user.role === Role.SuperAdmin ? restaurantId : req.user.restaurantId,
+      reservationDate,
+      salesDate,
+    );
   }
 
   @Get('stats/categories')
@@ -109,10 +128,19 @@ export class RestaurantController {
   @Roles(Role.SuperAdmin)
   @ApiOperation({
     summary: 'İşletme özet bilgilerini getir (Süper Admin)',
-    description: 'İşletmenin temel bilgileri, cirosu, rezervasyon sayıları ve geçmişini döner.',
+    description:
+      'İşletmenin temel bilgileri, cirosu, rezervasyon sayıları ve geçmişini döner.',
   })
-  @ApiQuery({ name: '_start', required: false, description: 'Geçmiş için başlangıç index' })
-  @ApiQuery({ name: '_end', required: false, description: 'Geçmiş için bitiş index' })
+  @ApiQuery({
+    name: '_start',
+    required: false,
+    description: 'Geçmiş için başlangıç index',
+  })
+  @ApiQuery({
+    name: '_end',
+    required: false,
+    description: 'Geçmiş için bitiş index',
+  })
   async getSummary(@Param('id') id: string, @Query() query: any) {
     return await this.restaurantService.getRestaurantSummary(id, query);
   }
@@ -152,11 +180,17 @@ export class RestaurantController {
   @ApiOperation({
     summary: 'Yeni bir restoran oluştur (Süper Admin)',
   })
-  async create(@Body() createRestaurantDto: CreateRestaurantDto, @Req() req: any) {
+  async create(
+    @Body() createRestaurantDto: CreateRestaurantDto,
+    @Req() req: any,
+  ) {
     // Super Admin yeni kullanıcı oluşturarak restoran ekleyebilir
     if (!createRestaurantDto.owner && createRestaurantDto.phone) {
       const ownerResult = await this.userService.prepareRestaurantOwner({
-        fullName: createRestaurantDto.ownerName || createRestaurantDto.name || 'Restoran Sahibi',
+        fullName:
+          createRestaurantDto.ownerName ||
+          createRestaurantDto.name ||
+          'Restoran Sahibi',
         email: createRestaurantDto.ownerEmail || createRestaurantDto.email,
         phoneNumber: createRestaurantDto.phone,
       });
@@ -164,7 +198,9 @@ export class RestaurantController {
     }
 
     if (!createRestaurantDto.phone && !createRestaurantDto.owner) {
-      throw new BadRequestException('Telefon numarası veya sahibi belirtilmelidir');
+      throw new BadRequestException(
+        'Telefon numarası veya sahibi belirtilmelidir',
+      );
     }
 
     return await this.restaurantService.create(createRestaurantDto);
@@ -190,12 +226,17 @@ export class RestaurantController {
   @Roles(Role.SuperAdmin, Role.RestaurantOwner)
   @UseGuards(ResourceOwnerGuard)
   @RequiresOwnership({ modelName: 'Restaurant', ownerField: 'owner' })
-  @ApiOperation({ summary: 'Salon görsellerini güncelle (Rezervem area ID → imageUrl)' })
+  @ApiOperation({
+    summary: 'Salon görsellerini güncelle (Rezervem area ID → imageUrl)',
+  })
   async updateVenueAreaImages(
     @Param('id') id: string,
     @Body() body: { venueAreaImages: VenueAreaImageDto[] },
   ) {
-    return await this.restaurantService.updateVenueAreaImages(id, body.venueAreaImages ?? []);
+    return await this.restaurantService.updateVenueAreaImages(
+      id,
+      body.venueAreaImages ?? [],
+    );
   }
 
   @Delete(':id')

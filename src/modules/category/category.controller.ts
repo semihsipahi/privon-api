@@ -1,12 +1,12 @@
 import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    Param,
-    Post,
-    Put,
-    Query,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -20,36 +20,36 @@ import { Public } from 'src/common/decorators/public.decorator';
 @ApiTags('Category')
 @Controller('category')
 export class CategoryController {
-    constructor(private readonly categoryService: CategoryService) { }
+  constructor(private readonly categoryService: CategoryService) {}
 
-    @Post()
-    @ApiBearerAuth()
-    @Roles(Role.SuperAdmin)
-    @ApiOperation({ summary: 'Kategori oluştur (SuperAdmin)' })
-    async create(@Body() createDto: CreateCategoryDto) {
-        return await this.categoryService.create(createDto as any);
-    }
+  @Post()
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({ summary: 'Kategori oluştur (SuperAdmin)' })
+  async create(@Body() createDto: CreateCategoryDto) {
+    return await this.categoryService.create(createDto as any);
+  }
 
-    @Get()
-    @Public()
-    @ApiOperation({ summary: 'Kategorileri listele (Public)' })
-    async list(@Query() query: GetCategoriesDto) {
-        return await this.categoryService.list(query);
-    }
+  @Get()
+  @Public()
+  @ApiOperation({ summary: 'Kategorileri listele (Public)' })
+  async list(@Query() query: GetCategoriesDto) {
+    return await this.categoryService.list(query);
+  }
 
-    @Put(':id')
-    @ApiBearerAuth()
-    @Roles(Role.SuperAdmin)
-    @ApiOperation({ summary: 'Kategori güncelle (SuperAdmin)' })
-    async update(@Param('id') id: string, @Body() updateDto: UpdateCategoryDto) {
-        return await this.categoryService.update(id, updateDto as any);
-    }
+  @Put(':id')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({ summary: 'Kategori güncelle (SuperAdmin)' })
+  async update(@Param('id') id: string, @Body() updateDto: UpdateCategoryDto) {
+    return await this.categoryService.update(id, updateDto as any);
+  }
 
-    @Delete(':id')
-    @ApiBearerAuth()
-    @Roles(Role.SuperAdmin)
-    @ApiOperation({ summary: 'Kategori sil (SuperAdmin)' })
-    async delete(@Param('id') id: string) {
-        return await this.categoryService.deleteCategory(id);
-    }
+  @Delete(':id')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({ summary: 'Kategori sil (SuperAdmin)' })
+  async delete(@Param('id') id: string) {
+    return await this.categoryService.deleteCategory(id);
+  }
 }

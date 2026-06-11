@@ -23,7 +23,13 @@ import {
   ApiTags,
   ApiQuery,
 } from '@nestjs/swagger';
-import { CreateUserDto, UpdateProfileDto, UpdateUserDto, ChangeUserStatusDto, CreateAdminUserDto } from 'src/dtos';
+import {
+  CreateUserDto,
+  UpdateProfileDto,
+  UpdateUserDto,
+  ChangeUserStatusDto,
+  CreateAdminUserDto,
+} from 'src/dtos';
 import { CustomException } from 'src/common/exceptions/custom.exception';
 
 @ApiTags('User')
@@ -33,7 +39,7 @@ export class UserController {
     private readonly userService: UserService,
     private readonly referralCodeService: ReferralCodeService,
     private readonly uploadService: UploadService,
-  ) { }
+  ) {}
 
   /**
    * Get current user info
@@ -45,7 +51,6 @@ export class UserController {
   async getMe(@Req() req: any) {
     return await this.userService.getMe(req.user.userId);
   }
-
 
   @Put('me')
   @ApiBearerAuth()
@@ -145,7 +150,7 @@ export class UserController {
     }
 
     return {
-      ...(user as any)?.toObject ? (user as any).toObject() : user,
+      ...((user as any)?.toObject ? (user as any).toObject() : user),
       networkTree,
     };
   }
@@ -168,7 +173,10 @@ export class UserController {
   @Post('admin-create')
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)
-  @ApiOperation({ summary: 'Admin: Telefon numarasıyla kullanıcı oluştur (şifresiz, ilk girişte kurulum)' })
+  @ApiOperation({
+    summary:
+      'Admin: Telefon numarasıyla kullanıcı oluştur (şifresiz, ilk girişte kurulum)',
+  })
   async adminCreate(@Body() dto: CreateAdminUserDto) {
     return await this.userService.adminCreateUser(dto);
   }
@@ -202,9 +210,14 @@ export class UserController {
   @Roles(Role.SuperAdmin)
   @ApiOperation({
     summary: 'Kullanıcıyı bloke et (SuperAdmin)',
-    description: 'Kullanıcıyı belirtilen süre veya tarihe kadar bloke eder (ör: 1w, 1m, permanent veya ISO tarih).',
+    description:
+      'Kullanıcıyı belirtilen süre veya tarihe kadar bloke eder (ör: 1w, 1m, permanent veya ISO tarih).',
   })
-  @ApiQuery({ name: 'duration', required: true, description: 'Süre veya tarih (ör: 1w, 1m, permanent veya 2024-12-31)' })
+  @ApiQuery({
+    name: 'duration',
+    required: true,
+    description: 'Süre veya tarih (ör: 1w, 1m, permanent veya 2024-12-31)',
+  })
   async ban(@Param('id') id: string, @Query('duration') duration: string) {
     return await this.userService.banUser(id, duration);
   }
@@ -214,9 +227,22 @@ export class UserController {
   @Roles(Role.SuperAdmin)
   @ApiOperation({
     summary: 'Kullanıcı blokesini kaldır (SuperAdmin)',
-    description: 'Kullanıcının blokesini kaldırır ve no-show geçmişini sıfırlar.',
+    description:
+      'Kullanıcının blokesini kaldırır ve no-show geçmişini sıfırlar.',
   })
   async unban(@Param('id') id: string) {
     return await this.userService.unbanUser(id);
+  }
+
+  @Post(':id/reset-legal-consent')
+  @ApiBearerAuth()
+  @Roles(Role.SuperAdmin)
+  @ApiOperation({
+    summary: 'Kullanıcının tüm yasal onaylarını sıfırla',
+    description:
+      'Kullanıcının terms, privacy, explicit consent, cookie policy, commercial consent onaylarını temizler. Mobilde tekrar onay akışına yönlendirilir.',
+  })
+  async resetLegalConsent(@Param('id') id: string) {
+    return await this.userService.resetLegalConsent(id);
   }
 }

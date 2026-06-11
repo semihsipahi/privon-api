@@ -31,7 +31,6 @@ export class Location {
 
   @Prop()
   district?: string; // ilçe
-
 }
 
 @Schema({ _id: false })

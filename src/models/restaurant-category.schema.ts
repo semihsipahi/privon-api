@@ -3,24 +3,24 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class RestaurantCategory extends Document {
-    @Prop({ required: true, unique: true })
-    name: string;
+  @Prop({ required: true, unique: true })
+  name: string;
 
-    @Prop()
-    nameEn: string;
+  @Prop()
+  nameEn: string;
 
-    @Prop()
-    description: string;
+  @Prop()
+  description: string;
 
-    @Prop()
-    descriptionEn: string;
+  @Prop()
+  descriptionEn: string;
 
-    @Prop()
-    visibleOnHomePage: boolean;
+  @Prop()
+  visibleOnHomePage: boolean;
 
-    @Prop()
-    order: number;
+  @Prop()
+  order: number;
 }
 
 export const RestaurantCategorySchema =
-    SchemaFactory.createForClass(RestaurantCategory);
+  SchemaFactory.createForClass(RestaurantCategory);

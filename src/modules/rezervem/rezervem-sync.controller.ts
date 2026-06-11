@@ -36,14 +36,18 @@ export class RezervemSyncController {
 
   @Get('status')
   @Roles(Role.SuperAdmin)
-  @ApiOperation({ summary: 'Rezervem cache durumu (toplam mekan, son sync vb.)' })
+  @ApiOperation({
+    summary: 'Rezervem cache durumu (toplam mekan, son sync vb.)',
+  })
   status() {
     return this.venueService.getStatus();
   }
 
   @Post('sync')
   @Roles(Role.SuperAdmin)
-  @ApiOperation({ summary: 'Rezervem mekanlarını manuel tetiklenen sync ile çek' })
+  @ApiOperation({
+    summary: 'Rezervem mekanlarını manuel tetiklenen sync ile çek',
+  })
   async sync() {
     return this.venueService.syncAll();
   }
@@ -52,11 +56,23 @@ export class RezervemSyncController {
 
   @Get('venues')
   @Roles(Role.SuperAdmin)
-  @ApiOperation({ summary: 'Rezervem cache mekan listesi (sayfalı, filtrelenebilir)' })
+  @ApiOperation({
+    summary: 'Rezervem cache mekan listesi (sayfalı, filtrelenebilir)',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'pageSize', required: false, type: Number, example: 20 })
-  @ApiQuery({ name: 'q', required: false, type: String, description: 'İsme göre arama' })
-  @ApiQuery({ name: 'categoryKey', required: false, type: String, description: 'Kategori anahtarı' })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    type: String,
+    description: 'İsme göre arama',
+  })
+  @ApiQuery({
+    name: 'categoryKey',
+    required: false,
+    type: String,
+    description: 'Kategori anahtarı',
+  })
   async listVenues(
     @Query('page') page = 1,
     @Query('pageSize') pageSize = 20,
@@ -73,8 +89,10 @@ export class RezervemSyncController {
 
   @Get('venues/:slug')
   @Roles(Role.SuperAdmin)
-  @ApiOperation({ summary: 'Rezervem venue detayı — alanlar (areas), etiketler dahil' })
-  @ApiParam({ name: 'slug', description: 'Mekan slug\'u', example: 'neolokal' })
+  @ApiOperation({
+    summary: 'Rezervem venue detayı — alanlar (areas), etiketler dahil',
+  })
+  @ApiParam({ name: 'slug', description: "Mekan slug'u", example: 'neolokal' })
   async getVenue(@Param('slug') slug: string) {
     return this.venueService.getBySlugForAdmin(slug);
   }
@@ -86,11 +104,11 @@ export class RezervemSyncController {
   @ApiOperation({
     summary: 'Rezervem mekanını kendi Restaurant koleksiyonuna aktar',
     description:
-      'Rezervem cache\'indeki mekanı, özelleştirilebilir bilgilerle birlikte ' +
+      "Rezervem cache'indeki mekanı, özelleştirilebilir bilgilerle birlikte " +
       '`restaurants` koleksiyonuna ekler. Mekan varsayılan olarak pasif (isActive=false) ' +
       'oluşturulur; admin aktifleştirmeden önce düzenleyebilir.',
   })
-  @ApiParam({ name: 'slug', description: 'Mekan slug\'u', example: 'neolokal' })
+  @ApiParam({ name: 'slug', description: "Mekan slug'u", example: 'neolokal' })
   async importVenue(
     @Param('slug') slug: string,
     @Body() dto: ImportRezervemVenueDto,
@@ -104,16 +122,19 @@ export class RezervemSyncController {
   @Get('image')
   @Public()
   @ApiOperation({
-    summary: 'Rezervem CDN görseli proxy — tarayıcı <img> için auth header ekler',
+    summary:
+      'Rezervem CDN görseli proxy — tarayıcı <img> için auth header ekler',
     description:
-      'Rezervem CDN URL\'sini alır, Bearer token + Referer ile sunucu tarafında çeker, ' +
-      'tarayıcıya aktarır. Sadece rezervem.com.tr domain\'lerine izin verilir.',
+      "Rezervem CDN URL'sini alır, Bearer token + Referer ile sunucu tarafında çeker, " +
+      "tarayıcıya aktarır. Sadece rezervem.com.tr domain'lerine izin verilir.",
   })
-  @ApiQuery({ name: 'url', required: true, type: String, description: 'Rezervem CDN URL (URL-encoded)' })
-  async proxyImage(
-    @Query('url') url: string,
-    @Res() reply: FastifyReply,
-  ) {
+  @ApiQuery({
+    name: 'url',
+    required: true,
+    type: String,
+    description: 'Rezervem CDN URL (URL-encoded)',
+  })
+  async proxyImage(@Query('url') url: string, @Res() reply: FastifyReply) {
     if (!url) {
       reply.code(400).send('url parametresi zorunlu');
       return;
@@ -134,12 +155,12 @@ export class RezervemSyncController {
   @Get('venues/:slug/bootstrap-raw')
   @Roles(Role.SuperAdmin)
   @ApiOperation({
-    summary: 'Rezervem API\'den canlı bootstrap çek (cache bypass)',
+    summary: "Rezervem API'den canlı bootstrap çek (cache bypass)",
     description:
-      'Rezervem Partner API\'sine doğrudan istek atar (MongoDB cache atlanır). ' +
-      'İmaj URL\'lerini ve gerçek veri yapısını debug etmek için kullanın.',
+      "Rezervem Partner API'sine doğrudan istek atar (MongoDB cache atlanır). " +
+      "İmaj URL'lerini ve gerçek veri yapısını debug etmek için kullanın.",
   })
-  @ApiParam({ name: 'slug', description: 'Mekan slug\'u', example: 'neolokal' })
+  @ApiParam({ name: 'slug', description: "Mekan slug'u", example: 'neolokal' })
   async rawBootstrap(@Param('slug') slug: string) {
     return this.http.getBootstrap(slug);
   }

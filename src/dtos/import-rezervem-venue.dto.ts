@@ -15,10 +15,12 @@ class ImportAwardDto {
   @IsString()
   iconUrl: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   name?: string;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   year?: number;
 }
 
@@ -29,7 +31,10 @@ class ImportWorkingPeriodDto {
 
 class ImportWorkingHoursDto {
   @IsOptional() @IsString() dayName?: string;
-  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ImportWorkingPeriodDto)
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImportWorkingPeriodDto)
   periods?: ImportWorkingPeriodDto[];
   @IsOptional() @IsBoolean() isClosed?: boolean;
 }
@@ -52,7 +57,10 @@ export class ImportRezervemVenueDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'MinIO\'ya yüklenmiş görsel URL listesi', type: [String] })
+  @ApiPropertyOptional({
+    description: "MinIO'ya yüklenmiş görsel URL listesi",
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -102,7 +110,8 @@ export class ImportRezervemVenueDto {
   cuisineTypes?: string[];
 
   @ApiPropertyOptional({
-    description: 'Çalışma saatleri — boş bırakılırsa salon vardiyalarından otomatik türetilir',
+    description:
+      'Çalışma saatleri — boş bırakılırsa salon vardiyalarından otomatik türetilir',
     type: [ImportWorkingHoursDto],
   })
   @IsOptional()
@@ -121,9 +130,10 @@ export class ImportRezervemVenueDto {
   @IsString()
   district?: string;
 
-  @ApiPropertyOptional({ description: 'Şartlar ve koşullar metni (Rezervem restoranları için)' })
+  @ApiPropertyOptional({
+    description: 'Şartlar ve koşullar metni (Rezervem restoranları için)',
+  })
   @IsOptional()
   @IsString()
   termsAndConditions?: string;
-
 }

@@ -25,7 +25,7 @@ import { UpdateReferralCodeDto } from 'src/dtos/update-referral-code.dto';
 @ApiTags('Referral Code')
 @Controller('referral-code')
 export class ReferralCodeController {
-  constructor(private readonly referralCodeService: ReferralCodeService) { }
+  constructor(private readonly referralCodeService: ReferralCodeService) {}
 
   // ============= PUBLIC ENDPOINT =============
 
@@ -37,7 +37,10 @@ export class ReferralCodeController {
       await this.referralCodeService.validateCode(code);
       return { valid: true, message: 'Davet kodu geçerli.' };
     } catch {
-      return { valid: false, message: 'Geçersiz veya kullanım hakkı dolmuş davet kodu.' };
+      return {
+        valid: false,
+        message: 'Geçersiz veya kullanım hakkı dolmuş davet kodu.',
+      };
     }
   }
 
@@ -61,7 +64,9 @@ export class ReferralCodeController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yeni davet kodu oluştur' })
   async generateCode(@Req() req: any) {
-    return await this.referralCodeService.generateUserReferralCode(req.user.userId);
+    return await this.referralCodeService.generateUserReferralCode(
+      req.user.userId,
+    );
   }
 
   // ============= ADMIN ONLY ENDPOINTS =============
@@ -69,11 +74,12 @@ export class ReferralCodeController {
   @Get('admin/user-network/:userId')
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)
-  @ApiOperation({ summary: 'Kullanıcının davet ağı (kim davet etti, kimi davet etti)' })
+  @ApiOperation({
+    summary: 'Kullanıcının davet ağı (kim davet etti, kimi davet etti)',
+  })
   async getUserNetwork(@Param('userId') userId: string) {
     return await this.referralCodeService.getUserReferralNetwork(userId);
   }
-
 
   @Get()
   @ApiBearerAuth()
@@ -82,13 +88,20 @@ export class ReferralCodeController {
   @ApiQuery({ name: '_start', required: false, description: 'Başlangıç index' })
   @ApiQuery({ name: '_end', required: false, description: 'Bitiş index' })
   @ApiQuery({ name: '_sort', required: false, description: 'Sıralama alanı' })
-  @ApiQuery({ name: '_order', required: false, description: 'Sıralama yönü (asc/desc)' })
+  @ApiQuery({
+    name: '_order',
+    required: false,
+    description: 'Sıralama yönü (asc/desc)',
+  })
   @ApiQuery({ name: 'q', required: false, description: 'Arama' })
   async list(@Query() query: any) {
     return await this.referralCodeService.list(
       query,
       null,
-      [{ path: 'createdBy', select: 'fullName phoneNumber' }, { path: 'usedBy', select: 'fullName imageUrl' }],
+      [
+        { path: 'createdBy', select: 'fullName phoneNumber' },
+        { path: 'usedBy', select: 'fullName imageUrl' },
+      ],
       ['code', 'assignedTo'],
     );
   }
@@ -114,7 +127,10 @@ export class ReferralCodeController {
   @Roles(Role.SuperAdmin)
   @ApiOperation({ summary: 'Kurumsal davet kodu oluştur' })
   async createCorporate(@Body() dto: CreateReferralCodeDto, @Req() req: any) {
-    return await this.referralCodeService.createCorporateCode(dto, req.user.userId);
+    return await this.referralCodeService.createCorporateCode(
+      dto,
+      req.user.userId,
+    );
   }
 
   @Put(':id')

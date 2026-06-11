@@ -32,4 +32,4 @@ import { LegalModule } from '../legal/legal.module';
   controllers: [AuthController],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

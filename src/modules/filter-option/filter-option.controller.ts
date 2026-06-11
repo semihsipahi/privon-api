@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { FilterOptionService } from './filter-option.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -23,14 +32,18 @@ export class FilterOptionController {
   @Get()
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)
-  @ApiOperation({ summary: 'Filtre seçeneklerini listele — admin (tüm, paginated)' })
+  @ApiOperation({
+    summary: 'Filtre seçeneklerini listele — admin (tüm, paginated)',
+  })
   async list(@Query() query: any) {
     return this.filterOptionService.list(query);
   }
 
   @Get('public')
   @Public()
-  @ApiOperation({ summary: 'Aktif filtre seçeneklerini getir — gruplu (cuisine/atmosphere)' })
+  @ApiOperation({
+    summary: 'Aktif filtre seçeneklerini getir — gruplu (cuisine/atmosphere)',
+  })
   async getPublic() {
     return this.filterOptionService.getGroupedOptions();
   }

@@ -1,7 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsString, IsNotEmpty, IsOptional, IsBoolean,
-  IsNumber, IsArray, ValidateNested, Min,
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  IsArray,
+  ValidateNested,
+  Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -11,7 +17,10 @@ export class TastingMenuCourseDto {
   @IsOptional()
   name?: string;
 
-  @ApiProperty({ example: 'Tarhana, yanık yoğurt, isli tereyağı', required: false })
+  @ApiProperty({
+    example: 'Tarhana, yanık yoğurt, isli tereyağı',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   description?: string;
@@ -23,7 +32,7 @@ export class CreateTastingMenuDto {
   @IsNotEmpty()
   restaurantId: string;
 
-  @ApiProperty({ example: 'Anadolu\'nun Derinlikleri', required: false })
+  @ApiProperty({ example: "Anadolu'nun Derinlikleri", required: false })
   @IsString()
   @IsOptional()
   title?: string;

@@ -105,4 +105,4 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

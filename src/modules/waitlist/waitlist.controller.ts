@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WaitlistService } from './waitlist.service';
 import { CreateWaitlistDto } from 'src/dtos/create-waitlist.dto';
@@ -35,7 +44,11 @@ export class WaitlistController {
     @Param('id') id: string,
     @Body() dto: UpdateWaitlistStatusDto,
   ) {
-    return await this.waitlistService.updateStatus(id, dto.status, dto.statusNote);
+    return await this.waitlistService.updateStatus(
+      id,
+      dto.status,
+      dto.statusNote,
+    );
   }
 
   @Delete(':id')

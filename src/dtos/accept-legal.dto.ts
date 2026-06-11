@@ -10,7 +10,11 @@ export class AcceptLegalDto {
   @IsBoolean()
   acceptedPrivacy: boolean;
 
-  @ApiProperty({ description: 'Pazarlama iletişim izni (opsiyonel)', example: false, required: false })
+  @ApiProperty({
+    description: 'Pazarlama iletişim izni (opsiyonel)',
+    example: false,
+    required: false,
+  })
   @IsOptional()
   @IsBoolean()
   acceptedMarketing?: boolean;

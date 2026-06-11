@@ -1,4 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../../models/user.schema';
 import { Restaurant } from '../../models/restaurant.schema';
@@ -15,7 +22,8 @@ import { UserStatus } from 'src/common/enums/user-status.enum';
 import { MailService } from '../mail/mail.service';
 
 function generateRandomPassword(length: number = 12): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
   let password = '';
   for (let i = 0; i < length; i++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -62,7 +70,8 @@ export class UserService extends ResourceService<
     const normalized = normalizePhone(dto.phoneNumber);
 
     const existing = await this.userModel.findOne({ phoneNumber: normalized });
-    if (existing) throw new ConflictException('Bu telefon numarası zaten kayıtlı.');
+    if (existing)
+      throw new ConflictException('Bu telefon numarası zaten kayıtlı.');
 
     const fullName = `${dto.firstName} ${dto.lastName}`.trim();
     const user = new this.userModel({
@@ -79,7 +88,11 @@ export class UserService extends ResourceService<
       isAdminCreated: true,
     });
     await user.save();
-    return { id: user._id, phoneNumber: user.phoneNumber, fullName: user.fullName };
+    return {
+      id: user._id,
+      phoneNumber: user.phoneNumber,
+      fullName: user.fullName,
+    };
   }
 
   async findByEmail(email: string): Promise<User> {
@@ -87,7 +100,9 @@ export class UserService extends ResourceService<
   }
 
   async findByPhoneNumber(phoneNumber: string): Promise<User> {
-    return this.userModel.findOne({ phoneNumber: normalizePhone(phoneNumber) }).exec();
+    return this.userModel
+      .findOne({ phoneNumber: normalizePhone(phoneNumber) })
+      .exec();
   }
 
   async getMe(userId: string) {
@@ -102,7 +117,8 @@ export class UserService extends ResourceService<
       throw new UnauthorizedException('Kullanıcı bulunamadı.');
     }
 
-    const displayName = user.fullName ||
+    const displayName =
+      user.fullName ||
       [user.firstName, user.lastName].filter(Boolean).join(' ') ||
       null;
 
@@ -126,13 +142,20 @@ export class UserService extends ResourceService<
       createdAt: (user as any).createdAt,
       birthDate: user.birthDate,
       isAdminCreated: user.isAdminCreated || false,
-      legalAccepted: !!(user as any).acceptedTermsAt && !!(user as any).acceptedPrivacyAt,
+      legalAccepted:
+        !!(user as any).acceptedTermsAt && !!(user as any).acceptedPrivacyAt,
     };
 
     const isBetaMode = this.configService.get<string>('BETA_MODE') === 'true';
 
-    if (!isBetaMode && user.subscriptionExpiresAt && new Date() > new Date(user.subscriptionExpiresAt)) {
-      const shouldDowngrade = [Role.TrialUser, Role.PremiumUser].includes(user.role as Role);
+    if (
+      !isBetaMode &&
+      user.subscriptionExpiresAt &&
+      new Date() > new Date(user.subscriptionExpiresAt)
+    ) {
+      const shouldDowngrade = [Role.TrialUser, Role.PremiumUser].includes(
+        user.role as Role,
+      );
 
       if (shouldDowngrade) {
         await this.userModel.findByIdAndUpdate(user._id, { role: Role.User });
@@ -235,9 +258,14 @@ export class UserService extends ResourceService<
     }
 
     if (data.email) {
-      const emailTaken = await this.userModel.findOne({ email: data.email, _id: { $ne: userId } });
+      const emailTaken = await this.userModel.findOne({
+        email: data.email,
+        _id: { $ne: userId },
+      });
       if (emailTaken) {
-        throw new ConflictException('Bu e-posta adresi başka bir hesaba kayıtlı.');
+        throw new ConflictException(
+          'Bu e-posta adresi başka bir hesaba kayıtlı.',
+        );
       }
       updateData.email = data.email;
     }
@@ -331,7 +359,9 @@ export class UserService extends ResourceService<
     // 2. Email kontrolü
     const existingEmail = await this.findByEmail(data.email);
     if (existingEmail) {
-      throw new ConflictException(`Bu email adresi ile kayıtlı farklı bir kullanıcı mevcut: ${data.email}`);
+      throw new ConflictException(
+        `Bu email adresi ile kayıtlı farklı bir kullanıcı mevcut: ${data.email}`,
+      );
     }
 
     // 3. Yeni kullanıcı oluştur
@@ -359,7 +389,11 @@ export class UserService extends ResourceService<
     };
   }
 
-  private async sendWelcomeEmail(email: string, fullName: string, password: string): Promise<void> {
+  private async sendWelcomeEmail(
+    email: string,
+    fullName: string,
+    password: string,
+  ): Promise<void> {
     try {
       await this.mailService.sendEmail({
         to: email,
@@ -385,16 +419,20 @@ export class UserService extends ResourceService<
   }
 
   async addTransaction(userId: string, transaction: Record<string, any>) {
-    return this.userModel.findByIdAndUpdate(userId, {
-      $push: {
-        transactions: {
-          ...transaction,
-          createdAt: new Date(),
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        $push: {
+          transactions: {
+            ...transaction,
+            createdAt: new Date(),
+          },
         },
       },
-    }, {
-      new: true,
-    });
+      {
+        new: true,
+      },
+    );
   }
 
   async banUser(userId: string, duration: string) {
@@ -418,12 +456,16 @@ export class UserService extends ResourceService<
       }
     }
 
-    const user = await this.userModel.findByIdAndUpdate(userId, {
-      reservationBanExpiresAt: banExpiresAt,
-      status: UserStatus.Banned,
-    }, {
-      new: true,
-    });
+    const user = await this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        reservationBanExpiresAt: banExpiresAt,
+        status: UserStatus.Banned,
+      },
+      {
+        new: true,
+      },
+    );
 
     if (!user) {
       throw new NotFoundException('Kullanıcı bulunamadı');
@@ -432,14 +474,49 @@ export class UserService extends ResourceService<
     return user;
   }
 
+  async resetLegalConsent(userId: string) {
+    const user = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $unset: {
+            acceptedTermsAt: '',
+            acceptedTermsVersion: '',
+            acceptedPrivacyAt: '',
+            acceptedPrivacyVersion: '',
+            acceptedExplicitConsentAt: '',
+            acceptedExplicitConsentVersion: '',
+            acceptedCookiePolicyAt: '',
+            acceptedCookiePolicyVersion: '',
+            cookiePreferences: '',
+            acceptedCommercialConsentAt: '',
+            acceptedCommercialConsentVersion: '',
+          },
+        },
+        { new: true },
+      )
+      .select('-password -verificationCode -codeExpiresAt');
+
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    this.logger.log(`User ${userId} legal consent reset by admin.`);
+    return { message: 'Kullanıcının tüm yasal onayları sıfırlandı.' };
+  }
+
   async unbanUser(userId: string) {
-    const user = await this.userModel.findByIdAndUpdate(userId, {
-      reservationBanExpiresAt: null,
-      noShowDates: [],
-      status: UserStatus.Active,
-    }, {
-      new: true,
-    });
+    const user = await this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        reservationBanExpiresAt: null,
+        noShowDates: [],
+        status: UserStatus.Active,
+      },
+      {
+        new: true,
+      },
+    );
 
     if (!user) {
       throw new NotFoundException('Kullanıcı bulunamadı');
@@ -465,12 +542,16 @@ export class UserService extends ResourceService<
   async anonymizeUser(userId: string): Promise<{ message: string }> {
     const user = await this.userModel.findById(userId);
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı.');
-    if (user.isAnonymized) throw new BadRequestException('Hesap zaten anonimleştirilmiş.');
+    if (user.isAnonymized)
+      throw new BadRequestException('Hesap zaten anonimleştirilmiş.');
 
     // Benzersiz anonim telefon (unique constraint korunur)
     const anonPhone = `ANON_${userId}`;
     // Rastgele şifre hash'i (giriş yapılamaz)
-    const randomPass = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+    const randomPass = await bcrypt.hash(
+      crypto.randomBytes(32).toString('hex'),
+      10,
+    );
 
     await this.userModel.findByIdAndUpdate(userId, {
       // PII tamamen siliniyor / anonimleştiriliyor
@@ -501,7 +582,10 @@ export class UserService extends ResourceService<
     return { message: 'Hesabınız kalıcı olarak anonimleştirildi.' };
   }
 
-  private async sendRoleUpdateEmail(email: string, fullName: string): Promise<void> {
+  private async sendRoleUpdateEmail(
+    email: string,
+    fullName: string,
+  ): Promise<void> {
     try {
       await this.mailService.sendEmail({
         to: email,

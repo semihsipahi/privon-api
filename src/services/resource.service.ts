@@ -18,7 +18,7 @@ export interface RefineListResponse<T> {
 
 @Injectable()
 export class ResourceService<T extends any, C extends any, U extends any> {
-  constructor(protected readonly mongoModel: Model<T>) { }
+  constructor(protected readonly mongoModel: Model<T>) {}
 
   async create(data: C, session?: any) {
     if (session) {
@@ -29,7 +29,10 @@ export class ResourceService<T extends any, C extends any, U extends any> {
   }
 
   async update(id: string, data: U, session?: any) {
-    return await this.mongoModel.findByIdAndUpdate(id, data, { new: true, session });
+    return await this.mongoModel.findByIdAndUpdate(id, data, {
+      new: true,
+      session,
+    });
   }
 
   async delete(id: string) {
@@ -88,7 +91,7 @@ export class ResourceService<T extends any, C extends any, U extends any> {
     }
 
     return {
-      data: await queryBuilder.lean().exec() as T[],
+      data: (await queryBuilder.lean().exec()) as T[],
       total: await this.mongoModel.countDocuments(mongoQuery).exec(),
     };
   }

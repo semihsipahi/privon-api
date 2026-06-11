@@ -5,7 +5,9 @@ import { WhitelistService } from './whitelist.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Whitelist.name, schema: WhitelistSchema }]),
+    MongooseModule.forFeature([
+      { name: Whitelist.name, schema: WhitelistSchema },
+    ]),
   ],
   providers: [WhitelistService],
   exports: [WhitelistService],

@@ -45,13 +45,18 @@ export class AuthService {
     private readonly legalService: LegalService,
     private templateService: TemplateService,
     @InjectModel(User.name) private readonly userModel: Model<User>,
-    @InjectModel(Restaurant.name) private readonly restaurantModel: Model<Restaurant>,
-  ) { }
+    @InjectModel(Restaurant.name)
+    private readonly restaurantModel: Model<Restaurant>,
+  ) {}
 
-  async checkPhone(
-    phoneNumber: string,
-  ): Promise<{
-    status: 'new' | 'existing' | 'invited' | 'waitlist' | 'banned' | 'not_allowed';
+  async checkPhone(phoneNumber: string): Promise<{
+    status:
+      | 'new'
+      | 'existing'
+      | 'invited'
+      | 'waitlist'
+      | 'banned'
+      | 'not_allowed';
     accessToken?: string;
     firstName?: string;
     lastName?: string;
@@ -76,7 +81,8 @@ export class AuthService {
       }
 
       // Whitelist kontrolü — doğrudan erişim yetkisi verilmiş numara (invite code ile kayıt olabilir)
-      const whitelistEntry = await this.whitelistService.findByPhone(phoneNumber);
+      const whitelistEntry =
+        await this.whitelistService.findByPhone(phoneNumber);
       if (whitelistEntry) {
         return { status: 'new' };
       }
@@ -87,7 +93,11 @@ export class AuthService {
 
     await this.userService.autoRestoreIfExpired(user);
     if (user.status === UserStatus.Banned) {
-      return { status: 'banned', reservationBanExpiresAt: user.reservationBanExpiresAt?.toISOString() ?? null };
+      return {
+        status: 'banned',
+        reservationBanExpiresAt:
+          user.reservationBanExpiresAt?.toISOString() ?? null,
+      };
     }
 
     // Admin tarafından oluşturulan ve henüz şifresi olmayan kullanıcı — ilk kurulum akışı
@@ -117,7 +127,10 @@ export class AuthService {
   }
 
   private generateVerificationCode(normalizedPhone?: string): string {
-    if (normalizedPhone && this.testAccountService.isTestPhone(normalizedPhone)) {
+    if (
+      normalizedPhone &&
+      this.testAccountService.isTestPhone(normalizedPhone)
+    ) {
       return this.testAccountService.getTestOtp();
     }
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -125,7 +138,9 @@ export class AuthService {
 
   private async sendSMS(phoneNumber: string, code: string): Promise<void> {
     if (this.testAccountService.isTestPhone(phoneNumber)) {
-      this.logger.log(`[TEST_ACCOUNT] SMS skipped for ${phoneNumber} — OTP: ${code}`);
+      this.logger.log(
+        `[TEST_ACCOUNT] SMS skipped for ${phoneNumber} — OTP: ${code}`,
+      );
       return;
     }
 
@@ -163,9 +178,11 @@ export class AuthService {
     const payload: any = { sub: user._id.toString(), role: user.role };
 
     if (user.role === Role.RestaurantOwner) {
-      const restaurant = await this.restaurantModel.findOne({
-        owner: user._id,
-      }).select('_id');
+      const restaurant = await this.restaurantModel
+        .findOne({
+          owner: user._id,
+        })
+        .select('_id');
 
       if (restaurant) {
         payload.restaurantId = restaurant._id.toString();
@@ -175,7 +192,10 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
-  private async buildLoginResponse(user: User, accessToken: string): Promise<LoginResponseDto> {
+  private async buildLoginResponse(
+    user: User,
+    accessToken: string,
+  ): Promise<LoginResponseDto> {
     const response: LoginResponseDto = {
       accessToken,
       fullName: user.fullName,
@@ -352,7 +372,9 @@ export class AuthService {
 
     await this.userService.autoRestoreIfExpired(user);
     if (user.status !== UserStatus.Active) {
-      throw new UnauthorizedException('Hesabınız aktif değil (Yasaklı veya Pasif).');
+      throw new UnauthorizedException(
+        'Hesabınız aktif değil (Yasaklı veya Pasif).',
+      );
     }
 
     const accessToken = await this.generateToken(user);
@@ -502,11 +524,17 @@ export class AuthService {
     const normalizedPhone = normalizePhone(phoneNumber);
     const user = await this.userModel.findOne({ phoneNumber: normalizedPhone });
     if (!user) {
-      throw new CustomException('Bu telefon numarasıyla kayıtlı bir hesap bulunamadı.', 400);
+      throw new CustomException(
+        'Bu telefon numarasıyla kayıtlı bir hesap bulunamadı.',
+        400,
+      );
     }
     await this.userService.autoRestoreIfExpired(user);
     if (user.status === UserStatus.Banned) {
-      throw new CustomException('Hesabınız askıya alınmıştır. Destek ile iletişime geçin.', 403);
+      throw new CustomException(
+        'Hesabınız askıya alınmıştır. Destek ile iletişime geçin.',
+        403,
+      );
     }
     const code = this.generateVerificationCode(normalizedPhone);
     user.verificationCode = code;
@@ -516,7 +544,10 @@ export class AuthService {
     return { message: 'Doğrulama kodu gönderildi.' };
   }
 
-  async verifyLoginOtp(phoneNumber: string, otp: string): Promise<LoginResponseDto> {
+  async verifyLoginOtp(
+    phoneNumber: string,
+    otp: string,
+  ): Promise<LoginResponseDto> {
     const normalizedPhone = normalizePhone(phoneNumber);
     const user = await this.userModel.findOne({
       phoneNumber: normalizedPhone,
@@ -524,7 +555,10 @@ export class AuthService {
       codeExpiresAt: { $gt: new Date() },
     });
     if (!user) {
-      throw new CustomException('Doğrulama kodu hatalı veya süresi dolmuş.', 400);
+      throw new CustomException(
+        'Doğrulama kodu hatalı veya süresi dolmuş.',
+        400,
+      );
     }
     user.verificationCode = undefined;
     user.codeExpiresAt = undefined;
@@ -554,9 +588,12 @@ export class AuthService {
     const user = await this.userModel.findById(userId);
     if (!user) throw new CustomException('Kullanıcı bulunamadı', 400);
 
-    if (!user.email) throw new CustomException('Kullanıcı e-posta adresi yok', 400);
+    if (!user.email)
+      throw new CustomException('Kullanıcı e-posta adresi yok', 400);
 
-    const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const resetToken =
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15);
 
     user.verificationCode = resetToken;
     user.codeExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 saat
@@ -585,16 +622,28 @@ export class AuthService {
 
   // ─── Telefon Güncelleme (authenticated, 2-adım) ───────────────────────────────
 
-  async sendPhoneUpdateOtp(userId: string, newPhone: string): Promise<{ message: string }> {
+  async sendPhoneUpdateOtp(
+    userId: string,
+    newPhone: string,
+  ): Promise<{ message: string }> {
     const normalizedNew = normalizePhone(newPhone);
 
     const user = await this.userModel.findById(userId);
     if (!user) throw new CustomException('Kullanıcı bulunamadı.', 404);
-    if (user.status === UserStatus.Banned) throw new CustomException('Hesabınız askıya alınmıştır.', 403);
-    if (user.phoneNumber === normalizedNew) throw new CustomException('Yeni numara mevcut numaranızla aynı.', 400);
+    if (user.status === UserStatus.Banned)
+      throw new CustomException('Hesabınız askıya alınmıştır.', 403);
+    if (user.phoneNumber === normalizedNew)
+      throw new CustomException('Yeni numara mevcut numaranızla aynı.', 400);
 
-    const conflict = await this.userModel.findOne({ phoneNumber: normalizedNew, _id: { $ne: userId } });
-    if (conflict) throw new CustomException('Bu telefon numarası başka bir hesaba kayıtlı.', 409);
+    const conflict = await this.userModel.findOne({
+      phoneNumber: normalizedNew,
+      _id: { $ne: userId },
+    });
+    if (conflict)
+      throw new CustomException(
+        'Bu telefon numarası başka bir hesaba kayıtlı.',
+        409,
+      );
 
     const code = this.generateVerificationCode(normalizedNew);
     user.verificationCode = code;
@@ -606,7 +655,11 @@ export class AuthService {
     return { message: 'Doğrulama kodu yeni telefon numaranıza gönderildi.' };
   }
 
-  async verifyPhoneUpdate(userId: string, newPhone: string, otp: string): Promise<{ message: string }> {
+  async verifyPhoneUpdate(
+    userId: string,
+    newPhone: string,
+    otp: string,
+  ): Promise<{ message: string }> {
     const normalizedNew = normalizePhone(newPhone);
 
     const user = await this.userModel.findOne({
@@ -615,11 +668,22 @@ export class AuthService {
       codeExpiresAt: { $gt: new Date() },
     });
 
-    if (!user) throw new CustomException('Doğrulama kodu hatalı veya süresi dolmuş.', 400);
+    if (!user)
+      throw new CustomException(
+        'Doğrulama kodu hatalı veya süresi dolmuş.',
+        400,
+      );
 
     // send → verify arası başkası aynı numarayı almış olabilir
-    const conflict = await this.userModel.findOne({ phoneNumber: normalizedNew, _id: { $ne: userId } });
-    if (conflict) throw new CustomException('Bu telefon numarası başka bir hesaba kayıtlı.', 409);
+    const conflict = await this.userModel.findOne({
+      phoneNumber: normalizedNew,
+      _id: { $ne: userId },
+    });
+    if (conflict)
+      throw new CustomException(
+        'Bu telefon numarası başka bir hesaba kayıtlı.',
+        409,
+      );
 
     user.phoneNumber = normalizedNew;
     user.verificationCode = undefined;
@@ -638,7 +702,10 @@ export class AuthService {
     acceptedMarketing?: boolean,
   ) {
     if (!acceptedTerms || !acceptedPrivacy) {
-      throw new CustomException('Kullanım Şartları ve Aydınlatma Metni onayı zorunludur.', 400);
+      throw new CustomException(
+        'Kullanım Şartları ve Aydınlatma Metni onayı zorunludur.',
+        400,
+      );
     }
     const now = new Date();
     await this.userModel.findByIdAndUpdate(userId, {
@@ -651,7 +718,11 @@ export class AuthService {
     return { message: 'Belgeler başarıyla onaylandı.' };
   }
 
-  async acceptExplicitConsent(userId: string, accepted: boolean, version: number) {
+  async acceptExplicitConsent(
+    userId: string,
+    accepted: boolean,
+    version: number,
+  ) {
     if (!accepted) {
       throw new CustomException('Açık Rıza Metni onayı zorunludur.', 400);
     }
@@ -681,12 +752,20 @@ export class AuthService {
     return { message: 'Çerez Politikası başarıyla onaylandı.' };
   }
 
-  async acceptCommercialConsent(userId: string, accepted: boolean, version: number) {
+  async acceptCommercialConsent(
+    userId: string,
+    accepted: boolean,
+    version: number,
+  ) {
     const now = new Date();
     await this.userModel.findByIdAndUpdate(userId, {
       acceptedCommercialConsentAt: accepted ? now : null,
       acceptedCommercialConsentVersion: accepted ? version : null,
     });
-    return { message: accepted ? 'Ticari Elektronik İleti Onayı verildi.' : 'Ticari Elektronik İleti Onayı kaldırıldı.' };
+    return {
+      message: accepted
+        ? 'Ticari Elektronik İleti Onayı verildi.'
+        : 'Ticari Elektronik İleti Onayı kaldırıldı.',
+    };
   }
 }

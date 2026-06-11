@@ -17,7 +17,8 @@ export class RegisterDto {
   @IsString({ message: 'Telefon numarası bir metin olmalıdır.' })
   @IsNotEmpty({ message: 'Telefon numarası boş bırakılamaz.' })
   @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
+    message:
+      'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
   })
   phoneNumber: string;
 
@@ -44,7 +45,10 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'E-posta boş bırakılamaz.' })
   email: string;
 
-  @ApiProperty({ description: 'Doğum tarihi (YYYY-MM-DD)', example: '1990-05-15' })
+  @ApiProperty({
+    description: 'Doğum tarihi (YYYY-MM-DD)',
+    example: '1990-05-15',
+  })
   @IsDateString({}, { message: 'Geçerli bir tarih giriniz (YYYY-MM-DD).' })
   @IsNotEmpty({ message: 'Doğum tarihi boş bırakılamaz.' })
   birthDate: string;

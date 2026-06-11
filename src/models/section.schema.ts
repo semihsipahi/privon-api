@@ -4,20 +4,20 @@ import { Restaurant } from './restaurant.schema';
 
 @Schema({ timestamps: true })
 export class Section extends Document {
-    @Prop({ required: true })
-    title: string;
+  @Prop({ required: true })
+  title: string;
 
-    @Prop({ default: 'home' })
-    type: string;
+  @Prop({ default: 'home' })
+  type: string;
 
-    @Prop({ default: 0 })
-    order: number;
+  @Prop({ default: 0 })
+  order: number;
 
-    @Prop({
-        type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Restaurant' }],
-        default: [],
-    })
-    restaurants: MongooseSchema.Types.ObjectId[] | Restaurant[];
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Restaurant' }],
+    default: [],
+  })
+  restaurants: MongooseSchema.Types.ObjectId[] | Restaurant[];
 }
 
 export const SectionSchema = SchemaFactory.createForClass(Section);

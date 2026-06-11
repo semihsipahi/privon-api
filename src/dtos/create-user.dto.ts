@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsMongoId, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsMongoId,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { Role } from 'src/common/enums/role.enum';
 import { NotificationSettingsDto } from './notification-settings.dto';
@@ -37,7 +45,9 @@ export class CreateUserDto {
     example: Role.User,
     required: true,
   })
-  @IsEnum(Role, { message: 'Rol, yalnızca Role.SuperAdmin veya Role.User olmalıdır.' })
+  @IsEnum(Role, {
+    message: 'Rol, yalnızca Role.SuperAdmin veya Role.User olmalıdır.',
+  })
   role: Role;
 
   @ApiProperty({

@@ -7,15 +7,15 @@ import { User, UserSchema } from '../../models/user.schema';
 import { MailModule } from '../mail/mail.module';
 
 @Module({
-    imports: [
-        MongooseModule.forFeature([
-            { name: Waitlist.name, schema: WaitlistSchema },
-            { name: User.name, schema: UserSchema },
-        ]),
-        MailModule,
-    ],
-    controllers: [WaitlistController],
-    providers: [WaitlistService],
-    exports: [WaitlistService],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Waitlist.name, schema: WaitlistSchema },
+      { name: User.name, schema: UserSchema },
+    ]),
+    MailModule,
+  ],
+  controllers: [WaitlistController],
+  providers: [WaitlistService],
+  exports: [WaitlistService],
 })
-export class WaitlistModule { }
+export class WaitlistModule {}

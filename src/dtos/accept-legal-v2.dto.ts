@@ -18,7 +18,11 @@ export class AcceptLegalV2Dto {
   @IsNumber()
   acceptedPrivacyVersion: number;
 
-  @ApiProperty({ description: 'Pazarlama iletişim izni (opsiyonel)', example: false, required: false })
+  @ApiProperty({
+    description: 'Pazarlama iletişim izni (opsiyonel)',
+    example: false,
+    required: false,
+  })
   @IsOptional()
   @IsBoolean()
   acceptedMarketing?: boolean;

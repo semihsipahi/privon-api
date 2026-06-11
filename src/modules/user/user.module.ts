@@ -22,4 +22,4 @@ import { UploadModule } from '../upload/upload.module';
   controllers: [UserController],
   exports: [UserService, MongooseModule],
 })
-export class UserModule { }
+export class UserModule {}

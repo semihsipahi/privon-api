@@ -47,7 +47,11 @@ export class TastingMenuService {
   }
 
   async update(id: string, dto: UpdateTastingMenuDto): Promise<TastingMenu> {
-    const menu = await this.model.findByIdAndUpdate(id, { $set: dto }, { new: true });
+    const menu = await this.model.findByIdAndUpdate(
+      id,
+      { $set: dto },
+      { new: true },
+    );
     if (!menu) throw new NotFoundException('Tadım menüsü bulunamadı');
     return menu;
   }

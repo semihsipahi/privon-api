@@ -24,19 +24,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    const user = await this.userModel.findById(payload.sub).select('status role email restaurantId reservationBanExpiresAt');
+    const user = await this.userModel
+      .findById(payload.sub)
+      .select('status role email restaurantId reservationBanExpiresAt');
 
     if (!user) {
       throw new UnauthorizedException('Kullanıcı bulunamadı.');
     }
 
     if (user.status !== UserStatus.Active) {
-      if (user.reservationBanExpiresAt && user.reservationBanExpiresAt < new Date()) {
+      if (
+        user.reservationBanExpiresAt &&
+        user.reservationBanExpiresAt < new Date()
+      ) {
         user.status = UserStatus.Active;
         user.reservationBanExpiresAt = null;
         await user.save();
       } else {
-        throw new UnauthorizedException('Hesabınız aktif değil (Yasaklı veya Pasif).');
+        throw new UnauthorizedException(
+          'Hesabınız aktif değil (Yasaklı veya Pasif).',
+        );
       }
     }
 

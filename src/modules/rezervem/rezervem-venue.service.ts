@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
@@ -6,18 +11,37 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { RezervemVenue } from '../../models/rezervem-venue.schema';
 import { Restaurant } from '../../models/restaurant.schema';
 import { RestaurantCategory } from '../../models/restaurant-category.schema';
-import { RezervemHttpService, RezervemBootstrapResponse } from './rezervem-http.service';
-import { mapVenueToCategory, deriveBadges, DEFAULT_FALLBACK_CATEGORY, SLUG_OVERRIDES } from './rezervem-category-mapper';
+import {
+  RezervemHttpService,
+  RezervemBootstrapResponse,
+} from './rezervem-http.service';
+import {
+  mapVenueToCategory,
+  deriveBadges,
+  DEFAULT_FALLBACK_CATEGORY,
+  SLUG_OVERRIDES,
+} from './rezervem-category-mapper';
 import { ImportRezervemVenueDto } from '../../dtos/import-rezervem-venue.dto';
 
-const SHIFT_PERIODS: Record<number, Array<{ openingTime: string; closingTime: string }>> = {
+const SHIFT_PERIODS: Record<
+  number,
+  Array<{ openingTime: string; closingTime: string }>
+> = {
   0: [{ openingTime: '09:00', closingTime: '12:00' }], // Kahvaltı
   1: [{ openingTime: '12:00', closingTime: '16:00' }], // Öğle
   2: [{ openingTime: '18:00', closingTime: '23:00' }], // Akşam
   3: [{ openingTime: '20:00', closingTime: '02:00' }], // Bar
 };
 
-const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+const DAY_NAMES = [
+  'Pazartesi',
+  'Salı',
+  'Çarşamba',
+  'Perşembe',
+  'Cuma',
+  'Cumartesi',
+  'Pazar',
+];
 
 /**
  * Rezervem shifts alanı iki farklı format dönebilir:
@@ -39,7 +63,9 @@ function normalizeShifts(raw: any): number[] {
   return [];
 }
 
-function buildWorkingHoursFromShifts(areas: Array<{ shifts?: number[] }>): Array<{
+function buildWorkingHoursFromShifts(
+  areas: Array<{ shifts?: number[] }>,
+): Array<{
   dayName: string;
   periods: Array<{ openingTime: string; closingTime: string }>;
   isClosed: boolean;
@@ -91,12 +117,16 @@ export class RezervemVenueService implements OnModuleInit {
     }
     const count = await this.model.estimatedDocumentCount();
     if (count === 0) {
-      this.logger.log('rezervem_venues collection empty — running initial sync');
+      this.logger.log(
+        'rezervem_venues collection empty — running initial sync',
+      );
       this.syncAll().catch((err) =>
         this.logger.error(`Initial sync failed: ${err?.message ?? err}`),
       );
     } else {
-      this.logger.log(`rezervem_venues already populated (${count} docs) — skipping initial sync`);
+      this.logger.log(
+        `rezervem_venues already populated (${count} docs) — skipping initial sync`,
+      );
     }
   }
 
@@ -132,13 +162,22 @@ export class RezervemVenueService implements OnModuleInit {
       // 1) Liste çek (sayfa sayfa)
       // List response'undaki name'i de yakala — bootstrap'ta displayName boş
       // gelirse kullanırız (test ortamı şu an böyle davranıyor).
-      const listEntries: { slug: string; name: string; categoryKey?: string }[] = [];
+      const listEntries: {
+        slug: string;
+        name: string;
+        categoryKey?: string;
+      }[] = [];
       let page = 1;
       const pageSize = 100;
       while (true) {
         const list = await this.http.getVenues(page, pageSize);
         for (const v of list.items) {
-          if (v.isActive) listEntries.push({ slug: v.slug, name: v.name, categoryKey: v.categoryKey });
+          if (v.isActive)
+            listEntries.push({
+              slug: v.slug,
+              name: v.name,
+              categoryKey: v.categoryKey,
+            });
         }
         if (list.items.length < pageSize) break;
         page += 1;
@@ -146,13 +185,16 @@ export class RezervemVenueService implements OnModuleInit {
       }
       const allSlugs = listEntries.map((e) => e.slug);
       const nameBySlug = new Map(listEntries.map((e) => [e.slug, e.name]));
-      const categoryBySlug = new Map(listEntries.map((e) => [e.slug, e.categoryKey]));
+      const categoryBySlug = new Map(
+        listEntries.map((e) => [e.slug, e.categoryKey]),
+      );
       report.venuesTotal = allSlugs.length;
       this.logger.log(`Fetched ${allSlugs.length} active venues from Rezervem`);
 
       // 2) Bootstrap'ları paralel (concurrency 5) çek
       const fallback =
-        this.config.get<string>('REZERVEM_FALLBACK_CATEGORY') || DEFAULT_FALLBACK_CATEGORY;
+        this.config.get<string>('REZERVEM_FALLBACK_CATEGORY') ||
+        DEFAULT_FALLBACK_CATEGORY;
 
       const queue = [...allSlugs];
       const workers = Array.from({ length: 5 }).map(async () => {
@@ -163,13 +205,24 @@ export class RezervemVenueService implements OnModuleInit {
           try {
             const boot = await this.http.getBootstrap(slug);
             const listCategoryKey = categoryBySlug.get(slug);
-            const existing = await this.model.findOne({ slug }).select('adminExcluded').lean();
+            const existing = await this.model
+              .findOne({ slug })
+              .select('adminExcluded')
+              .lean();
             if ((existing as any)?.adminExcluded) {
-              this.logger.log(`[Rezervem] sync skip (adminExcluded) slug=${slug}`);
+              this.logger.log(
+                `[Rezervem] sync skip (adminExcluded) slug=${slug}`,
+              );
               report.succeeded += 1;
               continue;
             }
-            await this.upsertFromBootstrap(slug, listName, boot, fallback, listCategoryKey);
+            await this.upsertFromBootstrap(
+              slug,
+              listName,
+              boot,
+              fallback,
+              listCategoryKey,
+            );
             report.succeeded += 1;
           } catch (err: any) {
             report.failed += 1;
@@ -177,10 +230,17 @@ export class RezervemVenueService implements OnModuleInit {
             // Mevcut kayda hata yaz, ama silme
             await this.model.updateOne(
               { slug },
-              { $set: { lastSyncError: err?.message ?? String(err), lastSyncedAt: new Date() } },
+              {
+                $set: {
+                  lastSyncError: err?.message ?? String(err),
+                  lastSyncedAt: new Date(),
+                },
+              },
               { upsert: false },
             );
-            this.logger.warn(`Bootstrap failed for ${slug}: ${err?.message ?? err}`);
+            this.logger.warn(
+              `Bootstrap failed for ${slug}: ${err?.message ?? err}`,
+            );
           }
         }
       });
@@ -206,7 +266,11 @@ export class RezervemVenueService implements OnModuleInit {
       // 5) Kaldırılan kategorileri fallback'e taşı — bootstrap hatası nedeniyle
       //    eski categoryKey değeri kalan dokümanları temizler.
       await this.model.updateMany(
-        { categoryKey: { $nin: ['Michelin Guide', 'Chef Restaurants', 'City Classics'] } },
+        {
+          categoryKey: {
+            $nin: ['Michelin Guide', 'Chef Restaurants', 'City Classics'],
+          },
+        },
         { $set: { categoryKey: fallback } },
       );
 
@@ -248,7 +312,8 @@ export class RezervemVenueService implements OnModuleInit {
   private resolveContactPhone(value: any): string {
     if (!value) return '';
     if (typeof value === 'string') return value;
-    if (typeof value === 'object') return value.phone || value.email || value.website || '';
+    if (typeof value === 'object')
+      return value.phone || value.email || value.website || '';
     return '';
   }
 
@@ -289,20 +354,32 @@ export class RezervemVenueService implements OnModuleInit {
 
     // Rezervem'in kendi categoryKey'i (örn. "Michelin Guide") bizdeki kategori
     // isimleriyle birebir örtüşüyorsa doğrudan kullan; yoksa keyword heuristic devreye girer.
-    const KNOWN_CATEGORIES = new Set(['Michelin Guide', 'Chef Restaurants', 'City Classics']);
-    const mapping = (listCategoryKey && KNOWN_CATEGORIES.has(listCategoryKey))
-      ? { categoryKey: listCategoryKey, score: 500, matchedKeywords: ['__rezervem_categoryKey__'] }
-      : mapVenueToCategory(
-          {
-            slug,
-            name: resolvedName,
-            displayName: displayNameStr,
-            tags: normalizedTags.map((t) => ({ title: t.title, summary: t.summary })),
-            hasTastingMenu: normalizedAreas.some((a) => a.hasTastingMenu),
-            areaTitles: normalizedAreas.map((a) => a.title),
-          },
-          fallback,
-        );
+    const KNOWN_CATEGORIES = new Set([
+      'Michelin Guide',
+      'Chef Restaurants',
+      'City Classics',
+    ]);
+    const mapping =
+      listCategoryKey && KNOWN_CATEGORIES.has(listCategoryKey)
+        ? {
+            categoryKey: listCategoryKey,
+            score: 500,
+            matchedKeywords: ['__rezervem_categoryKey__'],
+          }
+        : mapVenueToCategory(
+            {
+              slug,
+              name: resolvedName,
+              displayName: displayNameStr,
+              tags: normalizedTags.map((t) => ({
+                title: t.title,
+                summary: t.summary,
+              })),
+              hasTastingMenu: normalizedAreas.some((a) => a.hasTastingMenu),
+              areaTitles: normalizedAreas.map((a) => a.title),
+            },
+            fallback,
+          );
 
     const badges = deriveBadges({
       slug,
@@ -352,7 +429,9 @@ export class RezervemVenueService implements OnModuleInit {
           currency: (venueInfo.currency || '').trim(),
           supportedLanguages: venueInfo.supportedLanguages ?? [],
           pax: boot.pax ?? undefined,
-          bookingFlow: boot.bookingFlow ? { ...boot.bookingFlow, areaRequired } : undefined,
+          bookingFlow: boot.bookingFlow
+            ? { ...boot.bookingFlow, areaRequired }
+            : undefined,
           leadTimes: boot.leadTimes ?? undefined,
           genderPolicy: boot.genderPolicy ?? undefined,
           paymentPreview: boot.paymentPreview ?? undefined,
@@ -361,7 +440,9 @@ export class RezervemVenueService implements OnModuleInit {
           policies: boot.policies ?? undefined,
           areas: normalizedAreas,
           tags: normalizedTags,
-          workingHours: Array.isArray(venueInfo.workingHours) ? venueInfo.workingHours : buildWorkingHoursFromShifts(normalizedAreas),
+          workingHours: Array.isArray(venueInfo.workingHours)
+            ? venueInfo.workingHours
+            : buildWorkingHoursFromShifts(normalizedAreas),
           categoryKey: mapping.categoryKey,
           categoryScore: mapping.score,
           badges,
@@ -378,8 +459,13 @@ export class RezervemVenueService implements OnModuleInit {
   // ── Query helpers ─────────────────────────────────────────────────
 
   async setAdminExcluded(slug: string, excluded: boolean): Promise<void> {
-    await this.model.updateOne({ slug }, { $set: { adminExcluded: excluded, isActive: !excluded } });
-    this.logger.log(`[RezervemVenue] adminExcluded=${excluded} set for slug=${slug}`);
+    await this.model.updateOne(
+      { slug },
+      { $set: { adminExcluded: excluded, isActive: !excluded } },
+    );
+    this.logger.log(
+      `[RezervemVenue] adminExcluded=${excluded} set for slug=${slug}`,
+    );
   }
 
   findActiveByCategoryKey(categoryKey: string, limit: number, skip: number) {
@@ -392,13 +478,22 @@ export class RezervemVenueService implements OnModuleInit {
   }
 
   countActiveByCategoryKey(categoryKey: string) {
-    return this.model.countDocuments({ isActive: true, adminExcluded: { $ne: true }, categoryKey });
+    return this.model.countDocuments({
+      isActive: true,
+      adminExcluded: { $ne: true },
+      categoryKey,
+    });
   }
 
   findActive(limit: number, skip: number, q?: string) {
     const filter: any = { isActive: true, adminExcluded: { $ne: true } };
     if (q && q.trim()) filter.name = { $regex: q.trim(), $options: 'i' };
-    return this.model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean();
+    return this.model
+      .find(filter)
+      .sort({ name: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
   }
 
   countActive(q?: string) {
@@ -415,7 +510,11 @@ export class RezervemVenueService implements OnModuleInit {
     const [total, active, lastDoc] = await Promise.all([
       this.model.estimatedDocumentCount(),
       this.model.countDocuments({ isActive: true }),
-      this.model.findOne({}).sort({ lastSyncedAt: -1 }).select('lastSyncedAt').lean(),
+      this.model
+        .findOne({})
+        .sort({ lastSyncedAt: -1 })
+        .select('lastSyncedAt')
+        .lean(),
     ]);
     return {
       totalDocs: total,
@@ -434,8 +533,10 @@ export class RezervemVenueService implements OnModuleInit {
     categoryKey?: string;
   }): Promise<{ data: any[]; total: number }> {
     const filter: Record<string, any> = {};
-    if (params.q?.trim()) filter.name = { $regex: params.q.trim(), $options: 'i' };
-    if (params.categoryKey?.trim()) filter.categoryKey = params.categoryKey.trim();
+    if (params.q?.trim())
+      filter.name = { $regex: params.q.trim(), $options: 'i' };
+    if (params.categoryKey?.trim())
+      filter.categoryKey = params.categoryKey.trim();
 
     const skip = (params.page - 1) * params.pageSize;
     const [venues, total] = await Promise.all([
@@ -489,7 +590,8 @@ export class RezervemVenueService implements OnModuleInit {
     dto: ImportRezervemVenueDto,
   ): Promise<{ restaurantId: string; created: boolean }> {
     const venue = await this.model.findOne({ slug }).lean();
-    if (!venue) throw new NotFoundException(`Venue cache'de bulunamadı: ${slug}`);
+    if (!venue)
+      throw new NotFoundException(`Venue cache'de bulunamadı: ${slug}`);
 
     // Kategori ObjectId'lerini doğrula
     const categoryObjectIds = dto.categoryIds
@@ -497,7 +599,9 @@ export class RezervemVenueService implements OnModuleInit {
       .map((id) => new Types.ObjectId(id));
 
     if (categoryObjectIds.length === 0) {
-      const category = await this.categoryModel.findOne({ name: venue.categoryKey }).lean();
+      const category = await this.categoryModel
+        .findOne({ name: venue.categoryKey })
+        .lean();
       if (category) categoryObjectIds.push((category as any)._id);
     }
 
@@ -513,7 +617,7 @@ export class RezervemVenueService implements OnModuleInit {
         address: venue.address ?? '',
         city: dto.city ?? '',
         district: dto.district ?? '',
-        },
+      },
       description: dto.description ?? '',
       descriptionEng: dto.descriptionEng ?? '',
       phone: dto.phone || venue.contact || undefined,
@@ -521,28 +625,39 @@ export class RezervemVenueService implements OnModuleInit {
       website: dto.website || undefined,
       instagramUrl: dto.instagramUrl || undefined,
       awards: dto.awards?.length
-        ? dto.awards.map(a => ({
+        ? dto.awards.map((a) => ({
             iconUrl: a.iconUrl,
             name: a.name || 'Michelin Rehberi',
             year: a.year ?? new Date().getFullYear(),
           }))
         : venue.badges?.length
-          ? venue.badges.map(b => ({ iconUrl: '', name: b, year: new Date().getFullYear() }))
+          ? venue.badges.map((b) => ({
+              iconUrl: '',
+              name: b,
+              year: new Date().getFullYear(),
+            }))
           : [],
-      cuisineTypes: dto.cuisineTypes ?? (venue.tags ?? []).map((t) => t.title).filter(Boolean),
+      cuisineTypes:
+        dto.cuisineTypes ??
+        (venue.tags ?? []).map((t) => t.title).filter(Boolean),
       termsAndConditions: dto.termsAndConditions ?? '',
       atmosphereTypes: [],
-      workingHours: (dto.workingHours && dto.workingHours.length > 0)
-        ? dto.workingHours
-        : ((venue as any).workingHours?.length > 0)
-          ? (venue as any).workingHours
-          : buildWorkingHoursFromShifts(
-              (venue.areas ?? []).map((a: any) => ({ shifts: normalizeShifts(a.shifts) })),
-            ),
+      workingHours:
+        dto.workingHours && dto.workingHours.length > 0
+          ? dto.workingHours
+          : (venue as any).workingHours?.length > 0
+            ? (venue as any).workingHours
+            : buildWorkingHoursFromShifts(
+                (venue.areas ?? []).map((a: any) => ({
+                  shifts: normalizeShifts(a.shifts),
+                })),
+              ),
       rezervemSlug: venue.slug,
     };
 
-    const existing = await this.restaurantModel.findOne({ rezervemSlug: slug }).lean();
+    const existing = await this.restaurantModel
+      .findOne({ rezervemSlug: slug })
+      .lean();
 
     if (existing) {
       await this.restaurantModel.updateOne(

@@ -30,11 +30,14 @@ import { Role } from 'src/common/enums/role.enum';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Public()
   @Post('check-phone')
-  @ApiOperation({ summary: 'Telefon numarasını kontrol et — yeni mi, mevcut üye mi, banlı mı?' })
+  @ApiOperation({
+    summary:
+      'Telefon numarasını kontrol et — yeni mi, mevcut üye mi, banlı mı?',
+  })
   checkPhone(@Body() checkPhoneDto: CheckPhoneDto) {
     return this.authService.checkPhone(checkPhoneDto.phoneNumber);
   }
@@ -95,14 +98,18 @@ export class AuthController {
 
   @Public()
   @Post('send-login-otp')
-  @ApiOperation({ summary: 'Mevcut kullanıcıya giriş OTP kodu gönder (şifresiz giriş)' })
+  @ApiOperation({
+    summary: 'Mevcut kullanıcıya giriş OTP kodu gönder (şifresiz giriş)',
+  })
   sendLoginOtp(@Body() dto: SendLoginOtpDto) {
     return this.authService.sendLoginOtp(dto.phoneNumber);
   }
 
   @Public()
   @Post('verify-login-otp')
-  @ApiOperation({ summary: 'Giriş OTP kodunu doğrula ve token al (şifresiz giriş)' })
+  @ApiOperation({
+    summary: 'Giriş OTP kodunu doğrula ve token al (şifresiz giriş)',
+  })
   verifyLoginOtp(@Body() dto: VerifyLoginOtpDto) {
     return this.authService.verifyLoginOtp(dto.phoneNumber, dto.otp);
   }
@@ -110,7 +117,10 @@ export class AuthController {
   // ─────────────────────────────────────────────────────────────────────────────
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Kullanım Şartları ve Aydınlatma Metni onayı (versiyonlu, JWT gerekli)' })
+  @ApiOperation({
+    summary:
+      'Kullanım Şartları ve Aydınlatma Metni onayı (versiyonlu, JWT gerekli)',
+  })
   @Post('accept-legal')
   async acceptLegal(@Body() dto: AcceptLegalV2Dto, @Req() req: any) {
     return this.authService.acceptLegal(
@@ -126,7 +136,10 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Açık Rıza Metni onayı (JWT gerekli)' })
   @Post('accept-explicit-consent')
-  async acceptExplicitConsent(@Body() dto: AcceptExplicitConsentDto, @Req() req: any) {
+  async acceptExplicitConsent(
+    @Body() dto: AcceptExplicitConsentDto,
+    @Req() req: any,
+  ) {
     return this.authService.acceptExplicitConsent(
       req.user.userId,
       dto.accepted,
@@ -149,7 +162,10 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Ticari Elektronik İleti Onayı (JWT gerekli)' })
   @Post('accept-commercial-consent')
-  async acceptCommercialConsent(@Body() dto: AcceptCommercialConsentDto, @Req() req: any) {
+  async acceptCommercialConsent(
+    @Body() dto: AcceptCommercialConsentDto,
+    @Req() req: any,
+  ) {
     return this.authService.acceptCommercialConsent(
       req.user.userId,
       dto.accepted,
@@ -170,16 +186,28 @@ export class AuthController {
 
   @ApiBearerAuth()
   @Post('send-phone-update-otp')
-  @ApiOperation({ summary: 'Telefon güncelleme — yeni numaraya OTP gönder (JWT gerekli)' })
+  @ApiOperation({
+    summary: 'Telefon güncelleme — yeni numaraya OTP gönder (JWT gerekli)',
+  })
   sendPhoneUpdateOtp(@Body() dto: SendPhoneUpdateOtpDto, @Req() req: any) {
-    return this.authService.sendPhoneUpdateOtp(req.user.userId, dto.phoneNumber);
+    return this.authService.sendPhoneUpdateOtp(
+      req.user.userId,
+      dto.phoneNumber,
+    );
   }
 
   @ApiBearerAuth()
   @Post('verify-phone-update')
-  @ApiOperation({ summary: 'Telefon güncelleme — OTP doğrula ve numarayı kaydet (JWT gerekli)' })
+  @ApiOperation({
+    summary:
+      'Telefon güncelleme — OTP doğrula ve numarayı kaydet (JWT gerekli)',
+  })
   verifyPhoneUpdate(@Body() dto: VerifyPhoneUpdateDto, @Req() req: any) {
-    return this.authService.verifyPhoneUpdate(req.user.userId, dto.phoneNumber, dto.otp);
+    return this.authService.verifyPhoneUpdate(
+      req.user.userId,
+      dto.phoneNumber,
+      dto.otp,
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -187,7 +215,9 @@ export class AuthController {
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)
   @Post('admin/:id/resend-verification')
-  @ApiOperation({ summary: 'Kullanıcıya doğrulama SMS\'ini tekrar gönder - Admin' })
+  @ApiOperation({
+    summary: "Kullanıcıya doğrulama SMS'ini tekrar gönder - Admin",
+  })
   async adminResendVerification(@Param('id') id: string) {
     return await this.authService.adminResendVerificationCode(id);
   }
@@ -195,7 +225,9 @@ export class AuthController {
   @ApiBearerAuth()
   @Roles(Role.SuperAdmin)
   @Post('admin/:id/send-password-reset')
-  @ApiOperation({ summary: 'Kullanıcıya şifre sıfırlama bağlantısı gönder - Admin' })
+  @ApiOperation({
+    summary: 'Kullanıcıya şifre sıfırlama bağlantısı gönder - Admin',
+  })
   async adminSendPasswordReset(@Param('id') id: string) {
     return await this.authService.adminSendPasswordResetLink(id);
   }

@@ -7,12 +7,12 @@ import { User, UserSchema } from '../../models/user.schema';
 import { UserModule } from '../user/user.module';
 
 @Module({
-    imports: [
-        MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-        ConfigModule,
-        UserModule,
-    ],
-    controllers: [WebhookController],
-    providers: [WebhookService],
+  imports: [
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    ConfigModule,
+    UserModule,
+  ],
+  controllers: [WebhookController],
+  providers: [WebhookService],
 })
-export class WebhookModule { }
+export class WebhookModule {}

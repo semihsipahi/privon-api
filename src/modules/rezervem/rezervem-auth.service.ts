@@ -36,10 +36,14 @@ export class RezervemAuthService {
   private async fetchNewToken(): Promise<string> {
     const baseUrl = this.configService.get<string>('REZERVEM_BASE_URL');
     const clientId = this.configService.get<string>('REZERVEM_CLIENT_ID');
-    const clientSecret = this.configService.get<string>('REZERVEM_CLIENT_SECRET');
+    const clientSecret = this.configService.get<string>(
+      'REZERVEM_CLIENT_SECRET',
+    );
 
     if (!baseUrl || !clientId || !clientSecret) {
-      throw new Error('Rezervem credentials missing (REZERVEM_BASE_URL/CLIENT_ID/CLIENT_SECRET)');
+      throw new Error(
+        'Rezervem credentials missing (REZERVEM_BASE_URL/CLIENT_ID/CLIENT_SECRET)',
+      );
     }
 
     const response = await fetch(`${baseUrl}/connect/token`, {
@@ -54,7 +58,9 @@ export class RezervemAuthService {
 
     if (!response.ok) {
       const text = await response.text();
-      this.logger.error(`Rezervem token fetch failed: ${response.status} ${text}`);
+      this.logger.error(
+        `Rezervem token fetch failed: ${response.status} ${text}`,
+      );
       throw new Error(`Rezervem auth failed: ${response.status}`);
     }
 
@@ -65,7 +71,9 @@ export class RezervemAuthService {
       expiresAt: Date.now() + (data.expiresIn - 60) * 1000,
     };
 
-    this.logger.log(`Rezervem access token refreshed (expires in ${data.expiresIn}s)`);
+    this.logger.log(
+      `Rezervem access token refreshed (expires in ${data.expiresIn}s)`,
+    );
     return this.tokenCache.accessToken;
   }
 

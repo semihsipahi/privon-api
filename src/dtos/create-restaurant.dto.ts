@@ -29,12 +29,18 @@ export class AwardDto {
   @IsString()
   iconUrl: string;
 
-  @ApiPropertyOptional({ description: 'Ödül adı (örn. Michelin Rehberi)', default: 'Michelin Rehberi' })
+  @ApiPropertyOptional({
+    description: 'Ödül adı (örn. Michelin Rehberi)',
+    default: 'Michelin Rehberi',
+  })
   @IsString()
   @IsOptional()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Yıl', default: new Date().getFullYear() })
+  @ApiPropertyOptional({
+    description: 'Yıl',
+    default: new Date().getFullYear(),
+  })
   @IsNumber()
   @IsOptional()
   year?: number;
@@ -56,13 +62,16 @@ export class LocationDto {
   @IsOptional()
   district?: string;
 
-@ApiPropertyOptional({
+  @ApiPropertyOptional({
     description: 'GeoJSON koordinatları [longitude, latitude]',
     example: [28.9784, 41.0082],
     type: [Number],
   })
   @IsArray({ message: 'Koordinatlar bir liste olmalıdır' })
-  @IsNumber({}, { each: true, message: 'Koordinat listesi sadece sayı içermelidir' })
+  @IsNumber(
+    {},
+    { each: true, message: 'Koordinat listesi sadece sayı içermelidir' },
+  )
   @IsOptional()
   coordinates?: number[];
 }
@@ -103,16 +112,20 @@ export class WorkingHoursDto {
 
 export class CreateRestaurantDto {
   @ApiPropertyOptional({ description: 'Restoran sahibi (User ID)' })
-  @IsMongoId({ message: 'Geçerli bir sahibi kullanıcı ID\'si giriniz' })
+  @IsMongoId({ message: "Geçerli bir sahibi kullanıcı ID'si giriniz" })
   @IsOptional()
   owner?: string;
 
-  @ApiPropertyOptional({ description: 'Restoran sahibi adı (Yeni kullanıcı oluşturmak için)' })
+  @ApiPropertyOptional({
+    description: 'Restoran sahibi adı (Yeni kullanıcı oluşturmak için)',
+  })
   @IsString({ message: 'Sahip adı metin formatında olmalıdır' })
   @IsOptional()
   ownerName?: string;
 
-  @ApiPropertyOptional({ description: 'Restoran sahibi emaili (Yeni kullanıcı oluşturmak için)' })
+  @ApiPropertyOptional({
+    description: 'Restoran sahibi emaili (Yeni kullanıcı oluşturmak için)',
+  })
   @IsString({ message: 'Sahip emaili metin formatında olmalıdır' })
   @IsOptional()
   ownerEmail?: string;
@@ -121,19 +134,24 @@ export class CreateRestaurantDto {
   @IsOptional()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Fiyat seviyesi (1: ₺, 2: ₺₺, 3: ₺₺₺, 4: ₺₺₺₺)' })
+  @ApiPropertyOptional({
+    description: 'Fiyat seviyesi (1: ₺, 2: ₺₺, 3: ₺₺₺, 4: ₺₺₺₺)',
+  })
   @IsNumber({}, { message: 'Fiyat seviyesi sayı olmalıdır' })
   @IsOptional()
   priceLevel?: number;
 
   @ApiPropertyOptional({ description: 'Restoran resimleri (URL dizisi)' })
   @IsArray({ message: 'Resimler bir liste olmalıdır' })
-  @IsString({ each: true, message: 'Her bir resim URL\'i metin olmalıdır' })
+  @IsString({ each: true, message: "Her bir resim URL'i metin olmalıdır" })
   @IsOptional()
   images?: string[];
 
   @ApiPropertyOptional({ description: 'Restoran kategorileri ID listesi' })
-  @IsMongoId({ each: true, message: 'Kategori ID\'leri geçerli formatta olmalıdır' })
+  @IsMongoId({
+    each: true,
+    message: "Kategori ID'leri geçerli formatta olmalıdır",
+  })
   @IsArray({ message: 'Kategoriler bir liste olmalıdır' })
   @IsOptional()
   categories?: string[];
@@ -184,9 +202,15 @@ export class CreateRestaurantDto {
   @IsOptional()
   menu?: string;
 
-  @ApiPropertyOptional({ description: 'Menü fotoğrafları URL listesi', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Menü fotoğrafları URL listesi',
+    type: [String],
+  })
   @IsArray({ message: 'Menü fotoğrafları dizi formatında olmalıdır' })
-  @IsString({ each: true, message: 'Her menü fotoğrafı URL formatında olmalıdır' })
+  @IsString({
+    each: true,
+    message: 'Her menü fotoğrafı URL formatında olmalıdır',
+  })
   @IsOptional()
   menuImages?: string[];
 
@@ -195,7 +219,9 @@ export class CreateRestaurantDto {
   @IsOptional()
   campaignTerms?: string;
 
-  @ApiPropertyOptional({ description: 'Şartlar ve koşullar metni (Rezervem restoranları için)' })
+  @ApiPropertyOptional({
+    description: 'Şartlar ve koşullar metni (Rezervem restoranları için)',
+  })
   @IsString({ message: 'Şartlar ve koşullar metin formatında olmalıdır' })
   @IsOptional()
   termsAndConditions?: string;
@@ -205,14 +231,17 @@ export class CreateRestaurantDto {
     type: [WorkingHoursDto],
   })
   @IsArray({ message: 'Çalışma saatleri bir liste olmalıdır' })
-  @ValidateNested({ each: true, message: 'Çalışma saatleri listesi geçersiz formatta' })
+  @ValidateNested({
+    each: true,
+    message: 'Çalışma saatleri listesi geçersiz formatta',
+  })
   @Type(() => WorkingHoursDto)
   @IsOptional()
   workingHours?: WorkingHoursDto[];
 
   @ApiPropertyOptional({ description: 'Feed videoları (URL dizisi)' })
   @IsArray({ message: 'Videolar bir liste olmalıdır' })
-  @IsString({ each: true, message: 'Her bir video URL\'i metin olmalıdır' })
+  @IsString({ each: true, message: "Her bir video URL'i metin olmalıdır" })
   @IsOptional()
   feedVideos?: string[];
 
@@ -223,25 +252,37 @@ export class CreateRestaurantDto {
   @IsOptional()
   awards?: AwardDto[];
 
-  @ApiPropertyOptional({ description: 'Mutfak türleri (value listesi)', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Mutfak türleri (value listesi)',
+    type: [String],
+  })
   @IsArray({ message: 'Mutfak türleri liste olmalıdır' })
   @IsString({ each: true, message: 'Her mutfak türü metin olmalıdır' })
   @IsOptional()
   cuisineTypes?: string[];
 
-  @ApiPropertyOptional({ description: 'Atmosfer türleri (value listesi)', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Atmosfer türleri (value listesi)',
+    type: [String],
+  })
   @IsArray({ message: 'Atmosfer türleri liste olmalıdır' })
   @IsString({ each: true, message: 'Her atmosfer türü metin olmalıdır' })
   @IsOptional()
   atmosphereTypes?: string[];
 
-  @ApiPropertyOptional({ description: 'Rezervem partner API mekan slug (rezervasyon entegrasyonu için). Bağlantıyı kaldırmak için null veya boş string gönderin.' })
+  @ApiPropertyOptional({
+    description:
+      'Rezervem partner API mekan slug (rezervasyon entegrasyonu için). Bağlantıyı kaldırmak için null veya boş string gönderin.',
+  })
   @IsOptional()
   @Transform(({ value }) => (value === '' ? null : value))
   @IsString({ message: 'Rezervem slug metin formatında olmalıdır' })
   rezervemSlug?: string | null;
 
-  @ApiPropertyOptional({ description: 'Salon görselleri (Rezervem area ID → görsel URL eşlemesi)', type: [VenueAreaImageDto] })
+  @ApiPropertyOptional({
+    description: 'Salon görselleri (Rezervem area ID → görsel URL eşlemesi)',
+    type: [VenueAreaImageDto],
+  })
   @IsArray({ message: 'Salon görselleri liste olmalıdır' })
   @ValidateNested({ each: true })
   @Type(() => VenueAreaImageDto)

@@ -1,6 +1,9 @@
 import * as bcrypt from 'bcrypt';
 
-export const compareData = async (password: string, comparePassword: string) => {
+export const compareData = async (
+  password: string,
+  comparePassword: string,
+) => {
   return await bcrypt.compare(password, comparePassword);
 };
 

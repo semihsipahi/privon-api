@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Slot } from '../../models/slot.schema';
@@ -11,169 +15,186 @@ import { AuthUser } from 'src/common/interfaces/auth-user.interface';
 import { ReservationStatus } from 'src/common/enums/reservation-status.enum';
 
 @Injectable()
-export class SlotService extends ResourceService<Slot, CreateSlotDto, UpdateSlotDto> {
-    constructor(
-        @InjectModel(Slot.name)
-        private slotModel: Model<Slot>,
-        @InjectModel(Reservation.name)
-        private reservationModel: Model<Reservation>,
-    ) {
-        super(slotModel);
+export class SlotService extends ResourceService<
+  Slot,
+  CreateSlotDto,
+  UpdateSlotDto
+> {
+  constructor(
+    @InjectModel(Slot.name)
+    private slotModel: Model<Slot>,
+    @InjectModel(Reservation.name)
+    private reservationModel: Model<Reservation>,
+  ) {
+    super(slotModel);
+  }
+
+  async findByRestaurant(restaurantId: string) {
+    const slots = await this.slotModel
+      .find({ restaurant: new Types.ObjectId(restaurantId) })
+      .sort({ time: 1 })
+      .lean()
+      .exec();
+
+    return this.deduplicateSlots(slots);
+  }
+
+  private deduplicateSlots(slots: any[]) {
+    if (!slots || slots.length === 0) return [];
+
+    const slotMap = new Map<string, any>();
+
+    for (const slot of slots) {
+      const existingSlot = slotMap.get(slot.time);
+      if (
+        !existingSlot ||
+        (slot.discount || 0) > (existingSlot.discount || 0)
+      ) {
+        slotMap.set(slot.time, slot);
+      }
     }
 
-    async findByRestaurant(restaurantId: string) {
-        const slots = await this.slotModel
-            .find({ restaurant: new Types.ObjectId(restaurantId) })
-            .sort({ time: 1 })
-            .lean()
-            .exec();
+    return Array.from(slotMap.values()).sort((a, b) =>
+      a.time.localeCompare(b.time),
+    );
+  }
 
-        return this.deduplicateSlots(slots);
+  async findByRestaurantWithFilters(
+    restaurantId: string,
+    date?: string,
+    personCount?: number,
+  ) {
+    const query: any = { restaurant: new Types.ObjectId(restaurantId) };
+
+    if (date) {
+      const dateObj = new Date(date);
+      const startOfDay = new Date(date);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+      const dayOfWeek = (dateObj.getDay() + 6) % 7; // 0=Monday, 6=Sunday
+
+      query.$or = [
+        // Belirli tarihe özgü slotlar
+        {
+          specificDate: {
+            $gte: startOfDay,
+            $lt: endOfDay,
+          },
+        },
+        // Haftalık tekrarlanan slotlar (specificDate yok veya null)
+        {
+          specificDate: { $exists: false },
+          days: dayOfWeek,
+        },
+        {
+          specificDate: null,
+          days: dayOfWeek,
+        },
+      ];
     }
 
-    private deduplicateSlots(slots: any[]) {
-        if (!slots || slots.length === 0) return [];
-
-        const slotMap = new Map<string, any>();
-
-        for (const slot of slots) {
-            const existingSlot = slotMap.get(slot.time);
-            if (!existingSlot || (slot.discount || 0) > (existingSlot.discount || 0)) {
-                slotMap.set(slot.time, slot);
-            }
-        }
-
-        return Array.from(slotMap.values()).sort((a, b) => a.time.localeCompare(b.time));
+    if (personCount) {
+      query.minPersons = { $lte: personCount };
+      query.maxPersons = { $gte: personCount };
     }
 
-    async findByRestaurantWithFilters(
-        restaurantId: string,
-        date?: string,
-        personCount?: number,
-    ) {
-        const query: any = { restaurant: new Types.ObjectId(restaurantId) };
+    const slots = await this.slotModel
+      .find(query)
+      .sort({ time: 1 })
+      .lean()
+      .exec();
 
-        if (date) {
-            const dateObj = new Date(date);
-            const startOfDay = new Date(date);
-            startOfDay.setUTCHours(0, 0, 0, 0);
-            const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-            const dayOfWeek = (dateObj.getDay() + 6) % 7; // 0=Monday, 6=Sunday
+    // Eğer tarih varsa, her slot için müsait masa sayısını hesapla
+    if (date) {
+      const slotIds = slots.map((s) => s._id);
 
-            query.$or = [
-                // Belirli tarihe özgü slotlar
-                {
-                    specificDate: {
-                        $gte: startOfDay,
-                        $lt: endOfDay,
-                    },
-                },
-                // Haftalık tekrarlanan slotlar (specificDate yok veya null)
-                {
-                    specificDate: { $exists: false },
-                    days: dayOfWeek,
-                },
-                {
-                    specificDate: null,
-                    days: dayOfWeek,
-                },
-            ];
-        }
+      // Aktif rezervasyonları say (iptal edilmemiş ve no_show olmayan)
+      const activeStatuses = [
+        ReservationStatus.PENDING,
+        ReservationStatus.CONFIRMED,
+        ReservationStatus.SEATED,
+        ReservationStatus.COMPLETED,
+      ];
 
-        if (personCount) {
-            query.minPersons = { $lte: personCount };
-            query.maxPersons = { $gte: personCount };
-        }
+      const reservationCounts = await this.reservationModel.aggregate([
+        {
+          $match: {
+            slot: { $in: slotIds },
+            date: date,
+            status: { $in: activeStatuses },
+          },
+        },
+        {
+          $group: {
+            _id: '$slot',
+            count: { $sum: 1 },
+          },
+        },
+      ]);
 
-        const slots = await this.slotModel
-            .find(query)
-            .sort({ time: 1 })
-            .lean()
-            .exec();
+      // Rezervasyon sayılarını map'e çevir
+      const countMap = new Map(
+        reservationCounts.map((r) => [r._id.toString(), r.count]),
+      );
 
-        // Eğer tarih varsa, her slot için müsait masa sayısını hesapla
-        if (date) {
-            const slotIds = slots.map((s) => s._id);
+      // Her slot için availableTables hesapla
+      const processedSlots = slots.map((slot) => ({
+        ...slot,
+        reservedTables: countMap.get(slot._id.toString()) || 0,
+        availableTables:
+          slot.tableQuota - (countMap.get(slot._id.toString()) || 0),
+      }));
 
-            // Aktif rezervasyonları say (iptal edilmemiş ve no_show olmayan)
-            const activeStatuses = [
-                ReservationStatus.PENDING,
-                ReservationStatus.CONFIRMED,
-                ReservationStatus.SEATED,
-                ReservationStatus.COMPLETED,
-            ];
-
-            const reservationCounts = await this.reservationModel.aggregate([
-                {
-                    $match: {
-                        slot: { $in: slotIds },
-                        date: date,
-                        status: { $in: activeStatuses },
-                    },
-                },
-                {
-                    $group: {
-                        _id: '$slot',
-                        count: { $sum: 1 },
-                    },
-                },
-            ]);
-
-            // Rezervasyon sayılarını map'e çevir
-            const countMap = new Map(
-                reservationCounts.map((r) => [r._id.toString(), r.count]),
-            );
-
-            // Her slot için availableTables hesapla
-            const processedSlots = slots.map((slot) => ({
-                ...slot,
-                reservedTables: countMap.get(slot._id.toString()) || 0,
-                availableTables:
-                    slot.tableQuota - (countMap.get(slot._id.toString()) || 0),
-            }));
-
-            return this.deduplicateSlots(processedSlots);
-        }
-
-        return this.deduplicateSlots(slots);
+      return this.deduplicateSlots(processedSlots);
     }
 
-    private async validateOwnership(
-        user: AuthUser,
-        restaurantId?: string,
-        slotId?: string,
-    ): Promise<void> {
-        if (user.role === Role.SuperAdmin) return;
+    return this.deduplicateSlots(slots);
+  }
 
-        if (!user.restaurantId) {
-            throw new ForbiddenException('Bu işlem için bir restorana sahip olmalısınız');
-        }
+  private async validateOwnership(
+    user: AuthUser,
+    restaurantId?: string,
+    slotId?: string,
+  ): Promise<void> {
+    if (user.role === Role.SuperAdmin) return;
 
-        if (restaurantId) {
-            if (user.restaurantId !== restaurantId) {
-                throw new ForbiddenException('Sadece kendi restoranınız için slot oluşturabilirsiniz');
-            }
-            return;
-        }
-
-        if (slotId) {
-            const slot = await this.slotModel.findById(slotId).select('restaurant').lean().exec();
-            if (!slot) {
-                throw new NotFoundException('Slot bulunamadı');
-            }
-            if (slot.restaurant.toString() !== user.restaurantId) {
-                throw new ForbiddenException('Bu slot üzerinde işlem yetkiniz yok');
-            }
-        }
+    if (!user.restaurantId) {
+      throw new ForbiddenException(
+        'Bu işlem için bir restorana sahip olmalısınız',
+      );
     }
 
-    async withOwnership<T>(
-        user: AuthUser,
-        operation: () => Promise<T>,
-        restaurantId?: string,
-        slotId?: string,
-    ): Promise<T> {
-        await this.validateOwnership(user, restaurantId, slotId);
-        return operation();
+    if (restaurantId) {
+      if (user.restaurantId !== restaurantId) {
+        throw new ForbiddenException(
+          'Sadece kendi restoranınız için slot oluşturabilirsiniz',
+        );
+      }
+      return;
     }
+
+    if (slotId) {
+      const slot = await this.slotModel
+        .findById(slotId)
+        .select('restaurant')
+        .lean()
+        .exec();
+      if (!slot) {
+        throw new NotFoundException('Slot bulunamadı');
+      }
+      if (slot.restaurant.toString() !== user.restaurantId) {
+        throw new ForbiddenException('Bu slot üzerinde işlem yetkiniz yok');
+      }
+    }
+  }
+
+  async withOwnership<T>(
+    user: AuthUser,
+    operation: () => Promise<T>,
+    restaurantId?: string,
+    slotId?: string,
+  ): Promise<T> {
+    await this.validateOwnership(user, restaurantId, slotId);
+    return operation();
+  }
 }

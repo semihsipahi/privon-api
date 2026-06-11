@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
@@ -7,9 +12,9 @@ import { Role } from '../enums/role.enum';
 export const RESOURCE_OWNER_KEY = 'resourceOwner';
 
 export interface ResourceOwnerConfig {
-  modelName: string;        // MongoDB collection name (e.g., 'Restaurant')
-  ownerField: string;       // Field containing owner ID (e.g., 'owner')
-  idParam?: string;         // URL param name (default: 'id')
+  modelName: string; // MongoDB collection name (e.g., 'Restaurant')
+  ownerField: string; // Field containing owner ID (e.g., 'owner')
+  idParam?: string; // URL param name (default: 'id')
 }
 
 @Injectable()
@@ -17,7 +22,7 @@ export class ResourceOwnerGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     @InjectConnection() private connection: Connection,
-  ) { }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const config = this.reflector.getAllAndOverride<ResourceOwnerConfig>(

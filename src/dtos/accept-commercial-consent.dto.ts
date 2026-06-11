@@ -6,7 +6,10 @@ export class AcceptCommercialConsentDto {
   @IsBoolean()
   accepted: boolean;
 
-  @ApiProperty({ description: 'Ticari Elektronik İleti Onayı versiyonu', example: 1 })
+  @ApiProperty({
+    description: 'Ticari Elektronik İleti Onayı versiyonu',
+    example: 1,
+  })
   @IsNumber()
   version: number;
 }

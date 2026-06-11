@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { LegalDocument, LegalDocType } from '../../models/legal-document.schema';
+import {
+  LegalDocument,
+  LegalDocType,
+} from '../../models/legal-document.schema';
 
 @Injectable()
 export class LegalService {
@@ -29,9 +32,7 @@ export class LegalService {
     type: LegalDocType,
     version: number,
   ): Promise<LegalDocument> {
-    const doc = await this.legalDocumentModel
-      .findOne({ type, version })
-      .exec();
+    const doc = await this.legalDocumentModel.findOne({ type, version }).exec();
     if (!doc) {
       throw new NotFoundException(
         `${type} tipinde ${version}. versiyon bulunamadı`,
@@ -41,15 +42,10 @@ export class LegalService {
   }
 
   async findVersionsByType(type: LegalDocType): Promise<LegalDocument[]> {
-    return this.legalDocumentModel
-      .find({ type })
-      .sort({ version: -1 })
-      .exec();
+    return this.legalDocumentModel.find({ type }).sort({ version: -1 }).exec();
   }
 
-  async create(
-    data: Partial<LegalDocument>,
-  ): Promise<LegalDocument> {
+  async create(data: Partial<LegalDocument>): Promise<LegalDocument> {
     const lastVersion = await this.legalDocumentModel
       .findOne({ type: data.type })
       .sort({ version: -1 })
@@ -65,10 +61,7 @@ export class LegalService {
 
   async deactivatePreviousVersions(type: LegalDocType): Promise<void> {
     await this.legalDocumentModel
-      .updateMany(
-        { type, isActive: true },
-        { $set: { isActive: false } },
-      )
+      .updateMany({ type, isActive: true }, { $set: { isActive: false } })
       .exec();
   }
 

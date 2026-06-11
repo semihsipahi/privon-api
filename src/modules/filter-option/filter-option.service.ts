@@ -27,7 +27,10 @@ export class FilterOptionService extends ResourceService<
     return super.list(query);
   }
 
-  async getGroupedOptions(): Promise<{ cuisine: FilterOption[]; atmosphere: FilterOption[] }> {
+  async getGroupedOptions(): Promise<{
+    cuisine: FilterOption[];
+    atmosphere: FilterOption[];
+  }> {
     const options = await this.filterOptionModel
       .find({ isActive: true })
       .sort({ order: 1 })

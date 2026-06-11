@@ -28,7 +28,8 @@ export class RestaurantListQueryDto {
   categories?: string;
 
   @ApiPropertyOptional({
-    description: 'İndirim oranına göre filtrele (örn: 50 = %50 indirimli slotlar)',
+    description:
+      'İndirim oranına göre filtrele (örn: 50 = %50 indirimli slotlar)',
     example: 50,
   })
   @IsOptional()
@@ -45,7 +46,10 @@ export class RestaurantListQueryDto {
   @IsNumber()
   priceLevel?: number;
 
-  @ApiPropertyOptional({ description: 'Çoklu fiyat seviyesi filtresi (virgülle ayrılmış, örn: 1,2)', example: '1,2' })
+  @ApiPropertyOptional({
+    description: 'Çoklu fiyat seviyesi filtresi (virgülle ayrılmış, örn: 1,2)',
+    example: '1,2',
+  })
   @IsOptional()
   @IsString()
   priceLevels?: string;
@@ -120,7 +124,9 @@ export class RestaurantListQueryDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Tarih YYYY-MM-DD formatında olmalıdır' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'Tarih YYYY-MM-DD formatında olmalıdır',
+  })
   date?: string;
 
   @ApiPropertyOptional({
@@ -146,5 +152,4 @@ export class RestaurantListQueryDto {
   @IsOptional()
   @IsString()
   collectionTypes?: string;
-
 }

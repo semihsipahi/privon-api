@@ -7,38 +7,38 @@ import { ResourceService } from 'src/services/resource.service';
 
 @Injectable()
 export class SupportRequestService extends ResourceService<
-    SupportRequest,
-    CreateSupportRequestDto,
-    Partial<CreateSupportRequestDto>
+  SupportRequest,
+  CreateSupportRequestDto,
+  Partial<CreateSupportRequestDto>
 > {
-    constructor(
-        @InjectModel(SupportRequest.name)
-        private supportRequestModel: Model<SupportRequest>,
-    ) {
-        super(supportRequestModel);
+  constructor(
+    @InjectModel(SupportRequest.name)
+    private supportRequestModel: Model<SupportRequest>,
+  ) {
+    super(supportRequestModel);
+  }
+
+  async createRequest(
+    dto: CreateSupportRequestDto,
+    userId?: string,
+    userEmail?: string,
+    userPhone?: string,
+  ): Promise<SupportRequest> {
+    const data: any = {
+      title: dto.title,
+      message: dto.message,
+      email: dto.email || userEmail,
+      phoneNumber: dto.phoneNumber || userPhone,
+    };
+
+    if (userId) {
+      data.user = userId;
     }
 
-    async createRequest(
-        dto: CreateSupportRequestDto,
-        userId?: string,
-        userEmail?: string,
-        userPhone?: string,
-    ): Promise<SupportRequest> {
-        const data: any = {
-            title: dto.title,
-            message: dto.message,
-            email: dto.email || userEmail,
-            phoneNumber: dto.phoneNumber || userPhone,
-        };
+    return await this.supportRequestModel.create(data);
+  }
 
-        if (userId) {
-            data.user = userId;
-        }
-
-        return await this.supportRequestModel.create(data);
-    }
-
-    async list(query: any) {
-        return await super.list(query, null, ['user']);
-    }
+  async list(query: any) {
+    return await super.list(query, null, ['user']);
+  }
 }

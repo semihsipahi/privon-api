@@ -6,7 +6,8 @@ export class SendLoginOtpDto {
   @IsString({ message: 'Telefon numarası bir metin olmalıdır.' })
   @IsNotEmpty({ message: 'Telefon numarası boş bırakılamaz.' })
   @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
+    message:
+      'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
   })
   phoneNumber: string;
 }
@@ -16,7 +17,8 @@ export class VerifyLoginOtpDto {
   @IsString({ message: 'Telefon numarası bir metin olmalıdır.' })
   @IsNotEmpty({ message: 'Telefon numarası boş bırakılamaz.' })
   @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
+    message:
+      'Geçerli bir uluslararası telefon numarası giriniz (+ ile başlamalı).',
   })
   phoneNumber: string;
 

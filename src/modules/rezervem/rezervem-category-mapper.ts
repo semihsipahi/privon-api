@@ -42,7 +42,7 @@ export interface MappingResult {
 export const SLUG_OVERRIDES: Record<string, string> = {
   'yeni-lokanta': 'Michelin Guide',
   'mikla-istanbul': 'Michelin Guide',
-  'neolokal': 'Michelin Guide',
+  neolokal: 'Michelin Guide',
   'turk-fatih-tutak': 'Michelin Guide',
   'genji-gokturk': 'Chef Restaurants', // Göktürk = İstanbul ilçesi, Türk mutfağı değil
 };
@@ -58,15 +58,25 @@ interface HeuristicRule {
 
 const HEURISTIC_RULES: HeuristicRule[] = [
   // Michelin Guide — yıldız/michelin/star
-  { keywords: ['michelin', 'yıldız', 'star'], category: 'Michelin Guide', score: 200 },
+  {
+    keywords: ['michelin', 'yıldız', 'star'],
+    category: 'Michelin Guide',
+    score: 200,
+  },
 
   // Chef Restaurants — şef/chef/tadım menüsü/omakase
   {
-    keywords: ['chef', 'şef', 'tasting menu', 'tadım', 'tadim menüsü', 'omakase'],
+    keywords: [
+      'chef',
+      'şef',
+      'tasting menu',
+      'tadım',
+      'tadim menüsü',
+      'omakase',
+    ],
     category: 'Chef Restaurants',
     score: 120,
   },
-
 ];
 
 // ── Katman 3: Fallback ───────────────────────────────────────────────
@@ -107,7 +117,8 @@ export function mapVenueToCategory(
   for (const rule of HEURISTIC_RULES) {
     for (const kw of rule.keywords) {
       if (haystack.includes(kw.toLowerCase())) {
-        if (!tally[rule.category]) tally[rule.category] = { score: 0, keywords: [] };
+        if (!tally[rule.category])
+          tally[rule.category] = { score: 0, keywords: [] };
         tally[rule.category].score += rule.score;
         tally[rule.category].keywords.push(kw);
       }
@@ -116,12 +127,15 @@ export function mapVenueToCategory(
 
   // hasTastingMenu → Chef Restaurants'a güçlü boost
   if (input.hasTastingMenu) {
-    if (!tally['Chef Restaurants']) tally['Chef Restaurants'] = { score: 0, keywords: [] };
+    if (!tally['Chef Restaurants'])
+      tally['Chef Restaurants'] = { score: 0, keywords: [] };
     tally['Chef Restaurants'].score += 80;
     tally['Chef Restaurants'].keywords.push('__hasTastingMenu__');
   }
 
-  const winner = Object.entries(tally).sort((a, b) => b[1].score - a[1].score)[0];
+  const winner = Object.entries(tally).sort(
+    (a, b) => b[1].score - a[1].score,
+  )[0];
   if (winner && winner[1].score > 0) {
     return {
       categoryKey: winner[0],
@@ -148,11 +162,16 @@ export function deriveBadges(input: MappingInput): string[] {
   const text = tokenize(input);
 
   if (text.includes('michelin')) badges.push('Michelin');
-  if (text.includes('tasting menu') || text.includes('tadım') || input.hasTastingMenu) {
+  if (
+    text.includes('tasting menu') ||
+    text.includes('tadım') ||
+    input.hasTastingMenu
+  ) {
     badges.push('Tasting Menu');
   }
   if (text.includes('omakase')) badges.push('Omakase');
-  if (text.includes('chef') || text.includes('şef')) badges.push("Chef's Table");
+  if (text.includes('chef') || text.includes('şef'))
+    badges.push("Chef's Table");
 
   return Array.from(new Set(badges));
 }
@@ -163,7 +182,7 @@ export function deriveBadges(input: MappingInput): string[] {
  */
 export function deriveAwards(input: MappingInput): AwardDto[] {
   const currentYear = new Date().getFullYear();
-  return deriveBadges(input).map(badge => ({
+  return deriveBadges(input).map((badge) => ({
     iconUrl: '',
     name: badge,
     year: currentYear,

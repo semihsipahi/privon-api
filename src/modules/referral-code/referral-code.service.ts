@@ -17,7 +17,8 @@ export class ReferralCodeService extends ResourceService<
   UpdateReferralCodeDto
 > {
   constructor(
-    @InjectModel(ReferralCode.name) private referralCodeModel: Model<ReferralCode>,
+    @InjectModel(ReferralCode.name)
+    private referralCodeModel: Model<ReferralCode>,
     @InjectModel(User.name) private userModel: Model<User>,
   ) {
     super(referralCodeModel);
@@ -121,9 +122,10 @@ export class ReferralCodeService extends ResourceService<
       const nextThreshold = this.getNextThreshold(completed);
       const remaining = nextThreshold - completed;
 
-      const message = nextThreshold === null
-        ? 'Maksimum davet kodu hakkınıza ulaştınız.'
-        : `Yeni bir davet kodu hakkı kazanmak için ${remaining} rezervasyon daha tamamlamalısınız.`;
+      const message =
+        nextThreshold === null
+          ? 'Maksimum davet kodu hakkınıza ulaştınız.'
+          : `Yeni bir davet kodu hakkı kazanmak için ${remaining} rezervasyon daha tamamlamalısınız.`;
 
       throw new CustomException(message, 400);
     }
@@ -268,10 +270,17 @@ export class ReferralCodeService extends ResourceService<
       const existing = await this.referralCodeModel.findOne({ code });
       if (!existing) return code;
     }
-    throw new CustomException('Kod oluşturulamadı, lütfen tekrar deneyin.', 500);
+    throw new CustomException(
+      'Kod oluşturulamadı, lütfen tekrar deneyin.',
+      500,
+    );
   }
 
-  private async buildUserTree(userId: string, depth: number, maxDepth: number): Promise<any[]> {
+  private async buildUserTree(
+    userId: string,
+    depth: number,
+    maxDepth: number,
+  ): Promise<any[]> {
     if (depth >= maxDepth) return [];
 
     const referredUsers = await this.userModel
@@ -281,7 +290,11 @@ export class ReferralCodeService extends ResourceService<
 
     const tree = [];
     for (const user of referredUsers) {
-      const children = await this.buildUserTree(user._id.toString(), depth + 1, maxDepth);
+      const children = await this.buildUserTree(
+        user._id.toString(),
+        depth + 1,
+        maxDepth,
+      );
       tree.push({
         id: user._id,
         fullName: user.fullName,
@@ -294,7 +307,11 @@ export class ReferralCodeService extends ResourceService<
     return tree;
   }
 
-  private async buildAdminTree(userId: string, depth: number, maxDepth: number): Promise<any[]> {
+  private async buildAdminTree(
+    userId: string,
+    depth: number,
+    maxDepth: number,
+  ): Promise<any[]> {
     if (depth >= maxDepth) return [];
 
     const referredUsers = await this.userModel
@@ -304,7 +321,11 @@ export class ReferralCodeService extends ResourceService<
 
     const tree = [];
     for (const user of referredUsers) {
-      const children = await this.buildAdminTree(user._id.toString(), depth + 1, maxDepth);
+      const children = await this.buildAdminTree(
+        user._id.toString(),
+        depth + 1,
+        maxDepth,
+      );
       tree.push({
         id: user._id,
         fullName: user.fullName,

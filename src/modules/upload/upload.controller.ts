@@ -25,7 +25,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 @ApiTags('Dosya Yükleme')
 @Controller('upload')
 export class UploadController {
-  constructor(private readonly uploadService: UploadService) { }
+  constructor(private readonly uploadService: UploadService) {}
 
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
@@ -81,7 +81,10 @@ export class UploadController {
     const response = await fetch(url);
     if (!response.ok) throw new NotFoundException();
     const buffer = Buffer.from(await response.arrayBuffer());
-    reply.header('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+    reply.header(
+      'Content-Type',
+      response.headers.get('content-type') || 'application/octet-stream',
+    );
     reply.header('Cache-Control', 'public, max-age=31536000');
     reply.send(buffer);
   }

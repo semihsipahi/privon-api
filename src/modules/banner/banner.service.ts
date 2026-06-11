@@ -8,21 +8,18 @@ import { ResourceService } from 'src/services/resource.service';
 
 @Injectable()
 export class BannerService extends ResourceService<
-    Banner,
-    CreateBannerDto,
-    UpdateBannerDto
+  Banner,
+  CreateBannerDto,
+  UpdateBannerDto
 > {
-    constructor(
-        @InjectModel(Banner.name)
-        private bannerModel: Model<Banner>,
-    ) {
-        super(bannerModel);
-    }
+  constructor(
+    @InjectModel(Banner.name)
+    private bannerModel: Model<Banner>,
+  ) {
+    super(bannerModel);
+  }
 
-    async getPublicBanners() {
-        return await this.bannerModel
-            .find({})
-            .sort({ order: 1 })
-            .lean();
-    }
+  async getPublicBanners() {
+    return await this.bannerModel.find({}).sort({ order: 1 }).lean();
+  }
 }

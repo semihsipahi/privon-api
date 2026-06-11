@@ -7,9 +7,20 @@ import { BookingService } from './booking.service';
 import { BookingController } from './booking.controller';
 import { RezervemVenueService } from './rezervem-venue.service';
 import { RezervemSyncController } from './rezervem-sync.controller';
-import { RezervemVenue, RezervemVenueSchema } from '../../models/rezervem-venue.schema';
+import {
+  RezervemVenue,
+  RezervemVenueSchema,
+} from '../../models/rezervem-venue.schema';
 import { Restaurant, RestaurantSchema } from '../../models/restaurant.schema';
-import { RestaurantCategory, RestaurantCategorySchema } from '../../models/restaurant-category.schema';
+import {
+  RestaurantCategory,
+  RestaurantCategorySchema,
+} from '../../models/restaurant-category.schema';
+import {
+  PendingPayment,
+  PendingPaymentSchema,
+} from '../../models/pending-payment.schema';
+import { PendingPaymentService } from './pending-payment.service';
 import { ReservationModule } from '../reservation/reservation.module';
 
 @Module({
@@ -19,6 +30,7 @@ import { ReservationModule } from '../reservation/reservation.module';
       { name: RezervemVenue.name, schema: RezervemVenueSchema },
       { name: Restaurant.name, schema: RestaurantSchema },
       { name: RestaurantCategory.name, schema: RestaurantCategorySchema },
+      { name: PendingPayment.name, schema: PendingPaymentSchema },
     ]),
     ReservationModule,
   ],
@@ -28,7 +40,13 @@ import { ReservationModule } from '../reservation/reservation.module';
     RezervemHttpService,
     BookingService,
     RezervemVenueService,
+    PendingPaymentService,
   ],
-  exports: [BookingService, RezervemHttpService, RezervemVenueService],
+  exports: [
+    BookingService,
+    RezervemHttpService,
+    RezervemVenueService,
+    PendingPaymentService,
+  ],
 })
 export class RezervemModule {}
