@@ -34,6 +34,7 @@ export class TastingMenuService {
     return this.model
       .find({ restaurantId: new Types.ObjectId(restaurantId), isActive: true })
       .sort({ createdAt: -1 })
+      .populate('restaurantId', 'name location rezervemSlug images')
       .lean();
   }
 
