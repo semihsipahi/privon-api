@@ -493,6 +493,62 @@
           }
         },
         {
+          "name": "6c. Pay (3DS) — kart gönder, redirectUrl al",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "const res = r.result ?? r;",
+                  "console.log('[Pay] redirectUrl:', res.redirectUrl);",
+                  "console.log('[Pay] status:', res.status);",
+                  "",
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('redirectUrl mevcut', () => pm.expect(res.redirectUrl).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rezervemToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"cardNumber\": \"4543600397920672\",\n  \"holderName\": \"Test Kullanici\",\n  \"expiryMonth\": 12,\n  \"expiryYear\": 2030,\n  \"cvv\": \"000\",\n  \"returnUrl\": \"https://api.privon.com/payment/callback?sessionId={{sessionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{rezervemBaseUrl}}/v1/venues/{{slug}}/checkout/pay",
+              "host": [
+                "{{rezervemBaseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "venues",
+                "{{slug}}",
+                "checkout",
+                "pay"
+              ]
+            },
+            "description": "Immediate akista Confirm'den PAYMENT_REQUIRED döndükten sonra çağrılır. Kart bilgilerini Rezervem'e gönderir, 3D Secure sayfasina yönlendiren redirectUrl döner.\n\nYanit: { redirectUrl, status: \"REDIRECT_REQUIRED\" }\n\n3DS sonrasi Finalize endpoint'i cagrilmalidir."
+          }
+        },
+        {
           "name": "7. Finalize (3DS / Provision sonrasi)",
           "request": {
             "method": "POST",

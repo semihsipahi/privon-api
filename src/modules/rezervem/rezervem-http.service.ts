@@ -74,18 +74,11 @@ export class RezervemHttpService {
 
   private async get<T>(path: string): Promise<T> {
     const token = await this.authService.getAccessToken();
-    const url = `${this.baseUrl}${path}`;
     const t0 = Date.now();
 
-    this.logger.log(
-      `\n┌──────────────────────────────────────────────────────────\n` +
-        `│ ➡  REZERVEM  GET\n` +
-        `│ URL : ${url}\n` +
-        `│ Auth: Bearer [MASKED]\n` +
-        `└──────────────────────────────────────────────────────────`,
-    );
+    this.logger.log(`[REZERVEM] → GET ${path}`);
 
-    const response = await fetch(url, {
+    const response = await fetch(`${this.baseUrl}${path}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -103,25 +96,16 @@ export class RezervemHttpService {
 
     if (!response.ok) {
       this.logger.error(
-        `\n┌──────────────────────────────────────────────────────────\n` +
-          `│ ❌  REZERVEM  GET → ${response.status} (${ms}ms)\n` +
-          `│ URL : ${url}\n` +
-          `│ Body: ${rawText.slice(0, 1000)}\n` +
-          `└──────────────────────────────────────────────────────────`,
+        `[REZERVEM] ← GET ${path} → ${response.status} (${ms}ms)` +
+          (rawText ? ` | ${rawText.slice(0, 300)}` : ''),
       );
       throw new Error(`Rezervem API error: ${response.status} on ${path}`);
     }
 
+    const snippet = this.responseSnippet(rawJson);
     this.logger.log(
-      `\n┌──────────────────────────────────────────────────────────\n` +
-        `│ ✅  REZERVEM  GET → ${response.status} (${ms}ms)\n` +
-        `│ URL : ${url}\n` +
-        `│ RAW RESPONSE:\n` +
-        `${JSON.stringify(rawJson, null, 2)
-          .split('\n')
-          .map((l) => `│   ${l}`)
-          .join('\n')}\n` +
-        `└──────────────────────────────────────────────────────────`,
+      `[REZERVEM] ← GET ${path} → ${response.status} (${ms}ms)` +
+        (snippet ? ` | ${snippet}` : ''),
     );
 
     return this.unwrap<T>(rawJson, path);
@@ -148,25 +132,54 @@ export class RezervemHttpService {
     return raw as T;
   }
 
+  private maskSensitive(body: any): any {
+    if (!body || typeof body !== 'object') return body;
+    const masked = Array.isArray(body) ? [...body] : { ...body };
+    for (const key of Object.keys(masked)) {
+      if (key === 'cardNumber' && typeof masked[key] === 'string') {
+        masked[key] = `****${masked[key].slice(-4)}`;
+      } else if (key === 'cvv') {
+        masked[key] = '***';
+      } else if (
+        (key === 'clientSecret' || key === 'password') &&
+        typeof masked[key] === 'string'
+      ) {
+        masked[key] = '****';
+      } else if (typeof masked[key] === 'object' && masked[key] !== null) {
+        masked[key] = this.maskSensitive(masked[key]);
+      }
+    }
+    return masked;
+  }
+
+  private bodySnippet(body: any): string {
+    try {
+      const masked = this.maskSensitive(body);
+      const str = JSON.stringify(masked);
+      return str.length > 500 ? str.slice(0, 500) + '…' : str;
+    } catch {
+      return String(body).slice(0, 200);
+    }
+  }
+
+  private responseSnippet(raw: any): string {
+    try {
+      const str = JSON.stringify(raw);
+      return str.length > 600 ? str.slice(0, 600) + '…' : str;
+    } catch {
+      return '';
+    }
+  }
+
   private async post<T>(path: string, body: object): Promise<T> {
     const token = await this.authService.getAccessToken();
-    const url = `${this.baseUrl}${path}`;
     const t0 = Date.now();
 
     this.logger.log(
-      `\n┌──────────────────────────────────────────────────────────\n` +
-        `│ ➡  REZERVEM  POST\n` +
-        `│ URL : ${url}\n` +
-        `│ Auth: Bearer [MASKED]\n` +
-        `│ REQUEST BODY:\n` +
-        `${JSON.stringify(body, null, 2)
-          .split('\n')
-          .map((l) => `│   ${l}`)
-          .join('\n')}\n` +
-        `└──────────────────────────────────────────────────────────`,
+      `[REZERVEM] → POST ${path} | ${this.bodySnippet(body)}`,
     );
 
-    const response = await fetch(url, {
+    const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -186,36 +199,16 @@ export class RezervemHttpService {
 
     if (!response.ok) {
       this.logger.error(
-        `\n┌──────────────────────────────────────────────────────────\n` +
-          `│ ❌  REZERVEM  POST → ${response.status} (${ms}ms)\n` +
-          `│ URL : ${url}\n` +
-          `│ REQUEST BODY:\n` +
-          `${JSON.stringify(body, null, 2)
-            .split('\n')
-            .map((l) => `│   ${l}`)
-            .join('\n')}\n` +
-          `│ ERROR RESPONSE:\n` +
-          `│   ${rawText.slice(0, 1000)}\n` +
-          `└──────────────────────────────────────────────────────────`,
+        `[REZERVEM] ← POST ${path} → ${response.status} (${ms}ms)` +
+          (rawText ? ` | ${rawText.slice(0, 300)}` : ''),
       );
       throw new Error(`Rezervem API error: ${response.status} on ${path}`);
     }
 
+    const snippet = this.responseSnippet(rawJson);
     this.logger.log(
-      `\n┌──────────────────────────────────────────────────────────\n` +
-        `│ ✅  REZERVEM  POST → ${response.status} (${ms}ms)\n` +
-        `│ URL : ${url}\n` +
-        `│ REQUEST BODY:\n` +
-        `${JSON.stringify(body, null, 2)
-          .split('\n')
-          .map((l) => `│   ${l}`)
-          .join('\n')}\n` +
-        `│ RAW RESPONSE:\n` +
-        `${JSON.stringify(rawJson, null, 2)
-          .split('\n')
-          .map((l) => `│   ${l}`)
-          .join('\n')}\n` +
-        `└──────────────────────────────────────────────────────────`,
+      `[REZERVEM] ← POST ${path} → ${response.status} (${ms}ms)` +
+        (snippet ? ` | ${snippet}` : ''),
     );
 
     return this.unwrap<T>(rawJson, path);
@@ -715,7 +708,7 @@ export class RezervemHttpService {
       shift: params.shift,
       roomId:
         params.roomId ??
-        (params.areaId ? parseInt(params.areaId, 10) || undefined : undefined),
+        (params.areaId ? parseInt(params.areaId, 10) || null : null),
       paymentMode: params.paymentMode ?? 'immediate',
     });
     return this.transformHoldResponse(raw, params);

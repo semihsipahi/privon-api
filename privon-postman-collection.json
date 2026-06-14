@@ -51,6 +51,12 @@
       "value": "",
       "type": "string",
       "description": "Rezervem integer ID — Confirm response'dan otomatik set edilir"
+    },
+    {
+      "key": "redirectUrl",
+      "value": "",
+      "type": "string",
+      "description": "Pay response'undan gelen 3DS yönlendirme URL'i — tarayicida/WebView'da açilir"
     }
   ],
   "item": [
@@ -930,7 +936,7 @@
             "url": "{{baseUrl}}/booking/venues/{{slug}}/hold",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pax\": 2,\n  \"date\": \"2026-06-01\",\n  \"time\": \"20:00\",\n  \"areaId\": \"\",\n  \"paymentMode\": \"immediate\"\n}",
+              "raw": "{\n  \"pax\": 2,\n  \"date\": \"2026-06-01\",\n  \"time\": \"20:00\",\n  \"roomId\": 1,\n  \"paymentMode\": \"immediate\"\n}\n\n// roomId: alan secimi gerekiyorsa AvailabilityAreas'tan alinan id (int)\n// areaId: mobil uyumluluk icin alternatif (string) — backend otomatik parseInt yapar",
               "options": {
                 "raw": {
                   "language": "json"
@@ -997,6 +1003,53 @@
                 }
               }
             }
+          }
+        },
+        {
+          "name": "6.5. Pay (3DS) — kart gönder, redirectUrl al",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "console.log('[Pay] redirectUrl:', r.redirectUrl);",
+                  "console.log('[Pay] status:', r.status);",
+                  "",
+                  "if (r.redirectUrl) {",
+                  "  pm.collectionVariables.set('redirectUrl', r.redirectUrl);",
+                  "  console.log('[Pay] redirectUrl saved — tarayicida acin');",
+                  "}",
+                  "",
+                  "pm.test('redirectUrl mevcut', () => pm.expect(r.redirectUrl).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/booking/holds/{{holdId}}/pay",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardNumber\": \"4543600397920672\",\n  \"holderName\": \"Test Kullanici\",\n  \"expiryMonth\": 12,\n  \"expiryYear\": 2030,\n  \"cvv\": \"000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Confirm'den PAYMENT_REQUIRED döndükten sonra çağrilir. Kart bilgilerini Rezervem'e gönderir, 3D Secure icin redirectUrl döner. Bu URL'i tarayicida/WebView'da acin, 3DS tamamlaninca returnUrl'e yönlendirilir. Ardindan 7. Finalize endpoint'ini cagirin."
           }
         },
         {
