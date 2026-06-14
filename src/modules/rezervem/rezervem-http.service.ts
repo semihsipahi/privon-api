@@ -379,7 +379,8 @@ export class RezervemHttpService {
         for (const t of shift.times ?? []) {
           const available = t.status === 'AVAILABLE' || t.status === 'LIMITED';
           slots.push({
-            time: t.time ?? t.displayTime,
+            time: t.time,
+            displayTime: t.displayTime,
             available,
             shiftId: shift.shift,
             isSessionBased,
@@ -394,7 +395,8 @@ export class RezervemHttpService {
     // Direct array of time slots — no shift info available, shiftId omitted
     if (Array.isArray(raw)) {
       const slots = raw.map((t: any) => ({
-        time: t.time ?? t.displayTime,
+        time: t.time,
+        displayTime: t.displayTime,
         available:
           t.status === 'AVAILABLE' ||
           t.status === 'LIMITED' ||
