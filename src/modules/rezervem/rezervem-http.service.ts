@@ -356,6 +356,7 @@ export class RezervemHttpService {
     if (Array.isArray(raw?.shifts)) {
       const slots: {
         time: string;
+        displayTime?: string;
         available: boolean;
         shiftId: number;
         isSessionBased: boolean;
