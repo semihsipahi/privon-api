@@ -42,3 +42,5 @@ export * from './accept-cookies.dto';
 export * from './accept-commercial-consent.dto';
 export * from './create-admin-user.dto';
 export * from './update-waitlist-status.dto';
+export * from './create-city.dto';
+export * from './update-city.dto';
