@@ -64,6 +64,7 @@ export class BookingService {
       holdTtlSeconds: 600,
       policies: venue.policies ?? {},
       genderPolicy: venue.genderPolicy ?? false,
+      groupBooking: venue.groupBooking ?? null,
       paymentPreview: venue.paymentPreview ?? null,
       tastingMenu: venue.tastingMenu ?? null,
       uiHints: venue.uiHints ?? {},

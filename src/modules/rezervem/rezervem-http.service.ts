@@ -40,6 +40,13 @@ export interface RezervemBootstrapResponse {
   paymentPreview?: any;
   tastingMenu?: { available: boolean } | null;
   uiHints?: any;
+  groupBooking?: {
+    enabled: boolean;
+    threshold: number;
+    contact?: { phone?: string; email?: string };
+    title?: { tr?: string; en?: string };
+    message?: { tr?: string; en?: string };
+  } | null;
   policies?: {
     cancellationPolicy?: any;
     dressCode?: any;

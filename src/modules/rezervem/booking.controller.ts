@@ -77,6 +77,7 @@ export class BookingController {
       currency: raw?.venue?.currency ?? 'TRY',
       holdTtlSeconds: 600,
       policies: {},
+      groupBooking: raw?.groupBooking ?? null,
       paymentPreview: raw?.paymentPreview ?? null,
       tastingMenu: raw?.tastingMenu ?? null,
       uiHints: raw?.uiHints ?? {},

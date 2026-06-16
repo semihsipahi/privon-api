@@ -51,6 +51,18 @@ export class RezervemVenue extends Document {
   @Prop({ type: Object })
   bookingFlow: any;
 
+  @Prop({ type: Object })
+  uiHints: any;
+
+  @Prop({ type: Object })
+  policies: any;
+
+  @Prop({ type: Object })
+  leadTimes: any;
+
+  @Prop({ type: Object })
+  genderPolicy: any;
+
   @Prop({ type: [Object], default: [] })
   areas: Array<{
     id: number;

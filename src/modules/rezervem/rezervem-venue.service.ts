@@ -434,6 +434,7 @@ export class RezervemVenueService implements OnModuleInit {
             : undefined,
           leadTimes: boot.leadTimes ?? undefined,
           genderPolicy: boot.genderPolicy ?? undefined,
+          groupBooking: boot.groupBooking ?? undefined,
           paymentPreview: boot.paymentPreview ?? undefined,
           tastingMenu: boot.tastingMenu ?? undefined,
           uiHints: boot.uiHints ?? undefined,
