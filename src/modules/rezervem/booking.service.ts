@@ -38,18 +38,6 @@ export class BookingService {
       result = await this.rezervemHttp.getBootstrap(slug);
     }
 
-    // Restaurant'dan termsAndConditions al ve policies'e inject et
-    const restaurant = await this.restaurantModel
-      .findOne({ rezervemSlug: slug })
-      .select('termsAndConditions')
-      .lean();
-    if (restaurant?.termsAndConditions) {
-      result.policies = {
-        ...(result.policies ?? {}),
-        termsAndConditions: restaurant.termsAndConditions,
-      };
-    }
-
     return result;
   }
 

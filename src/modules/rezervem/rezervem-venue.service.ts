@@ -640,7 +640,7 @@ export class RezervemVenueService implements OnModuleInit {
       cuisineTypes:
         dto.cuisineTypes ??
         (venue.tags ?? []).map((t) => t.title).filter(Boolean),
-      termsAndConditions: dto.termsAndConditions ?? '',
+
       atmosphereTypes: [],
       workingHours:
         dto.workingHours && dto.workingHours.length > 0

@@ -45,18 +45,6 @@ export class BookingController {
       ? raw
       : this.mapToBookingBootstrap(slug, raw);
 
-    // Service her iki yolda da termsAndConditions inject eder;
-    // mapToBookingBootstrap yeni obje döndüğü için burada da kontrol et
-    if (
-      !result?.policies?.termsAndConditions &&
-      raw?.policies?.termsAndConditions
-    ) {
-      result.policies = {
-        ...(result.policies ?? {}),
-        termsAndConditions: raw.policies.termsAndConditions,
-      };
-    }
-
     this.logger.log(
       `[FLOW] ① BOOTSTRAP slug=${slug} → paxOptions=${JSON.stringify((result as any).paxOptions)} flow=${JSON.stringify((result as any).bookingFlow?.steps ?? [])}`,
     );
