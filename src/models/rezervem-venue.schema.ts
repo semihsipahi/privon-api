@@ -63,6 +63,9 @@ export class RezervemVenue extends Document {
   @Prop({ type: Object })
   genderPolicy: any;
 
+  @Prop({ type: Object })
+  groupBooking: any;
+
   @Prop({ type: [Object], default: [] })
   areas: Array<{
     id: number;

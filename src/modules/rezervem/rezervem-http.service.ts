@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RezervemAuthService } from './rezervem-auth.service';
 
@@ -106,7 +106,10 @@ export class RezervemHttpService {
         `[REZERVEM] ← GET ${path} → ${response.status} (${ms}ms)` +
           (rawText ? ` | ${rawText.slice(0, 300)}` : ''),
       );
-      throw new Error(`Rezervem API error: ${response.status} on ${path}`);
+      throw new HttpException(
+        `Rezervem API error: ${response.status} on ${path}`,
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     const snippet = this.responseSnippet(rawJson);
@@ -132,7 +135,7 @@ export class RezervemHttpService {
         const msgs = Array.isArray(header.messages)
           ? header.messages.join(', ')
           : 'unknown';
-        throw new Error(`Rezervem API error on ${path}: ${msgs}`);
+        throw new HttpException(`Rezervem API error on ${path}: ${msgs}`, HttpStatus.BAD_GATEWAY);
       }
       return (raw.result ?? raw) as T;
     }
@@ -209,7 +212,7 @@ export class RezervemHttpService {
         `[REZERVEM] ← POST ${path} → ${response.status} (${ms}ms)` +
           (rawText ? ` | ${rawText.slice(0, 300)}` : ''),
       );
-      throw new Error(`Rezervem API error: ${response.status} on ${path}`);
+      throw new HttpException(`Rezervem API error: ${response.status} on ${path}`, HttpStatus.BAD_GATEWAY);
     }
 
     const snippet = this.responseSnippet(rawJson);

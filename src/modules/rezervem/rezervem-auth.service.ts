@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 interface TokenCache {
@@ -41,8 +41,9 @@ export class RezervemAuthService {
     );
 
     if (!baseUrl || !clientId || !clientSecret) {
-      throw new Error(
+      throw new HttpException(
         'Rezervem credentials missing (REZERVEM_BASE_URL/CLIENT_ID/CLIENT_SECRET)',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
@@ -61,7 +62,7 @@ export class RezervemAuthService {
       this.logger.error(
         `Rezervem token fetch failed: ${response.status} ${text}`,
       );
-      throw new Error(`Rezervem auth failed: ${response.status}`);
+      throw new HttpException(`Rezervem auth failed: ${response.status}`, HttpStatus.BAD_GATEWAY);
     }
 
     const data = (await response.json()) as TokenResponse;
