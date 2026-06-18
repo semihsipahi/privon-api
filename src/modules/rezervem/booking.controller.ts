@@ -76,7 +76,7 @@ export class BookingController {
       maxPax: max,
       currency: raw?.venue?.currency ?? 'TRY',
       holdTtlSeconds: 600,
-      policies: {},
+      policies: raw?.policies ?? {},
       groupBooking: raw?.groupBooking ?? null,
       paymentPreview: raw?.paymentPreview ?? null,
       tastingMenu: raw?.tastingMenu ?? null,
