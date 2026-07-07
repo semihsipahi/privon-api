@@ -82,19 +82,25 @@ This API serves an **invite-only** mobile app with **password-based login** for 
 - Neither → `{status:"new"}`
 - Banned → `{status:"banned"}`
 
-#### Flow 1: Existing User — Password Login
+#### Flow 1: Existing/Invited User — OTP Login (current mobile flow)
 
-1. **`POST /auth/check-phone`** → `{status:"existing"}`
-2. User navigates to `password_entry` screen
-3. **`POST /auth/login`** with `{phoneNumber, password}` → `{accessToken, fullName, email, role, imageUrl}`
-4. Token saved to AsyncStorage → User enters app
+**⚠️ This superseded password login for mobile.** `POST /auth/login` (password) still exists and works — `privon-admin` and any future `privon-web` login use it — but the mobile app's onboarding **never calls it**. Do not reintroduce a password screen on mobile without confirming with the user first.
 
-**Forgot Password Sub-flow:**
-1. User clicks "Şifremi unuttum" on `password_entry` screen
-2. **`POST /auth/forgot-password`** with `{phoneNumber}` → generates 6-digit SMS code, saves to `user.verificationCode + codeExpiresAt` (10min)
-3. **`POST /auth/verify-reset-code`** with `{phoneNumber, verificationCode}` → returns `{resetToken}` (30-min JWT, purpose: `password_reset`)
-4. **`POST /auth/reset-password`** with `{resetToken, newPassword}` → updates `user.password` (bcrypt), returns `{accessToken}`
-5. Token saved → User enters app
+1. **`POST /auth/check-phone`** → `{status:"existing"}` or `{status:"invited", firstName, lastName, email, birthDate}`
+2. Mobile navigates to `invited_setup` (single screen: OTP + inline legal consent — `InvitedSetupStep.tsx`)
+3. **`POST /auth/send-login-otp`** with `{phoneNumber}` → SMS OTP sent
+4. **`POST /auth/verify-login-otp`** with `{phoneNumber, verificationCode}` → `{accessToken, fullName, email, role, imageUrl}`
+5. User accepts legal consent inline (see Legal Document System below) → token saved to AsyncStorage → enters app
+
+**Dead code on mobile:** `OtpLoginStep.tsx` and `LegalAcceptanceStep.tsx` are still imported/rendered in `OnboardingFlow.tsx` but their step names are never navigated to — do not build new features on top of them.
+
+**Password login (`/auth/login`, non-mobile only):**
+1. **`POST /auth/login`** with `{phoneNumber, password}` → `{accessToken, fullName, email, role, imageUrl}`
+
+**Forgot Password Sub-flow (non-mobile, e.g. admin/web):**
+1. **`POST /auth/forgot-password`** with `{phoneNumber}` → generates 6-digit SMS code, saves to `user.verificationCode + codeExpiresAt` (10min)
+2. **`POST /auth/verify-reset-code`** with `{phoneNumber, verificationCode}` → returns `{resetToken}` (30-min JWT, purpose: `password_reset`)
+3. **`POST /auth/reset-password`** with `{resetToken, newPassword}` → updates `user.password` (bcrypt), returns `{accessToken}`
 
 #### Flow 2: New User → Registration with Invite Code
 
@@ -120,7 +126,7 @@ This API serves an **invite-only** mobile app with **password-based login** for 
 #### Flow 4: Waitlist Submission (No App Access)
 
 1. **`POST /auth/check-phone`** → `{status:"new"}`
-2. User fills `details` + clicks "Bekleme Listesine Katıl" → navigates to `waitlist_q1/q2/q3`
+2. User fills `details` + clicks "Join Waitlist" → navigates to `waitlist_q1/q2/q3`
 3. **`POST /waitlist`** with `{phoneNumber, firstName, lastName, email, birthDate, acceptedMarketing, hospitalityStandards, privateClubMemberships, hospitalityValues, agreedToTerms, agreedToPrivacy}`
 4. User sees `waitlist_success` → no app access until invited
 5. User can later return to `phone` → `check-phone` → `waitlist_pending` → enter invite code (Flow 3)
@@ -132,7 +138,9 @@ This API serves an **invite-only** mobile app with **password-based login** for 
 | Method | Route | Guard | Payload | Returns |
 |---|---|---|---|---|
 | POST | `/auth/check-phone` | @Public() | `{phoneNumber}` | `{status, accessToken?, firstName?, lastName?, email?, birthDate?}` |
-| POST | `/auth/login` | @Public() | `{phoneNumber, password}` | `{accessToken, fullName, email, role, imageUrl}` |
+| POST | `/auth/login` | @Public() | `{phoneNumber, password}` | `{accessToken, fullName, email, role, imageUrl}` (non-mobile clients only) |
+| POST | `/auth/send-login-otp` | @Public() | `{phoneNumber}` | `{message}` (mobile OTP login — current flow for existing/invited) |
+| POST | `/auth/verify-login-otp` | @Public() | `{phoneNumber, verificationCode}` | `{accessToken, fullName, email, role, imageUrl}` |
 | POST | `/auth/register` | @Public() | `{phoneNumber, inviteCode, firstName, lastName, email, birthDate, acceptedMarketing}` | `{accessToken}` |
 | POST | `/auth/forgot-password` | @Public() | `{phoneNumber}` | `{message}` |
 | POST | `/auth/verify-reset-code` | @Public() | `{phoneNumber, verificationCode}` | `{resetToken}` |
@@ -256,6 +264,7 @@ Privon uses **Rezervem** (a Turkish restaurant reservation platform) as its book
 | Areas | `GET /booking/venues/:slug/availability/areas?pax=N&date=D&time=T` | `GET /v1/venues/:slug/availability/areas?partySize=N&date=D&time=T&shift=S` |
 | Hold | `POST /booking/venues/:slug/hold` | `POST /v1/venues/:slug/checkout/hold` |
 | Confirm | `POST /booking/holds/:holdId/confirm` | `POST /v1/venues/:slug/checkout/confirm?responseMode=v1` |
+| Cancel | `POST /booking/reservation/:id/cancel` | `POST /v1/reservations/cancel` (NEW — body: `{reservationId, cancelReasonId, cancelledBy}`) |
 
 ### Response transformation (CRITICAL)
 
@@ -266,6 +275,10 @@ The real Rezervem API returns different field names than the mobile contract. `r
 - **Areas**: `{areas: [{id, title, selectable, status}]}` → `{areas: [{id, name, available, ...}]}`
 - **Hold**: `{sessionId, expiresOn}` → `{holdId: "${slug}::${sessionId}", expiresAt, ttlSeconds, ...}`
 - **Confirm**: Rezervem response → `{reservationId, holdId, confirmationCode, ...}`
+- **Cancel**: (NEW) `POST /v1/reservations/cancel` + `GET /v1/reservations/cancel-reasons` — implemented in `rezervem-http.service.ts`, consumed via `rezervem.provider.ts::cancelReservation()`. Uses `CancelReservationRequest` body: `{reservationId, cancelReasonId, cancelledBy, cancelNote?}`.
+- **BookingFlow**: (BREAKING) `steps` format changed from `string[]` to `object[]` with `{type, order, required, enabled, title}`. Fields `type` and `requiresApproval` removed; `areaRequired` added. Default fallback in `rezervem.provider.ts` updated accordingly.
+- **Bootstrap + weeklySchedule**: `VenueBootstrapResponse` now includes `weeklySchedule` (`WeeklyScheduleDayInfo` — weekly schedule). `VenueInfo.workingHours` type changed from `string` to `array<WeeklyScheduleDayInfo>`.
+- **UiHints**: 5 new booleans: `showTimeSession`, `hideMaxPaxAlert`, `showEventsInTheShift`, `dontShowNotes`, `showRecommendations`.
 
 ### HoldId encoding
 
@@ -308,7 +321,7 @@ Rezervem areas endpoint requires a `shift` parameter (0=Breakfast, 1=Lunch, 2=Di
 
 The `restaurant.schema.ts` has a `termsAndConditions?: string` field (added for Rezervem restaurants). This field:
 - Is set during **venue import** via `ImportRezervemVenueDto.termsAndConditions`
-- Can be edited from **admin panel** (Rezervem Ayarları tab)
+- Can be edited from **admin panel** (Rezervem Settings tab)
 - Is injected into the **bootstrap response** at `GET /booking/venues/:slug/bootstrap` under `policies.termsAndConditions`
 - The mobile app reads this from `bootstrap.policies.termsAndConditions` and displays it in the review step
 - The field is stored on the `Restaurant` document (not on `rezervem_venues` cache)
@@ -319,3 +332,58 @@ The `restaurant.schema.ts` has a `termsAndConditions?: string` field (added for 
   git push origin main && git push personal main
   ```
 - Coolify does **not** auto-deploy on push — deployment must be manually triggered from the Coolify dashboard after push.
+
+---
+
+## Multi-Provider Booking Architecture
+
+Booking is **provider-agnostic**. `src/modules/booking/` is the orchestrator; it never talks to Rezervem or MozRest directly — it goes through `BookingProviderRegistry`, which resolves `provider.name` ('rezervem' | 'mozrest') on the `Restaurant` document to the right `BookingProvider` implementation (`src/common/interfaces/booking-provider.interface.ts`). Mobile only ever sees `restaurant.slug`/`venueId` and the normalized mobile contract — it never knows which provider is behind a given restaurant.
+
+- `src/modules/booking/booking.module.ts` registers both providers on `onModuleInit()`: `registry.register('rezervem', ...)`, `registry.register('mozrest', ...)`.
+- `Restaurant.provider = { name: 'rezervem' | 'mozrest', venueId: string }` — this replaces the legacy `rezervemSlug` field (still read for backward compat, never write to it).
+- Each provider is fully responsible for transforming its own raw API response into the shared mobile contract (dates/times/areas/hold/confirm/cancel shapes) — see the Rezervem section above for that provider's transform rules.
+- `pnpm run migrate:provider` (`scripts/migrate-provider-field.ts`) — one-time migration that maps legacy `rezervemSlug` values to `{name: 'rezervem', venueId: rezervemSlug}`. Only needed once per environment; don't re-run against already-migrated data without checking the script's idempotency first.
+
+## MozRest Integration Architecture
+
+MozRest is the second `BookingProvider` implementation, parallel to Rezervem. Full raw API reference: **`.opencode/context/mozrest-api-doc.md`** (venues, areas, availability, pending-booking, booking, payments, webhooks — read this before changing provider behavior).
+
+### Key files
+- `src/modules/booking/providers/mozrest/mozrest.provider.ts` — `BookingProvider` implementation, calls the MozRest REST API directly (no OAuth — static Bearer token)
+- `src/modules/booking/providers/mozrest/mozrest-venue.service.ts` — sync (`syncAll`) + import (`importToRestaurant`) into our `restaurants` collection
+- `src/modules/booking/providers/mozrest/mozrest-venue.schema.ts` — `mozrest_venues` cache collection (mirrors Rezervem's `rezervem_venues` cache pattern)
+- `src/modules/booking/providers/mozrest/mozrest-admin.controller.ts` — `admin/mozrest/*` routes, `@Roles(Role.SuperAdmin)`
+- `src/dtos/import-mozrest-venue.dto.ts` — import payload (categories, price level, awards, cuisine types — same shape as Rezervem import)
+
+### Sync → Import flow (mirrors Rezervem)
+1. `POST /admin/mozrest/sync` → `MozRestVenueService.syncAll()` fetches all venues from MozRest, upserts into `mozrest_venues` cache (includes a best-effort area fetch per venue; failures there are swallowed since availability may be empty "today").
+2. Admin picks a cached venue → `POST /admin/mozrest/venues/:venueId/import` → creates/updates a `Restaurant` document with `provider: { name: 'mozrest', venueId }`.
+3. `isImported` is derived by checking `Restaurant.find({ 'provider.name': 'mozrest', 'provider.venueId': venueId })` — never a separate flag on the cache document.
+
+### Critical differences from Rezervem
+- **Dates/times are Unix epoch seconds**, not ISO strings. `mozrest.provider.ts` converts `date`/`time` to `Math.floor(new Date(...).getTime() / 1000)` before every request and converts back on responses (`nextAvailability`/`previousAvailability`).
+- **No dedicated "available dates" endpoint** — `getAvailableDates()` throws; MozRest only exposes per-date availability (`GET /availability`). Date-level UI has to be driven off `getAvailableTimes()` + its `nextAvailability`/`previousAvailability` hints.
+- **Hold is two-step via the same resource**: `POST /pending-booking` creates the hold (`holdId = raw.id`, no separate encoding needed — MozRest IDs are already opaque strings, unlike Rezervem's `slug::sessionId`), then `PUT /pending-booking/:id` both fills in guest details *and* confirms/triggers payment in the same call.
+- **Payment is a widget, not a backend call**: if `confirmHold()` gets back `{status: 'require_payment', mzPaymentUrl}`, we return `paymentRequired: true, paymentUrl, paymentType: 'mozrest_widget'` — the client embeds MozRest's payment iframe; there is no follow-up "finalize" call from our backend for the common case. `finalizeHold()` exists only as a manual fallback (`GET /booking/:id`).
+- **Areas endpoint** takes `mzId` (not `venueId`) as the query param — easy typo trap when touching `getAvailableAreas()`.
+
+### Env vars
+- `MOZREST_BASE_URL` (default `https://api-sandbox.mozrest.com/v1/bc`) — switch to the production base URL when going live; there is no separate `USE_MOCK_MOZREST` flag like Rezervem has.
+- `MOZREST_API_KEY` — static Bearer token, no OAuth client id/secret pair like Rezervem.
+
+### Admin panel (privon-admin)
+- `src/api/mozrest.ts`, `src/pages/admin/integrations/mozrest/{list,show,import-drawer}.tsx` — copies of the Rezervem admin UI pattern, adapted field-for-field.
+- Business list/show/edit pages render a provider badge (Rezervem green / MozRest blue "M") driven off `Restaurant.provider.name`.
+
+---
+
+## Legal Document System
+
+`LegalDocument` model in MongoDB, CRUD + versioning, consumed by mobile onboarding and `privon-admin`.
+
+- `src/modules/legal/legal.controller.ts` — `GET /legal/documents/:type` is `@Public()` (no JWT required, so waitlist users can read terms/privacy before they have a token).
+- `src/modules/user/user.controller.ts` + `user.service.ts` — `resetLegalConsent`: forces a user to re-accept the latest version (admin-triggered).
+- User document tracks `acceptedAt`, `acceptedVersion` per document type — for admin visibility only, **not** used to skip showing the document again. There is intentionally no "already accepted, don't show" logic anywhere in the flow — the latest version is always shown.
+- Consumed by mobile via `requestWithOptionalAuth()` (sends token if present, works without one otherwise) — see `privon/CLAUDE.md` → "Legal Document System (mobile side)".
+- Admin CRUD for documents, version history, and "request re-acceptance from users" lives in `privon-admin` — see `privon-admin/CLAUDE.md`.
+- **`privon-web`'s `TermsOfAccess.tsx`/`PrivacyNotice.tsx` are fully hardcoded and do NOT call this API** — they can drift out of sync with the versions mobile shows. If legal copy changes, it must be updated in both places until `privon-web` is migrated to fetch from this endpoint.
